@@ -43,28 +43,47 @@ function pulse(w: World, text: string): void {
   });
 }
 
-export function shrineQuestMessage(stage: ShrineStage): { title: string; body: string } {
+export function shrineQuestMessage(stage: ShrineStage): {
+  title: string;
+  body: string;
+} {
   switch (stage) {
     case 'dormant':
-      return { title: 'The sleeping emerald', body: 'Approach the ancient altar and press E to listen.' };
+      return {
+        title: 'The sleeping emerald',
+        body: 'Approach the ancient altar and press E to listen.',
+      };
     case 'hunting':
-      return { title: 'Echoes in the bamboo', body: 'Defeat the awakened Jade Warden southeast of the shrine.' };
+      return {
+        title: 'Echoes in the bamboo',
+        body: 'Defeat the awakened Jade Warden southeast of the shrine.',
+      };
     case 'return':
-      return { title: 'The grove remembers', body: 'Return to the shrine altar (E) to receive its blessing.' };
+      return {
+        title: 'The grove remembers',
+        body: 'Return to the shrine altar (E) to receive its blessing.',
+      };
     case 'blessed':
-      return { title: 'Blessing of the grove', body: 'The ancient spirit rests. You earned 2 attribute points and rare materials.' };
+      return {
+        title: 'Blessing of the grove',
+        body: 'The ancient spirit rests. You earned 2 attribute points and rare materials.',
+      };
   }
 }
 export function shrineWardenDefeated(w: World): void {
   if (w.shrine !== 'hunting') return;
   w.shrine = 'return';
-  w.message = 'The Jade Warden dissolves into emerald sparks. Return to the shrine.';
+  w.message =
+    'The Jade Warden dissolves into emerald sparks. Return to the shrine.';
   pulse(w, 'WARDEN DEFEATED');
 }
 
 /** Interactions run exclusively inside the authoritative simulation step. */
 export function interactShrine(w: World, p: Player): boolean {
-  if (Math.hypot(p.x - BAMBOO_SHRINE.x, p.y - BAMBOO_SHRINE.y) >= SHRINE_INTERACT_RADIUS)
+  if (
+    Math.hypot(p.x - BAMBOO_SHRINE.x, p.y - BAMBOO_SHRINE.y) >=
+    SHRINE_INTERACT_RADIUS
+  )
     return false;
   prepareShrineQuest(w);
   if (w.shrine === 'dormant') {
@@ -75,7 +94,8 @@ export function interactShrine(w: World, p: Player): boolean {
     warden.hp = warden.maxHp;
     warden.cooldown = 1.3;
     warden.phase = 0;
-    w.message = 'Mossbound Shrine: The emerald whispers. A Jade Warden guards the grove!';
+    w.message =
+      'Mossbound Shrine: The emerald whispers. A Jade Warden guards the grove!';
     pulse(w, 'SHRINE AWAKENED');
   } else if (w.shrine === 'return') {
     w.shrine = 'blessed';
@@ -89,17 +109,24 @@ export function interactShrine(w: World, p: Player): boolean {
       if (awardXp(hero, 100)) {
         w.nextId++;
         w.effects.push({
-          id: `e${w.nextId}`, x: hero.x, y: hero.y, kind: 'heal', radius: 45,
-          text: 'LEVEL UP', life: 0.45,
+          id: `e${w.nextId}`,
+          x: hero.x,
+          y: hero.y,
+          kind: 'heal',
+          radius: 45,
+          text: 'LEVEL UP',
+          life: 0.45,
         });
       }
     }
-    w.message = 'Mossbound Shrine: You have earned the Grove Blessing: +2 attribute points, 2 ancient relics and 8 crystals!';
+    w.message =
+      'Mossbound Shrine: You have earned the Grove Blessing: +2 attribute points, 2 ancient relics and 8 crystals!';
     pulse(w, 'GROVE BLESSING');
   } else {
-    w.message = w.shrine === 'hunting'
-      ? 'Mossbound Shrine: The Jade Warden still guards the grove.'
-      : 'Mossbound Shrine: The forest remembers your courage.';
+    w.message =
+      w.shrine === 'hunting'
+        ? 'Mossbound Shrine: The Jade Warden still guards the grove.'
+        : 'Mossbound Shrine: The forest remembers your courage.';
   }
   return true;
 }
