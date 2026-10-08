@@ -5,6 +5,7 @@ import {
   lakes,
   lakeSpan,
   sceneryFits,
+  collides,
   type Obstacle,
   type ShorePoint,
 } from '@panda/shared';
@@ -55,10 +56,8 @@ export function trailPoint(t: number): Point {
   };
 }
 function stampRoad(ctx: CanvasRenderingContext2D, randomNumber: () => number) {
-  const center: Point[] = [];
   const left: Point[] = [];
   const right: Point[] = [];
-  const margin: Point[] = [];
   const drawBand = (width: number, color: string, wobble: number) => {
     left.length = 0;
     right.length = 0;
@@ -70,22 +69,29 @@ function stampRoad(ctx: CanvasRenderingContext2D, randomNumber: () => number) {
       const angle = Math.atan2(after.y - before.y, after.x - before.x);
       const nx = -Math.sin(angle),
         ny = Math.cos(angle);
-      const edge = (randomNumber() - 0.5) * wobble;
+      const edge =
+        Math.sin(t * 27) * 5 +
+        Math.sin(t * 63 + 1) * 3 +
+        (randomNumber() - 0.5) * wobble;
       left.push({ x: p.x + nx * (width + edge), y: p.y + ny * (width + edge) });
       right.push({
         x: p.x - nx * (width + edge),
         y: p.y - ny * (width + edge),
       });
-      if (width === 47) center.push(p);
     }
+    const start = trailPoint(0);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(start.x, start.y, width, width * 0.75, 0, 0, Math.PI * 2);
+    ctx.fill();
     polygon(ctx, left.concat(right.reverse()), color);
   };
   // Moss bank, raised earth edge and a warm beaten footpath.
-  drawBand(77, '#18372e', 10);
-  drawBand(69, '#476142', 8);
-  drawBand(58, '#8d8055', 9);
-  drawBand(50, '#c4aa73', 7);
-  drawBand(47, '#d7bd81', 4);
+  drawBand(67, '#426c43', 13);
+  drawBand(59, '#6b8150', 12);
+  drawBand(52, '#a18e61', 11);
+  drawBand(46, '#b6a070', 8);
+  drawBand(39, '#c4ad7a', 6);
   // Two thin wheel-worn tracks make the road read as terrain, not a beige slab.
   ctx.save();
   ctx.setLineDash([18, 12, 34, 19]);
@@ -107,6 +113,22 @@ function stampRoad(ctx: CanvasRenderingContext2D, randomNumber: () => number) {
     ctx.stroke();
   }
   ctx.restore();
+  for (let i = 0; i < 280; i++) {
+    const t = randomNumber();
+    const p = trailPoint(t);
+    const next = trailPoint(Math.min(1, t + 0.004));
+    const angle = Math.atan2(next.y - p.y, next.x - p.x);
+    const side = (i % 2 ? 1 : -1) * (45 + randomNumber() * 17);
+    const x = p.x - Math.sin(angle) * side;
+    const y = p.y + Math.cos(angle) * side;
+    ink(ctx, '#53774a', x - 3, y + 2, 10, 3);
+    ink(ctx, '#89a461', x, y - 3, 2, 7);
+    ink(ctx, '#6f9052', x + 4, y - 1, 2, 5);
+    if (i % 6 === 0) {
+      ink(ctx, '#7c8165', x - 8, y + 4, 5, 3);
+      ink(ctx, '#b5b494', x - 8, y + 3, 3, 1);
+    }
+  }
   for (let i = 0; i < 820; i++) {
     const t = randomNumber();
     const p = trailPoint(t);
@@ -119,7 +141,6 @@ function stampRoad(ctx: CanvasRenderingContext2D, randomNumber: () => number) {
     const color = randomNumber() > 0.56 ? '#ab9065' : '#e2cc90';
     ink(ctx, color, x, y, 2 + randomNumber() * 5, 2 + randomNumber() * 3);
   }
-  void margin;
 }
 function clearing(
   ctx: CanvasRenderingContext2D,
@@ -129,20 +150,28 @@ function clearing(
   ry: number,
   seed: () => number,
 ) {
-  for (let i = 4; i >= 0; i--) {
-    ctx.fillStyle = ['#657b4d', '#6e8153', '#78905c', '#82935c', '#91a06a'][
-      4 - i
-    ]!;
-    ctx.beginPath();
-    ctx.ellipse(x, y, rx - i * 6, ry - i * 6, -0.08, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  for (let k = 0; k < 120; k++) {
-    const x0 = x + (seed() - 0.5) * rx * 1.7,
-      y0 = y + (seed() - 0.5) * ry * 1.7;
-    ink(ctx, seed() > 0.5 ? '#b0b079' : '#577349', x0, y0, 3, 2);
+  const edge = Array.from({ length: 64 }, (_, i) => {
+    const a = (i / 64) * Math.PI * 2;
+    const r = 1 + Math.sin(a * 5) * 0.05 + Math.cos(a * 9) * 0.025;
+    return { x: x + Math.cos(a) * rx * r, y: y + Math.sin(a) * ry * r };
+  });
+  polygon(ctx, edge, '#61804d');
+  for (let k = 0; k < 850; k++) {
+    const a = seed() * Math.PI * 2,
+      r = Math.sqrt(seed());
+    const x0 = x + Math.cos(a) * rx * r;
+    const y0 = y + Math.sin(a) * ry * r;
+    ink(
+      ctx,
+      r > 0.84 ? '#4f7448' : seed() > 0.5 ? '#879564' : '#708453',
+      x0,
+      y0,
+      4 + seed() * 10,
+      2 + seed() * 4,
+    );
   }
 }
+
 function shoreline(
   ctx: CanvasRenderingContext2D,
   points: readonly ShorePoint[],
@@ -158,13 +187,15 @@ function shoreline(
       return { x: p.x + (dx / length) * pad, y: p.y + (dy / length) * pad };
     });
   // Continuous authored banks instead of four jittered rectangular edges.
-  polygon(ctx, ring(28), '#234838');
-  polygon(ctx, ring(21), '#60794c');
-  polygon(ctx, ring(13), '#b0a374');
-  polygon(ctx, ring(6), '#57897d');
-  polygon(ctx, [...points], '#387c86');
-  polygon(ctx, ring(-10), '#32717f');
-  polygon(ctx, ring(-26), '#2b6575');
+  polygon(ctx, ring(25), '#426d45');
+  polygon(ctx, ring(18), '#74925d');
+  polygon(ctx, ring(10), '#b2ad7f');
+  polygon(ctx, ring(4), '#7ab6a3');
+  polygon(ctx, [...points], '#509f9f');
+  polygon(ctx, ring(-8), '#418e98');
+  polygon(ctx, ring(-19), '#377d8e');
+  polygon(ctx, ring(-34), '#306d83');
+  polygon(ctx, ring(-52), '#2c647b');
   const top = Math.min(...points.map((p) => p.y));
   const bottom = Math.max(...points.map((p) => p.y));
   for (let i = 0; i < 65; i++) {
@@ -174,6 +205,41 @@ function shoreline(
     const x = span.left + 12 + rng() * (span.right - span.left - 36);
     ink(ctx, rng() > 0.48 ? '#588f92' : '#2b737f', x, y, 5 + rng() * 16, 2);
   }
+  // Broken reflected sky and floating gardens, clipped to the actual water.
+  ctx.save();
+  ctx.beginPath();
+  points.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+  ctx.closePath();
+  ctx.clip();
+  for (let n = 0; n < 20; n++) {
+    const y = top + 20 + n * 3;
+    const span = lakeSpan(points, y);
+    if (!span) continue;
+    ink(
+      ctx,
+      n % 3 ? '#4b8991' : '#57969a',
+      cx - 24 + Math.sin(n * 1.7) * 18,
+      y,
+      10 + rng() * 30,
+      1,
+    );
+  }
+  for (const fraction of [0.22, 0.59, 0.81]) {
+    const p = ring(-18)[Math.floor(fraction * points.length)]!;
+    for (let i = 0; i < 4; i++) {
+      const x = p.x + i * 7,
+        y = p.y + Math.sin(i * 3) * 7;
+      ink(ctx, '#28625e', x - 3, y + 3, 13, 3);
+      ink(ctx, '#6aab79', x, y, 9, 4);
+      ink(ctx, '#a1ca8f', x + 1, y, 5, 1);
+      ink(ctx, '#43886c', x + 4, y + 2, 2, 2);
+      if (i === 1) {
+        ink(ctx, '#efcccd', x + 2, y - 3, 5, 3);
+        ink(ctx, '#ffe3a4', x + 3, y - 3, 2, 1);
+      }
+    }
+  }
+  ctx.restore();
   // Sparse, composed reed clusters leave most of the shoreline unobstructed.
   const reedBank = ring(16);
   for (const fraction of [0, 0.13, 0.38, 0.63, 0.84]) {
@@ -322,6 +388,172 @@ function boulders(ctx: CanvasRenderingContext2D, o: Obstacle) {
   ink(ctx, '#b6bea7', o.x + 10, o.y - 8, Math.max(6, o.w * 0.34), 5);
   ink(ctx, '#405d50', o.x + o.w - 14, o.y + 13, 8, Math.max(8, o.h - 15));
 }
+/** Composed beds frame the trail and shoreline, rather than filling open lanes. */
+export const woodlandBeds = [
+  { x: 680, y: 1090, rx: 74, ry: 38, kind: 'fern' },
+  { x: 770, y: 870, rx: 63, ry: 31, kind: 'flower' },
+  { x: 1158, y: 1120, rx: 60, ry: 34, kind: 'fern' },
+  { x: 1302, y: 1240, rx: 54, ry: 30, kind: 'flower' },
+  { x: 1180, y: 470, rx: 76, ry: 36, kind: 'fern' },
+  { x: 1430, y: 560, rx: 70, ry: 35, kind: 'flower' },
+  { x: 590, y: 620, rx: 78, ry: 39, kind: 'fern' },
+  { x: 300, y: 460, rx: 68, ry: 31, kind: 'flower' },
+] as const;
+
+export function trailDistance(x: number, y: number): number {
+  let distance = Infinity;
+  for (let n = 0; n <= 125; n++) {
+    const p = trailPoint(n / 125);
+    distance = Math.min(distance, Math.hypot(x - p.x, y - p.y));
+  }
+  return distance;
+}
+export function groundDetailFits(x: number, y: number): boolean {
+  return (
+    sceneryFits({ x: x - 12, y: y - 18, w: 24, h: 24 }) &&
+    !collides(x, y, 22) &&
+    trailDistance(x, y) > 78
+  );
+}
+function fern(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ink(ctx, '#264c39', x - 11, y + 1, 24, 4);
+  for (let i = 0; i < 4; i++) {
+    const spread = 9 - i * 2;
+    ink(ctx, '#4c8652', x - spread, y - i * 3, spread * 2, 2);
+    ink(ctx, '#8bab64', x - spread, y - i * 3, 3, 1);
+  }
+  ink(ctx, '#b0be78', x, y - 12, 2, 12);
+}
+function shrub(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ink(ctx, '#264e39', x - 12, y + 2, 25, 5);
+  for (const [dx, dy, w] of [
+    [-10, -3, 12],
+    [0, -6, 14],
+    [-4, -10, 12],
+  ] as const) {
+    ink(ctx, '#3d7749', x + dx, y + dy, w, 8);
+    ink(ctx, '#659452', x + dx + 2, y + dy, w - 4, 3);
+    ink(ctx, '#8bab61', x + dx + 3, y + dy, 3, 1);
+  }
+  ink(ctx, '#b7b276', x + 4, y - 7, 2, 2);
+}
+function undergrowth(ctx: CanvasRenderingContext2D) {
+  const rng = random(16082);
+  for (const bed of woodlandBeds) {
+    for (let n = 0; n < 44; n++) {
+      const a = rng() * Math.PI * 2,
+        r = Math.sqrt(rng());
+      const x = bed.x + Math.cos(a) * bed.rx * r;
+      const y = bed.y + Math.sin(a) * bed.ry * r;
+      if (!groundDetailFits(x, y)) continue;
+      if (n % 7 === 0) shrub(ctx, x, y);
+      else if (bed.kind === 'fern' || n % 5 === 0) fern(ctx, x, y);
+      else {
+        ink(ctx, '#315f40', x - 3, y, 9, 3);
+        ink(ctx, '#8aa36a', x, y - 7, 2, 8);
+        ink(ctx, n % 3 ? '#d9c492' : '#c99bb6', x - 2, y - 9, 6, 3);
+        ink(ctx, '#f7e6ba', x, y - 9, 2, 2);
+      }
+    }
+  }
+  for (const o of obstacles) {
+    if (o.kind !== 'tree') continue;
+    const x = o.x + o.w / 2,
+      y = o.y + o.h;
+    for (let n = 0; n < 5; n++) {
+      const px = x + (n - 2) * 14,
+        py = y + 12 + rng() * 10;
+      if (!groundDetailFits(px, py)) continue;
+      fern(ctx, px, py);
+      ink(ctx, '#b39a59', px - 4, py + 6, 4, 2);
+    }
+  }
+}
+
+/** Ground props stay in the reserved hub and clear of NPC feet and labels. */
+export const campProps = [
+  { x: 206, y: 988, w: 25, h: 30, kind: 'barrel' },
+  { x: 238, y: 1046, w: 25, h: 30, kind: 'barrel' },
+  { x: 275, y: 1051, w: 26, h: 24, kind: 'crate' },
+  { x: 425, y: 890, w: 45, h: 33, kind: 'tools' },
+  { x: 518, y: 886, w: 65, h: 25, kind: 'herbs' },
+  { x: 592, y: 1043, w: 30, h: 45, kind: 'sign' },
+  { x: 199, y: 864, w: 36, h: 23, kind: 'fence' },
+] as const;
+function campDetails(ctx: CanvasRenderingContext2D) {
+  // Short, broken flagstones connect the workshop with the warm trail apron.
+  for (let i = 0; i < 7; i++) {
+    const x = 297 + i * 14,
+      y = 966 + i * 12;
+    ink(ctx, '#566650', x, y + 3, 18, 7);
+    ink(ctx, '#9a9a7b', x, y, 17, 7);
+    ink(ctx, '#bcb497', x + 2, y, 10, 2);
+  }
+  // Brass roof trim, ivy climbing the western beam, glowing window sill.
+  ink(ctx, '#b6a46b', 249, 889, 148, 3);
+  ink(ctx, '#e5be79', 324, 941, 39, 3);
+  for (let i = 0; i < 11; i++) {
+    const y = 903 + i * 5,
+      x = 254 + Math.sin(i) * 4;
+    ink(ctx, '#386044', x, y, 7, 5);
+    ink(ctx, '#799358', x + 1, y, 3, 2);
+  }
+  for (const p of campProps) {
+    ink(ctx, '#354f3b', p.x - 3, p.y + p.h - 3, p.w + 7, 7);
+    switch (p.kind) {
+      case 'barrel':
+        ink(ctx, '#533b2d', p.x + 2, p.y, p.w - 4, p.h);
+        ink(ctx, '#a57549', p.x + 4, p.y + 2, p.w - 8, p.h - 4);
+        ink(ctx, '#c49a62', p.x + 6, p.y + 3, 4, p.h - 6);
+        for (const dy of [7, 21])
+          ink(ctx, '#637169', p.x + 1, p.y + dy, p.w - 2, 3);
+        ink(ctx, '#d2ab74', p.x + 5, p.y, p.w - 10, 3);
+        break;
+      case 'crate':
+        ink(ctx, '#65482f', p.x, p.y, p.w, p.h);
+        ink(ctx, '#b68d56', p.x + 3, p.y + 3, p.w - 6, p.h - 6);
+        for (let i = 0; i < 4; i++)
+          ink(ctx, '#dfb778', p.x + 4 + i * 5, p.y + 3 + i * 4, 5, 4);
+        break;
+      case 'tools':
+        ink(ctx, '#493f30', p.x, p.y, p.w, 4);
+        for (let i = 0; i < 3; i++) {
+          ink(ctx, '#c29157', p.x + 8 + i * 13, p.y + 4, 3, 23);
+          ink(ctx, '#8faaa2', p.x + 4 + i * 13, p.y + 6, 12, 5);
+          ink(ctx, '#d0d4b5', p.x + 4 + i * 13, p.y + 6, 8, 2);
+        }
+        break;
+      case 'herbs':
+        ink(ctx, '#604a34', p.x, p.y + 10, p.w, 13);
+        ink(ctx, '#a08351', p.x, p.y + 9, p.w, 4);
+        for (let i = 0; i < 5; i++) {
+          fern(ctx, p.x + 7 + i * 12, p.y + 12);
+          ink(ctx, '#ceafd1', p.x + 7 + i * 12, p.y + 1, 3, 3);
+        }
+        break;
+      case 'sign':
+        ink(ctx, '#795535', p.x + 12, p.y, 5, p.h);
+        ink(ctx, '#533e2c', p.x, p.y + 3, p.w, 15);
+        ink(ctx, '#d0ad72', p.x + 2, p.y + 4, p.w - 4, 11);
+        ink(ctx, '#735939', p.x + 5, p.y + 8, 15, 2);
+        ink(ctx, '#735939', p.x + 17, p.y + 6, 3, 6);
+        break;
+      case 'fence':
+        for (let i = 0; i < 2; i++) {
+          ink(ctx, '#665135', p.x + i * 32, p.y, 6, p.h);
+          ink(ctx, '#c3a46a', p.x + i * 32, p.y, 3, p.h - 3);
+        }
+        ink(ctx, '#96784c', p.x, p.y + 6, p.w, 4);
+        ink(ctx, '#bea166', p.x, p.y + 6, p.w, 1);
+        break;
+    }
+  }
+  // A rolled blanket and a cup beside the fire tell a quiet camp story.
+  ink(ctx, '#38595b', 594, 1155, 22, 9);
+  ink(ctx, '#76a2a0', 594, 1155, 22, 3);
+  ink(ctx, '#b4ad89', 544, 1163, 5, 5);
+}
+
 export function paintForestWorld(
   ctx: CanvasRenderingContext2D,
   importedTiles?: HTMLImageElement,
@@ -329,28 +561,58 @@ export function paintForestWorld(
   ctx.imageSmoothingEnabled = false;
   const rng = random(93104);
   ink(ctx, '#305a3d', 0, 0, WORLD.width, WORLD.height);
-  // Soft 32px terrain cells, clustered moss, and short individual grass tufts.
-  for (let y = 0; y < WORLD.height; y += 32)
-    for (let x = 0; x < WORLD.width; x += 32) {
-      const v = rng();
-      ink(
-        ctx,
-        v > 0.69 ? '#345e42' : v > 0.32 ? '#315a3d' : '#2f573b',
-        x,
-        y,
-        32,
-        32,
+  // Low-frequency meadow colour fields sampled on a 4px pixel grid. The
+  // coherent colours cross tile boundaries; tiny accents are a separate pass.
+  const grass = [
+    '#305940',
+    '#345e42',
+    '#386447',
+    '#3b6949',
+    '#406e4b',
+    '#47754f',
+  ];
+  for (let y = 0; y < WORLD.height; y += 4)
+    for (let x = 0; x < WORLD.width; x += 4) {
+      const field =
+        Math.sin(x * 0.008 + Math.sin(y * 0.009) * 2) +
+        Math.cos(y * 0.012 - x * 0.004) * 0.7 +
+        Math.sin(x * 0.027 + y * 0.018) * 0.22;
+      const tone = Math.max(
+        0,
+        Math.min(5, Math.floor(2.8 + field * 1.3 + rng() * 0.5)),
       );
-      if (rng() > 0.72) ink(ctx, '#3f6c49', x + 9, y + 12, 11, 8);
-      if (rng() > 0.75) ink(ctx, '#254c35', x + 4, y + 23, 15, 3);
-      if (importedTiles && rng() > 0.88) {
-        ctx.save();
-        ctx.globalAlpha = 0.22;
-        // Small world-atlas samples serve as moss and texture, not random opaque squares.
-        ctx.drawImage(importedTiles, 16, 16, 16, 16, x + 8, y + 8, 16, 16);
-        ctx.restore();
-      }
+      ink(ctx, grass[tone]!, x, y, 4, 4);
     }
+  for (let i = 0; i < 6000; i++) {
+    const x = rng() * WORLD.width,
+      y = rng() * WORLD.height;
+    ink(
+      ctx,
+      rng() > 0.6 ? '#517b50' : '#335f43',
+      x,
+      y,
+      2 + rng() * 6,
+      1 + rng() * 2,
+    );
+  }
+  // Occasional imported moss only, never visible square terrain tiles.
+  if (importedTiles) {
+    ctx.save();
+    ctx.globalAlpha = 0.12;
+    for (let i = 0; i < 90; i++)
+      ctx.drawImage(
+        importedTiles,
+        16,
+        16,
+        16,
+        16,
+        rng() * WORLD.width,
+        rng() * WORLD.height,
+        16,
+        16,
+      );
+    ctx.restore();
+  }
   // Camp and boss clearing are made first, so the path meets them cleanly.
   clearing(ctx, 430, 1030, 235, 155, rng);
   clearing(ctx, 1580, 340, 188, 145, rng);
@@ -362,6 +624,7 @@ export function paintForestWorld(
     const x = rng() * WORLD.width,
       y = rng() * WORLD.height;
     if (
+      collides(x, y, 18) ||
       !sceneryFits({ x, y: y - 12, w: 12, h: 24 }) ||
       obstacles.some(
         (o) =>
@@ -384,7 +647,9 @@ export function paintForestWorld(
       ink(ctx, '#a5b29c', x + 1, y, 5, 2);
     }
   }
+  undergrowth(ctx);
   forge(ctx);
+  campDetails(ctx);
   // Ancient gate: weathered carved standing stones and an overgrown lintel.
   ink(ctx, '#263f36', 1764, 244, 143, 144);
   ink(ctx, '#778475', 1780, 231, 27, 141);

@@ -61,3 +61,16 @@ and bolt wakes in `apps/game/src/mage-pose.ts` and `mage-effects.ts` are origina
 procedural presentation. Artwork uses CC0-1.0; source code uses MIT. Existing
 staff/character textures and their provenance are retained. No external artwork,
 generated bitmap assets, sounds or textures were added.
+
+## World Visual Overhaul 1.0
+
+The meadow colour fields, worn trail edges, broadleaf fallback canopy, fern and
+shrub beds, flowers, lilies, reflected sky, smithy ivy, tools, barrels, crates,
+herb planter, fence, sign, blanket and ambient pollen/smoke are original
+code-generated artwork in `apps/game/src/art.ts`, `environment-art.ts` and
+`world-atmosphere.ts`. Artwork uses CC0-1.0; source code uses MIT. Texture
+registration remains in `art.ts`, including the existing `forest` and 128×160
+`tree` contracts. No new external art, bitmap generation, reference images or
+runtime downloads were used. The existing Sunnyside trees and moss samples
+retain their separate license above; tinting, mirroring and scale variation do
+not change their provenance.

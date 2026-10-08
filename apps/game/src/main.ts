@@ -18,8 +18,6 @@ import {
   move,
   distance,
   obstacles,
-  lakes,
-  lakeSpan,
   sceneryFits,
   WORLD,
   type Hero,
@@ -49,6 +47,7 @@ import { StatusPresentation, statusPercent } from './hud';
 import { CombatFeedback } from './combat-feedback';
 import { WeaponTrails } from './weapon-trails';
 import { MageEffects, drawMageProjectile, isMageBloom } from './mage-effects';
+import { WorldAtmosphere, treePresentation } from './world-atmosphere';
 import './style.css';
 const statusPresentation = new StatusPresentation();
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -739,7 +738,7 @@ class ForestScene extends Phaser.Scene {
   labels = new Map<string, Phaser.GameObjects.Text>();
   shadows = new Map<string, Phaser.GameObjects.Ellipse>();
   graphics!: Phaser.GameObjects.Graphics;
-  water!: Phaser.GameObjects.Graphics;
+  atmosphere!: WorldAtmosphere;
   cameraTarget = { x: WORLD.spawn.x, y: WORLD.spawn.y };
   accumulator = 0;
   hudTime = 0;
@@ -763,14 +762,17 @@ class ForestScene extends Phaser.Scene {
       const vendor = evergreen
         ? VENDOR_SPRITES.tree2.key
         : VENDOR_SPRITES.tree1.key;
-      const imported = this.textures.exists(vendor);
+      const variety = treePresentation(o.x, o.y);
+      const imported = this.textures.exists(vendor) && !variety.original;
       this.add
         .ellipse(footX, o.y + 12, imported ? 67 : 100, 28, 0x112e25, 0.29)
         .setDepth(o.y - 2);
       const tree = this.add
         .sprite(footX, footY, imported ? vendor : 'tree', 0)
-        .setOrigin(0.5, imported ? 0.94 : 0.94)
-        .setScale(imported ? (evergreen ? 3.2 : 3.5) : 1)
+        .setOrigin(0.5, 0.94)
+        .setScale((imported ? (evergreen ? 3.2 : 3.5) : 1) * variety.scale)
+        .setFlipX(variety.flip)
+        .setTint(variety.tint)
         .setDepth(footY);
       this.vegetation.push(tree);
 
@@ -836,7 +838,7 @@ class ForestScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
     this.graphics = this.add.graphics().setDepth(3000);
-    this.water = this.add.graphics().setDepth(1);
+    this.atmosphere = new WorldAtmosphere(this);
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
     this.cameras.main.startFollow(this.cameraTarget, true, 0.08, 0.08);
     this.cameras.main.setZoom(0.85);
@@ -1021,31 +1023,17 @@ class ForestScene extends Phaser.Scene {
     const visualTime = this.feedback.clock(time, reducedMotion.matches);
     for (const tree of this.vegetation) {
       // Stable canopy frame; the vendor loop noticeably stretches the crown.
-      tree.setAngle(Math.sin(time * 0.00035 + tree.x * 0.01) * 0.06);
+      tree.setAngle(
+        reducedMotion.matches
+          ? 0
+          : Math.sin(time * 0.00035 + tree.x * 0.01) * 0.06,
+      );
     }
     for (const plant of this.ambient)
-      plant.setFrame(sceneryFrame(time, plant.x, 360));
-    this.water.clear();
-    this.water.lineStyle(2, 0x91beb2, 0.18);
-    for (const lake of lakes) {
-      const top = Math.min(...lake.map((p) => p.y));
-      const bottom = Math.max(...lake.map((p) => p.y));
-      for (let n = 0; n < 5; n++) {
-        const y = top + 24 + (n * (bottom - top - 48)) / 5;
-        const span = lakeSpan(lake, y);
-        if (!span || span.right - span.left < 65) continue;
-        const x =
-          span.left +
-          18 +
-          ((time * 0.004 + n * 37) % (span.right - span.left - 55));
-        this.water.lineBetween(
-          x,
-          y,
-          x + 14 + Math.sin(time * 0.0006 + n) * 3,
-          y,
-        );
-      }
-    }
+      plant.setFrame(
+        sceneryFrame(reducedMotion.matches ? 0 : time, plant.x, 360),
+      );
+    this.atmosphere.draw(time, reducedMotion.matches);
     this.graphics.clear();
     const alive = new Set<string>();
     for (const p of world.players) {
@@ -1440,7 +1428,9 @@ function updateHud() {
   // Read-only observability used by browser tests and performance inspection.
   const hud = $('hud');
   hud.dataset.cameraZoom = String(scene.cameras.main.zoom);
-  hud.dataset.landscapeStyle = 'illustrated-forest-v2';
+  hud.dataset.landscapeStyle = 'world-overhaul-1';
+  hud.dataset.worldMotes = String(scene.atmosphere.moteCount);
+  hud.dataset.worldReflections = String(scene.atmosphere.reflectionCount);
   hud.dataset.heroStyle = 'concept-64px';
   hud.dataset.sfxEnabled = String(soundEffects);
   hud.dataset.vendorArt =

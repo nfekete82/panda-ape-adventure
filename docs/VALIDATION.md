@@ -176,3 +176,48 @@ See [V0.2.0.md](V0.2.0.md) for manual gameplay, migration and backup testing and
   The authority releases immediately, so visual channeling never delays a spell,
   sound, mana spend or damage. No manual gamepad/performance certification is
   claimed.
+
+## World Visual Overhaul 1.0 — 2026-10-08
+
+- Fetched the latest `origin/feat/ape-mage-casting-polish` and created
+  `feat/world-visual-overhaul-1`. No merge was performed. Shared/server sources,
+  networking, persistence, combat, HUD, audio and the pinned dependency lockfile
+  are unchanged.
+- `npm ci`, `npm run typecheck`, `npm run lint`, `npm run format:check`,
+  `npm test` (64 tests across 11 files, including real WebSocket and persistence
+  integration), and `npm run build` passed locally. Host runtime is Node
+  25.9.0; production image builds ran the reference Node 24 build pipeline.
+- Both production and development Compose configuration checks passed.
+  `docker compose up -d --build --wait` built both production images and
+  reported both services healthy.
+- `npm run test:docker` passed the actual two-player nginx `/ws` save,
+  production stack restart and reconnect/state restoration check.
+- All 14 Chromium browser scenarios passed on Vite and on the final production
+  nginx build. Coverage includes co-op movement/combat/reconnect, solo saves,
+  progression, forge upgrades, Panda/Ape attacks, HUD/sound settings and the new
+  reduced-motion saved exploration of both lakes.
+- Two additional Chromium scenarios passed with WebGL disabled, verifying
+  Canvas fallback world rendering and reduced-motion lake exploration.
+- New geometry tests cover camp prop clearance from NPC silhouettes and the
+  forge roof, plant rejection in water/road/protected zones, reflection travel
+  inside actual water spans and deterministic tree variation within the
+  conservative canopy envelope. Existing shoreline, movement and safe spawn
+  tests still pass.
+- Reviewed final production camp, main lake, pond, forest and gate captures in
+  [WORLD_VISUAL_OVERHAUL.md](WORLD_VISUAL_OVERHAUL.md). Reflection spans are
+  cached once; static terrain is painted once; ambience reuses fixed data and
+  two Graphics objects. No universal frame-rate guarantee is claimed.
+- An initial safety test caught a tool rack overlapping Bramble's silhouette;
+  the rack was moved and the final suite passed. Review also moved a fence away
+  from the path and softened broadleaf shading and sky reflections. Initial
+  failures are not counted as successes.
+- The first sandboxed Git fetch could not write `.git/FETCH_HEAD`; the fetch and
+  branch creation succeeded with approved execution access. Default Vite port
+  8080 was occupied by this project's production stack; browser development
+  checks used isolated 127.0.0.1:8085 after an initial capture on the automatically
+  selected port 8081 timed out. Final captures came from production on 8080.
+  No unrelated service was changed.
+- Local production coverage is ARM64 and Chromium. Safari, Firefox, physical
+  controllers, mobile touch input and a measured cross-device performance
+  comparison were not executed. No new external assets were introduced;
+  original artwork and retained vendor provenance are in `assets/LICENSE.md`.

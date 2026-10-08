@@ -8,11 +8,12 @@ test('curated forest art loads, animates and keeps the full game playable', asyn
   await page.getByRole('button', { name: 'Begin adventure' }).click();
   const hud = page.locator('#hud');
   await expect(hud).toHaveAttribute('data-vendor-art', 'ready');
-  await expect(hud).toHaveAttribute(
-    'data-landscape-style',
-    'illustrated-forest-v2',
-  );
+  await expect(hud).toHaveAttribute('data-landscape-style', 'world-overhaul-1');
   await expect(hud).toHaveAttribute('data-hero-style', 'concept-64px');
+  await expect(hud).toHaveAttribute('data-world-motes', '64');
+  await expect
+    .poll(async () => Number(await hud.getAttribute('data-world-reflections')))
+    .toBeGreaterThan(10);
   await expect
     .poll(async () => Number(await hud.getAttribute('data-vendor-trees')))
     .toBeGreaterThan(0);
@@ -20,7 +21,7 @@ test('curated forest art loads, animates and keeps the full game playable', asyn
     .poll(async () => Number(await hud.getAttribute('data-vendor-enemies')))
     .toBeGreaterThan(0);
   await expect(page.locator('#game canvas')).toBeVisible();
-  await page.screenshot({ path: 'test-results/environment-forest-v2.png' });
+  await page.screenshot({ path: 'test-results/world-overhaul-camp.png' });
   expect(errors).toEqual([]);
 });
 
@@ -641,4 +642,56 @@ test('Ape uses a restrained staff pose and authority release pulses for normal a
   await page.screenshot({ path: 'test-results/ape-mage-special.png' });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.locator('#mana-text')).toHaveText(/\d+ \/ 100/);
+});
+
+test('world atmosphere supports reduced motion and saved exploration near both lakes', async ({
+  browser,
+}) => {
+  const { createWorld, createPlayer } = await import('@panda/shared');
+  for (const [x, y, name] of [
+    [1180, 1080, 'lake'],
+    [1330, 1230, 'pond'],
+  ] as const) {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    try {
+      const save = createWorld();
+      const player = createPlayer('local', 'panda');
+      player.x = x;
+      player.y = y;
+      save.players = [player];
+      await page.addInitScript(
+        (value) => localStorage.setItem('panda-save', value),
+        JSON.stringify(save),
+      );
+      await page.goto('/');
+      await page
+        .getByRole('button', { name: 'Continue saved solo adventure' })
+        .click();
+      await expect(page.locator('#hud')).toHaveAttribute(
+        'data-landscape-style',
+        'world-overhaul-1',
+      );
+      await expect(page.locator('#hud')).toHaveAttribute('data-x', String(x));
+      await expect(page.locator('#game canvas')).toBeVisible();
+      await page.screenshot({
+        path: `test-results/world-overhaul-${name}.png`,
+      });
+      await page.keyboard.down('KeyD');
+      try {
+        await expect
+          .poll(async () =>
+            Number(await page.locator('#hud').getAttribute('data-x')),
+          )
+          .toBeGreaterThan(x + 20);
+      } finally {
+        await page.keyboard.up('KeyD');
+      }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  }
 });

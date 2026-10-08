@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { trailPoint } from '../apps/game/src/environment-art';
+import {
+  treePresentation,
+  waterHighlights,
+} from '../apps/game/src/world-atmosphere';
+import {
+  campProps,
+  groundDetailFits,
+  woodlandBeds,
+  trailDistance,
+  trailPoint,
+} from '../apps/game/src/environment-art';
 import {
   obstacles,
   forestFootprint,
@@ -82,5 +92,75 @@ describe('forest illustration geometry', () => {
         ),
       ).toBeLessThan(24);
     }
+  });
+});
+
+describe('world overhaul presentation safety', () => {
+  it('keeps authored camp furniture clear of NPC silhouettes and interaction feet', () => {
+    for (const prop of campProps) {
+      expect(sceneryFits(prop)).toBe(false);
+      for (const p of [WORLD.spawn, WORLD.npc, WORLD.smith]) {
+        // Full head/label/feet envelope rather than only a point at the feet.
+        const overlaps =
+          prop.x < p.x + 35 &&
+          prop.x + prop.w > p.x - 35 &&
+          prop.y < p.y + 30 &&
+          prop.y + prop.h > p.y - 65;
+        expect(overlaps).toBe(false);
+      }
+      // Props never cover the forge wall or roof.
+      expect(
+        prop.x < 408 &&
+          prop.x + prop.w > 239 &&
+          prop.y < 900 &&
+          prop.y + prop.h > 816,
+      ).toBe(false);
+    }
+  });
+  it('rejects plants in water, road lanes and protected landmarks', () => {
+    expect(groundDetailFits(WORLD.smith.x, WORLD.smith.y)).toBe(false);
+    expect(groundDetailFits(1000, 1000)).toBe(false);
+    const middle = trailPoint(0.5);
+    expect(groundDetailFits(middle.x, middle.y)).toBe(false);
+    let accepted = 0;
+    for (const bed of woodlandBeds) {
+      for (let dx = -bed.rx; dx <= bed.rx; dx += 12)
+        for (let dy = -bed.ry; dy <= bed.ry; dy += 12) {
+          const x = bed.x + dx,
+            y = bed.y + dy;
+          if (!groundDetailFits(x, y)) continue;
+          accepted++;
+          expect(collides(x, y, 22)).toBe(false);
+          expect(trailDistance(x, y)).toBeGreaterThan(78);
+          expect(sceneryFits({ x: x - 12, y: y - 18, w: 24, h: 24 })).toBe(
+            true,
+          );
+        }
+    }
+    expect(accepted).toBeGreaterThan(100);
+  });
+  it('keeps every moving reflection inside a continuous water interval', () => {
+    expect(waterHighlights.length).toBeGreaterThan(10);
+    for (const p of waterHighlights) {
+      for (const x of [p.x, p.x + p.travel + 17]) {
+        const spans = lakes.map((lake) => lakeSpan(lake, p.y));
+        expect(
+          spans.some((span) => span && x >= span.left && x <= span.right),
+        ).toBe(true);
+        expect(collides(x, p.y, 0)).toBe(true);
+      }
+    }
+  });
+  it('varies trees deterministically without enlarging the protected canopy envelope', () => {
+    const variants = new Set<string>();
+    for (const o of obstacles.filter((o) => o.kind === 'tree')) {
+      const v = treePresentation(o.x, o.y);
+      expect(v).toEqual(treePresentation(o.x, o.y));
+      expect(v.scale).toBeGreaterThanOrEqual(0.88);
+      expect(v.scale).toBeLessThanOrEqual(1);
+      expect(sceneryFits(forestFootprint(o))).toBe(true);
+      variants.add(JSON.stringify(v));
+    }
+    expect(variants.size).toBeGreaterThan(5);
   });
 });

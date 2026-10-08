@@ -153,25 +153,61 @@ export function makeAssets(scene: Phaser.Scene) {
   rect(t, '#684f35', 57, 84, 16, 65);
   rect(t, '#a07744', 59, 84, 5, 55);
   rect(t, '#533f2e', 48, 137, 36, 8);
-  const tr = random(44);
-  for (let i = 0; i < 130; i++) {
-    const angle = tr() * Math.PI * 2,
-      r = Math.sqrt(tr()) * 49;
-    const x = 64 + Math.cos(angle) * r,
-      y = 64 + Math.sin(angle) * r * 0.9;
-    const sz = 14 + tr() * 20;
+  // Original broadleaf: stepped leaf lobes, shadowed undersides and a warm
+  // sunward crown. Draw on a 2px grid, keeping the existing 128x160 contract.
+  const lobes = [
+    [39, 71, 27],
+    [85, 72, 29],
+    [64, 85, 30],
+    [31, 52, 23],
+    [94, 51, 23],
+    [62, 50, 38],
+    [61, 30, 25],
+  ] as const;
+  for (const [x, y, radius] of lobes) {
+    for (let row = -radius; row <= radius; row += 2) {
+      const width = Math.floor(Math.sqrt(radius * radius - row * row) / 2) * 2;
+      const height = y + row;
+      const shade =
+        height > 94
+          ? '#2e5740'
+          : height > 76
+            ? '#3e7248'
+            : height > 44
+              ? '#50854c'
+              : '#659651';
+      rect(t, shade, x - width, y + row, width * 2, 2);
+    }
+    for (let i = 0; i < 12; i++) {
+      const px = x + Math.sin(i * 2.4) * radius * 0.68;
+      const py = y - radius * 0.35 + Math.cos(i * 3.1) * radius * 0.35;
+      rect(t, i % 3 ? '#689957' : '#88ac68', px, py, 6, 2);
+      rect(t, '#487c49', px + 2, py + 3, 5, 2);
+    }
+  }
+  // Leaf clusters break up the canopy's broad colour bands. Lighting follows
+  // the whole crown, so overlapping lobes do not leave concentric dark disks.
+  const leaves = random(4492);
+  for (let i = 0; i < 190; i++) {
+    const angle = leaves() * Math.PI * 2,
+      radius = Math.sqrt(leaves());
+    const x = Math.round((64 + Math.cos(angle) * radius * 43) / 2) * 2;
+    const y = Math.round((60 + Math.sin(angle) * radius * 39) / 2) * 2;
+    const light = y + x * 0.22;
+    const color = light > 96 ? '#427549' : light > 75 ? '#5a8c4f' : '#79a45b';
+    const width = 4 + Math.floor(leaves() * 3) * 2;
+    rect(t, color, x - width / 2, y, width, 2);
     rect(
       t,
-      ['#1c3d32', '#244c36', '#32603d', '#426e42', '#59814b'][
-        Math.floor(tr() * 5)
-      ]!,
-      x - sz / 2,
-      y - sz / 2,
-      Math.floor(sz / 4) * 4,
-      Math.floor(sz / 4) * 4,
+      light > 92 ? '#376944' : '#518149',
+      x - width / 2 + 2,
+      y + 2,
+      width,
+      2,
     );
+    if (i % 5 === 0) rect(t, '#9db870', x, y - 2, 4, 2);
   }
-  rect(t, '#739450', 42, 28, 16, 4);
-  rect(t, '#6a914e', 35, 32, 20, 6);
+  rect(t, '#b49357', 60, 106, 3, 28);
+  rect(t, '#3f6140', 49, 137, 8, 3);
   scene.textures.addCanvas('tree', tree.c);
 }
