@@ -1,6 +1,7 @@
 import type { World } from '@panda/shared';
 
-export type SoundCueName = 'sword' | 'arcane' | 'pickup' | 'defeat' | 'hit' | 'shrine';
+export type SoundCueName =
+  'sword' | 'arcane' | 'pickup' | 'defeat' | 'hit' | 'shrine';
 export interface SoundCue {
   name: SoundCueName;
   strength: number;
@@ -60,7 +61,12 @@ export class WorldSoundTracker {
 
       for (const effect of world.effects) {
         if (this.effects.has(effect.id)) continue;
-        if (effect.kind === 'magic' && (effect.text === 'SHRINE AWAKENED' || effect.text === 'GROVE BLESSING')) add('shrine', effect);
+        if (
+          effect.kind === 'magic' &&
+          (effect.text === 'SHRINE AWAKENED' ||
+            effect.text === 'GROVE BLESSING')
+        )
+          add('shrine', effect);
         else if (effect.kind === 'slash') add('sword', effect);
         else if (effect.kind === 'hit' && effect.text) add('hit', effect);
         else if (effect.kind === 'heal' && LOOT.test(effect.text ?? ''))
