@@ -28,6 +28,14 @@ import {
 } from '@panda/shared';
 import { makeAssets, heroArt, heroFrame, preloadHeroSheets } from './art';
 import { makeWeaponTextures, weaponPose, type WeaponPose } from './weapons';
+import {
+  VENDOR_SPRITES,
+  preloadVendorArt,
+  createForestGroundTexture,
+  enemyFrame,
+  sceneryFrame,
+  vendorEnemyTexture,
+} from './vendor-art';
 import './style.css';
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
@@ -684,7 +692,8 @@ function readInput(): Input {
   return i;
 }
 class ForestScene extends Phaser.Scene {
-  vegetation: Phaser.GameObjects.Image[] = [];
+  vegetation: Phaser.GameObjects.Sprite[] = [];
+  ambient: Phaser.GameObjects.Sprite[] = [];
   sprites = new Map<string, Phaser.GameObjects.Sprite>();
   weapons = new Map<string, Phaser.GameObjects.Image>();
   weaponTiming = new Map<string, { cooldown: number; special: boolean }>();
@@ -700,24 +709,49 @@ class ForestScene extends Phaser.Scene {
   }
   preload() {
     preloadHeroSheets(this);
+    preloadVendorArt(this);
   }
   create() {
     scene = this; // eslint-disable-line @typescript-eslint/no-this-alias
     makeAssets(this);
     makeWeaponTextures(this);
     this.add.image(0, 0, 'forest').setOrigin(0);
-    for (const o of obstacles)
-      if (o.kind === 'tree') {
-        this.add
-          .ellipse(o.x + o.w / 2, o.y + 12, 100, 36, 0x112e25, 0.34)
-          .setDepth(o.y - 2);
-        this.vegetation.push(
-          this.add
-            .image(o.x + o.w / 2, o.y + o.h, 'tree')
-            .setOrigin(0.5, 0.94)
-            .setDepth(o.y + o.h),
-        );
+    if (createForestGroundTexture(this, WORLD.width, WORLD.height))
+      this.add.image(0, 0, 'vendor-ground-accents').setOrigin(0).setDepth(0.5);
+    for (const o of obstacles) {
+      if (o.kind !== 'tree') continue;
+      const footX = o.x + o.w / 2;
+      const footY = o.y + o.h;
+      const evergreen = Math.floor(o.x + o.y) % 3 === 0;
+      const vendor = evergreen
+        ? VENDOR_SPRITES.tree2.key
+        : VENDOR_SPRITES.tree1.key;
+      const imported = this.textures.exists(vendor);
+      this.add
+        .ellipse(footX, o.y + 12, imported ? 67 : 100, 28, 0x112e25, 0.29)
+        .setDepth(o.y - 2);
+      const tree = this.add
+        .sprite(footX, footY, imported ? vendor : 'tree', 0)
+        .setOrigin(0.5, imported ? 0.94 : 0.94)
+        .setScale(imported ? (evergreen ? 3.2 : 3.5) : 1)
+        .setDepth(footY);
+      this.vegetation.push(tree);
+
+      // A few four-frame forest details near trees, never on the quest path.
+      if (imported && Math.floor(o.x * 3 + o.y) % 4 === 0) {
+        const mushroom =
+          Math.floor(o.x + o.y) % 2 === 0
+            ? VENDOR_SPRITES.mushroomRed.key
+            : VENDOR_SPRITES.mushroomBlue.key;
+        if (this.textures.exists(mushroom))
+          this.ambient.push(
+            this.add
+              .sprite(footX + 32, footY + 16, mushroom, 0)
+              .setScale(1.6)
+              .setDepth(footY + 17),
+          );
       }
+    }
     this.add
       .sprite(WORLD.smith.x, WORLD.smith.y, 'npc')
       .setTint(0xd5af7d)
@@ -944,8 +978,13 @@ class ForestScene extends Phaser.Scene {
         }
       }
     }
-    for (const tree of this.vegetation)
+    for (const tree of this.vegetation) {
       tree.setAngle(Math.sin(time * 0.0007 + tree.x * 0.01) * 0.3);
+      if (tree.texture.key.startsWith('vendor-tree-'))
+        tree.setFrame(sceneryFrame(time, tree.x));
+    }
+    for (const plant of this.ambient)
+      plant.setFrame(sceneryFrame(time, plant.x, 360));
     this.water.clear();
     for (const o of obstacles)
       if (o.kind === 'water') {
@@ -1025,20 +1064,35 @@ class ForestScene extends Phaser.Scene {
     for (const e of world.enemies) {
       if (e.hp <= 0) continue;
       alive.add(e.id);
+      const texture = vendorEnemyTexture(e.kind, (key) =>
+        this.textures.exists(key),
+      );
+      const imported = texture.startsWith('vendor-');
+      const frame = imported ? enemyFrame(time, e.x) : 0;
       const sprite = this.entity(
         e.id,
         e.x,
         e.y + (e.kind === 'wisp' ? Math.sin(time * 0.004) * 7 : 0),
-        e.kind,
-        0,
+        texture,
+        frame,
         dt,
       );
       sprite.setScale(
-        e.kind === 'guardian' ? 1.8 : e.kind === 'slime' ? 1.15 : 1.23,
+        imported
+          ? e.kind === 'slime'
+            ? 3.4
+            : e.kind === 'wisp'
+              ? 3.6
+              : 3.9
+          : e.kind === 'guardian'
+            ? 1.8
+            : e.kind === 'slime'
+              ? 1.15
+              : 1.23,
       );
       sprite.setTint(e.hurt > 0 ? 0xffd8b4 : 0xffffff);
       if (e.kind === 'slime')
-        sprite.scaleY = 1.15 + Math.sin(time * 0.003) * 0.05;
+        sprite.scaleY = sprite.scaleX * (1 + Math.sin(time * 0.003) * 0.045);
       const width = e.kind === 'guardian' ? 94 : 46;
       this.graphics.fillStyle(0x183029, 0.8);
       this.graphics.fillRect(
@@ -1272,6 +1326,23 @@ function updateHud() {
   // Read-only observability used by browser tests and performance inspection.
   const hud = $('hud');
   hud.dataset.cameraZoom = String(scene.cameras.main.zoom);
+  hud.dataset.vendorArt =
+    scene.textures.exists(VENDOR_SPRITES.tree1.key) &&
+    scene.textures.exists(VENDOR_SPRITES.slime.key)
+      ? 'ready'
+      : 'fallback';
+  hud.dataset.vendorTrees = String(
+    scene.vegetation.filter((tree) =>
+      tree.texture.key.startsWith('vendor-tree-'),
+    ).length,
+  );
+  hud.dataset.vendorEnemies = String(
+    world.enemies.filter(
+      (enemy) =>
+        enemy.hp > 0 &&
+        scene.sprites.get(enemy.id)?.texture.key.startsWith('vendor-'),
+    ).length,
+  );
   hud.dataset.weaponVisible = String(scene.weapons.get(p.id)?.visible ?? false);
   hud.dataset.weaponActive = String(
     p.hp > 0 &&

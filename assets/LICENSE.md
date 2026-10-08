@@ -1,9 +1,30 @@
-# Original asset provenance
+# Art and audio provenance
 
-All character sprites, terrain, trees, enemies, effects and synthesised audio in this project are original procedural artwork created for Panda & Ape: The Adventure. No third-party game art, music, fonts or sprite sheets are bundled. Original visual/audio asset outputs are dedicated to the public domain under CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/ . Source code is licensed under the repository MIT license.
+## Original Panda & Ape artwork
 
-The generator is `apps/game/src/art.ts`; effects are drawn in `ForestScene`, and sound is synthesised with Web Audio in `apps/game/src/main.ts`. All assets are available without Internet access at runtime. System fonts are used locally and are not distributed.
+The project's original procedural character, terrain, enemy, effect and synthesized-audio artwork (including sources in `apps/game/src/art.ts`, `apps/game/src/weapons.ts` and `apps/game/src/main.ts`) is dedicated to the public domain under CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/ . Source code remains licensed under the repository's MIT license.
 
-Phaser and other dependencies retain their own licenses, available in their installed package directories. The game does not borrow Secret of Mana characters, artwork, maps, names, music or assets.
+## Ninja Adventure - Asset Pack
 
-Bramble in 0.2.0 reuses the original procedural NPC sprite with a tint; the existing CC0 dedication applies. Future imported hero sprites must declare their own provenance and license in `hero-sheets.json`, with any attribution requirements documented here. User-supplied references are not automatically licensed CC0. No external references are bundled in 0.2.0.
+Source: https://pixel-boy.itch.io/ninja-adventure-asset-pack
+Creators: Pixel-Boy and AAA.
+License: CC0 1.0 as stated on the pack's official itch.io page. Attribution is not required but appreciated.
+Selected files are imported verbatim from `Ninja Adventure - Asset Pack.zip` into `apps/game/public/assets/vendor/ninja/` via `scripts/import-art-packs.sh`. They are third-party art, not original Panda & Ape artwork.
+
+## Sunnyside World Asset Pack V2.1
+
+Source: https://danieldiggle.itch.io/sunnyside
+Creator: Daniel Diggle.
+License: the official itch.io page's **NEW LICENCE: V1**. Free and commercial game use and modification are allowed; creator credit is appreciated, not mandatory. Repackaging and selling the pack is forbidden, and the assets must not be used for AI training. The tutorial/educational redistribution permission requires a link to the itch.io page.
+Selected PNGs from `Sunnyside_World_ASSET_PACK_V2.1.zip` are imported into `apps/game/public/assets/vendor/sunnyside/` by the same script.
+
+**Sunnyside is not CC0.** Do not rededicate it as CC0 or relicense its standalone files. Keep vendor images separate from the project's original CC0 graphics, and do not publish standalone asset bundles. The game should only include the selected assets required by its playable scenes.
+
+## Import rules
+
+- Keep only specifically selected vendor art in the repository, never entire downloaded ZIPs, Godot/GameMaker projects, PSDs, Aseprite originals or metadata cruft.
+- Asset selection is a staging step: exact texture framing, animation rows, autotile indices, collision alignment and aesthetics need inspection before the graphics are used at runtime.
+- The third-party assets are not to be used for generative-AI training. Do not infer permission for other third-party reference art.
+- Retain a working procedural fallback while converting existing world scenes and enemies; avoid altering server-authoritative collision and RPG logic.
+- System fonts and dependencies keep their respective licenses.
+- No Secret of Mana artwork, characters, maps, music or assets are reproduced.
