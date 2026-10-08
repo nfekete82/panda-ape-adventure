@@ -91,6 +91,36 @@ describe('Mossbound Shrine adventure', () => {
     expect(world.loot).toHaveLength(lootCount);
   });
 
+  it('does not award the permanent blessing again in a fresh adventure', () => {
+    const first = atShrine();
+    interactShrine(first.world, first.panda);
+    damageEnemy(
+      first.world,
+      first.world.enemies.find((e) => e.id === SHRINE_WARDEN_ID)!,
+      210,
+      first.panda,
+    );
+    interactShrine(first.world, first.panda);
+    const returning = structuredClone(first.panda);
+    const next = createWorld();
+    next.players.push(returning);
+    const points = returning.points;
+    const ancient = quantity(returning, 'ancient');
+    const xp = returning.xp;
+    interactShrine(next, returning);
+    damageEnemy(
+      next,
+      next.enemies.find((e) => e.id === SHRINE_WARDEN_ID)!,
+      210,
+      returning,
+    );
+    interactShrine(next, returning);
+    expect(next.shrine).toBe('blessed');
+    expect(returning.points).toBe(points);
+    expect(quantity(returning, 'ancient')).toBe(ancient);
+    expect(returning.xp).toBe(xp);
+  });
+
   it('does not respawn the Jade Warden after the quest is completed', () => {
     const { world, panda } = atShrine();
     interactShrine(world, panda);
