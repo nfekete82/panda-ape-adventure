@@ -1,0 +1,13 @@
+{
+  "id": "emerald-forest",
+  "name": "Emerald Forest",
+  "width": 1920,
+  "height": 1440,
+  "obstacleSeed": 482,
+  "terrainSeed": 93,
+  "spawn": { "x": 430, "y": 1040 },
+  "npc": { "x": 510, "y": 990 },
+  "boss": { "x": 1580, "y": 340 },
+  "extensionGate": { "x": 1830, "y": 310 },
+  "source": "packages/shared/src/index.ts"
+}

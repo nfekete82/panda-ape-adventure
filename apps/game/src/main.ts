@@ -1,0 +1,938 @@
+import Phaser from 'phaser';
+import {
+  createWorld,
+  createPlayer,
+  neutralInput,
+  companionInput,
+  step,
+  move,
+  distance,
+  obstacles,
+  WORLD,
+  type Hero,
+  type World,
+  type Input,
+  type ServerMessage,
+  type ClientMessage,
+} from '@panda/shared';
+import { makeAssets, heroArt } from './art';
+import './style.css';
+const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
+  document.getElementById(id) as T;
+let selected: Hero = 'panda',
+  mode: 'menu' | 'solo' | 'online' = 'menu',
+  world: World = createWorld(),
+  playerId = 'local',
+  paused = false,
+  scene: ForestScene;
+let socket: WebSocket | undefined,
+  roomCode = '',
+  token = '',
+  seq = 0,
+  reconnectStart = 0,
+  quitting = false,
+  connecting = false;
+let pending: { input: Input; dt: number }[] = [],
+  predicted = { ...WORLD.spawn },
+  lastSnapshot = 0,
+  lastSend = 0;
+
+let music = false,
+  volume = 0.25,
+  audio: AudioContext | undefined,
+  audioTimer: ReturnType<typeof setInterval> | undefined;
+const keys = new Set<string>(),
+  pulses = new Set<string>();
+const queuedActions = {
+  attack: false,
+  special: false,
+  heal: false,
+  interact: false,
+};
+let lastFacing = { x: 1, y: 0 };
+let noticeUntil = 0,
+  lastMessage = '';
+world.players.push(
+  createPlayer('local', 'panda'),
+  createPlayer('companion', 'ape'),
+);
+function portrait(id: string, hero: Hero) {
+  const ctx = $(id) as HTMLCanvasElement;
+  const draw = ctx.getContext('2d')!;
+  draw.clearRect(0, 0, ctx.width, ctx.height);
+  draw.imageSmoothingEnabled = false;
+  draw.save();
+  draw.scale(ctx.width / 32, ctx.height / 32);
+  heroArt(draw, hero, 0, 2);
+  draw.restore();
+}
+portrait('panda-portrait', 'panda');
+portrait('ape-portrait', 'ape');
+portrait('hud-portrait', 'panda');
+function notify(text: string, duration = 5000) {
+  $('notice').textContent = text;
+  noticeUntil = performance.now() + duration;
+}
+function safeStorage(key: string, value?: string): string | null {
+  try {
+    if (value !== undefined) localStorage.setItem(key, value);
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function safeSession(key: string, value?: string): string | null {
+  try {
+    if (value !== undefined) sessionStorage.setItem(key, value);
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+const settings = safeStorage('panda-settings');
+if (settings) {
+  try {
+    const saved = JSON.parse(settings) as { music: boolean; volume: number };
+    music = saved.music === true;
+    volume =
+      typeof saved.volume === 'number'
+        ? Math.max(0, Math.min(1, saved.volume))
+        : 0.25;
+  } catch {
+    /* Use defaults. */
+  }
+}
+function tone(
+  freq: number,
+  duration = 0.12,
+  type: OscillatorType = 'sine',
+  gain = 0.12,
+) {
+  if (!audio || !music) return;
+  const osc = audio.createOscillator(),
+    amp = audio.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  amp.gain.setValueAtTime(gain * volume, audio.currentTime);
+  amp.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + duration);
+  osc.connect(amp);
+  amp.connect(audio.destination);
+  osc.start();
+  osc.stop(audio.currentTime + duration);
+}
+function startAudio() {
+  audio ??= new AudioContext();
+  void audio.resume();
+  if (audioTimer) return;
+  let n = 0;
+  const notes = [196, 246.94, 293.66, 369.99, 293.66, 246.94, 220, 293.66];
+  audioTimer = setInterval(() => {
+    tone(notes[n++ % notes.length]!, 1.4, 'sine', 0.07);
+  }, 850);
+}
+function enterGame() {
+  document.body.classList.remove('menu-open');
+  $('menu').hidden = true;
+  $('hud').hidden = false;
+  $('footer').hidden = true;
+  portrait('hud-portrait', selected);
+  $('hero-name').textContent = selected === 'panda' ? 'Panda' : 'Ape';
+  $('attack-name').textContent = selected === 'panda' ? 'Sword' : 'Arcane bolt';
+  $('special-name').textContent = selected === 'panda' ? 'Earthbreak' : 'Bloom';
+  keys.clear();
+  pulses.clear();
+  paused = false;
+  startAudio();
+  scene.cameras.main.setZoom(1);
+  notify('Welcome to Emerald Forest. Talk to Rowan at the camp.');
+}
+function startSolo(saved = false) {
+  quitting = true;
+  socket?.close();
+  socket = undefined;
+  roomCode = '';
+  token = '';
+  mode = 'solo';
+  playerId = 'local';
+  world = createWorld();
+  world.players.push(createPlayer('local', selected));
+  if (saved) {
+    try {
+      const data = JSON.parse(
+        safeStorage('panda-save') ?? 'null',
+      ) as World | null;
+      if (
+        data &&
+        data.players?.some((p) => p.id === 'local') &&
+        data.enemies?.length
+      ) {
+        world = data;
+        selected = world.players.find((p) => p.id === 'local')!.hero;
+      }
+    } catch {
+      /* Start a new adventure if corrupt. */
+    }
+  }
+  predicted = { ...world.players.find((p) => p.id === 'local')! };
+  $('connection-status').textContent = 'SOLO ADVENTURE';
+  $('room-label').textContent = '';
+  $('invite').hidden = true;
+  enterGame();
+}
+function send(message: ClientMessage) {
+  if (socket?.readyState === WebSocket.OPEN)
+    socket.send(JSON.stringify(message));
+}
+function connect(message: ClientMessage, isReconnect = false) {
+  if (connecting) return;
+  connecting = true;
+  quitting = false;
+  $('menu-error').textContent = '';
+  const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+  socket = new WebSocket(`${scheme}://${location.host}/ws`);
+  const current = socket;
+  let welcomed = false;
+  const timeout = setTimeout(() => {
+    if (!welcomed) current.close();
+  }, 7000);
+  current.onopen = () => current.send(JSON.stringify(message));
+  current.onmessage = (event: MessageEvent<string>) => {
+    const m = JSON.parse(event.data) as ServerMessage;
+    if (m.type === 'welcome') {
+      welcomed = true;
+      connecting = false;
+      clearTimeout(timeout);
+      mode = 'online';
+      roomCode = m.code;
+      token = m.token;
+      playerId = m.playerId;
+      seq = 0;
+      pending = [];
+      reconnectStart = 0;
+      safeSession(
+        'panda-session',
+        JSON.stringify({ code: roomCode, token, hero: selected }),
+      );
+      $('connection-status').textContent = 'CO-OP · CONNECTED';
+      $('room-label').textContent = roomCode;
+      $('invite').hidden = false;
+      enterGame();
+    } else if (m.type === 'state') {
+      world = m.world;
+      const p = world.players.find((p) => p.id === playerId);
+      if (p) {
+        selected = p.hero;
+        predicted = { x: p.x, y: p.y };
+        pending = pending.filter((i) => i.input.seq > p.lastSeq);
+        for (const sent of pending) {
+          const d = Math.hypot(sent.input.x, sent.input.y);
+          const speed =
+            (p.hero === 'ape' ? 205 : 175) *
+            (sent.input.guard && p.hero === 'panda' ? 0.45 : 1);
+          if (d > 0)
+            move(
+              predicted,
+              (sent.input.x / Math.max(1, d)) * speed * sent.dt,
+              (sent.input.y / Math.max(1, d)) * speed * sent.dt,
+            );
+        }
+        lastSnapshot = performance.now();
+      }
+    } else if (m.type === 'error') {
+      if (mode === 'menu') $('menu-error').textContent = m.message;
+      else notify(m.message);
+      if (!welcomed) {
+        quitting = true;
+        connecting = false;
+        current.close();
+      }
+    } else if (m.type === 'saved')
+      notify('Co-op progress saved on the server.');
+  };
+  current.onerror = () => {
+    if (mode === 'menu')
+      $('menu-error').textContent =
+        'Server unavailable. Start npm run dev or Docker Compose. Solo still works offline.';
+  };
+  current.onclose = () => {
+    clearTimeout(timeout);
+    connecting = false;
+    if (quitting || current !== socket) return;
+    if (!welcomed && !isReconnect) {
+      $('menu-error').textContent ||=
+        'Connection failed. Check that the local server is running.';
+      return;
+    }
+    if (mode === 'online') {
+      reconnectStart ||= Date.now();
+      $('connection-status').textContent = 'CO-OP · RECONNECTING';
+      notify('Connection lost. Restoring your session…');
+      if (Date.now() - reconnectStart < 55000)
+        setTimeout(
+          () => connect({ type: 'resume', code: roomCode, token }, true),
+          1200,
+        );
+      else {
+        notify(
+          'Reconnect expired. Return to the title screen and create a new room.',
+          60000,
+        );
+        $('connection-status').textContent = 'CO-OP · DISCONNECTED';
+      }
+    }
+  };
+}
+function exitGame() {
+  quitting = true;
+  socket?.close();
+  mode = 'menu';
+  paused = false;
+  $('hud').hidden = true;
+  $('menu').hidden = false;
+  $('footer').hidden = false;
+  document.body.classList.add('menu-open');
+  $('modal').hidden = false;
+  scene.cameras.main.setZoom(0.85);
+  world = createWorld();
+  world.players.push(
+    createPlayer('local', 'panda'),
+    createPlayer('companion', 'ape'),
+  );
+  playerId = 'local';
+  keys.clear();
+}
+for (const button of document.querySelectorAll<HTMLButtonElement>(
+  '[data-hero]',
+))
+  button.onclick = () => {
+    selected = button.dataset.hero as Hero;
+    document
+      .querySelectorAll('[data-hero]')
+      .forEach((el) =>
+        el.classList.toggle(
+          'selected',
+          (el as HTMLElement).dataset.hero === selected,
+        ),
+      );
+  };
+$('solo').onclick = () => startSolo();
+const storedSession = safeSession('panda-session');
+$('restore-session').hidden = !storedSession;
+$('restore-session').onclick = () => {
+  try {
+    const s = JSON.parse(storedSession ?? 'null') as {
+      code: string;
+      token: string;
+      hero: Hero;
+    };
+    selected = s.hero;
+    connect({ type: 'resume', code: s.code, token: s.token });
+  } catch {
+    $('menu-error').textContent = 'No valid reconnect session.';
+  }
+};
+$('continue').onclick = () => startSolo(true);
+$('continue').hidden = !safeStorage('panda-save');
+$('create').onclick = () => connect({ type: 'create', hero: selected });
+$('join').onclick = () => {
+  const code = $<HTMLInputElement>('room-code').value.trim().toUpperCase();
+  if (!/^[A-Z2-9]{5}$/.test(code)) {
+    $('menu-error').textContent = 'Enter a five-character room code.';
+    return;
+  }
+  connect({ type: 'join', code, hero: selected });
+};
+const invited = new URLSearchParams(location.search).get('room');
+if (invited) {
+  $<HTMLInputElement>('room-code').value = invited.toUpperCase();
+  selected = 'ape';
+  document
+    .querySelectorAll('[data-hero]')
+    .forEach((el) =>
+      el.classList.toggle(
+        'selected',
+        (el as HTMLElement).dataset.hero === 'ape',
+      ),
+    );
+}
+$('invite').onclick = () => {
+  const link = `${location.origin}/?room=${roomCode}`;
+  void navigator.clipboard
+    .writeText(link)
+    .then(() =>
+      notify('Invite link copied. Your friend can choose the available hero.'),
+    )
+    .catch(() => notify(`Invite: ${link}`, 15000));
+};
+function save() {
+  if (mode === 'solo') {
+    safeStorage('panda-save', JSON.stringify(world));
+    $('continue').hidden = false;
+    notify('Solo adventure saved on this browser.');
+  } else if (mode === 'online') send({ type: 'save' });
+}
+function showModal(content: string) {
+  paused = true;
+  keys.clear();
+  pulses.clear();
+  $('modal-content').innerHTML = content;
+  $<HTMLDialogElement>('modal').showModal();
+}
+function closeModal() {
+  paused = false;
+  $<HTMLDialogElement>('modal').close();
+}
+$('close-modal').onclick = closeModal;
+$('modal').addEventListener('cancel', () => {
+  paused = false;
+});
+function settingsModal() {
+  showModal(
+    `<div class="eyebrow">TAKE A BREATH</div><h2>${mode === 'menu' ? 'Settings' : 'Adventure paused'}</h2><p>${mode === 'online' ? 'Your hero stops moving. Your co-op world continues while this menu is open.' : 'The forest will wait for you.'}</p><label>Forest music & sound<input id="music" type="checkbox" ${music ? 'checked' : ''}></label><label>Volume<input id="volume" type="range" min="0" max="1" step="0.05" value="${volume}"></label>${mode === 'solo' ? '<label>AI companion<input id="companion-toggle" type="checkbox" ' + (world.players.some((p) => p.id === 'companion') ? 'checked' : '') + '></label>' : ''}<button id="resume-button">${mode === 'menu' ? 'Back' : 'Resume adventure'} →</button>${mode !== 'menu' ? '<button id="save-button">Save progress</button><button id="exit-button">Return to title</button>' : ''}<p>WASD / arrows: move · Space / left click: attack<br>Q: special · R: potion / revive · E: talk<br>Shift: shield (Panda) · I: inventory · Esc: pause<br>Gamepad: left stick, A attack, X special, B potion, Y talk.</p>`,
+  );
+  $<HTMLInputElement>('music').onchange = (e) => {
+    music = (e.target as HTMLInputElement).checked;
+    startAudio();
+    safeStorage('panda-settings', JSON.stringify({ music, volume }));
+  };
+  $<HTMLInputElement>('volume').oninput = (e) => {
+    volume = Number((e.target as HTMLInputElement).value);
+    safeStorage('panda-settings', JSON.stringify({ music, volume }));
+  };
+  $('resume-button').onclick = closeModal;
+  if (mode !== 'menu') {
+    $('save-button').onclick = save;
+    $('exit-button').onclick = () => {
+      save();
+      closeModal();
+      exitGame();
+    };
+  }
+  if (mode === 'solo')
+    $<HTMLInputElement>('companion-toggle').onchange = (e) => {
+      if ((e.target as HTMLInputElement).checked) {
+        if (!world.players.some((p) => p.id === 'companion'))
+          world.players.push(
+            createPlayer('companion', selected === 'panda' ? 'ape' : 'panda'),
+          );
+      } else world.players = world.players.filter((p) => p.id !== 'companion');
+    };
+}
+$('settings').onclick = settingsModal;
+function inventory() {
+  if (mode === 'menu') return;
+  const p = world.players.find((p) => p.id === playerId);
+  if (!p) return;
+  showModal(
+    `<div class="eyebrow">EVERY LITTLE THING COUNTS</div><h2>Your satchel</h2><div class="inventory-row"><div>Healing potions<small>Restore 70 HP · R to use or revive</small></div><strong>${p.potions}</strong></div><div class="inventory-row"><div>Forest crystals<small>Treasures of the Emerald Forest</small></div><strong>${p.crystals}</strong></div><div class="inventory-row"><div>${p.hero === 'panda' ? 'Oakguard sword & shield' : 'Moonbloom staff'}<small>Level ${p.level} · ${p.xp} / ${p.level * 75} XP</small></div><strong>Equipped</strong></div><p>Pick up supplies by walking over them. Rowan has a reward for helping the forest.</p>`,
+  );
+}
+$('inventory-button').onclick = inventory;
+$('attack-button').onclick = () => pulses.add('Space');
+$('special-button').onclick = () => pulses.add('KeyQ');
+$('heal-button').onclick = () => pulses.add('KeyR');
+window.addEventListener('keydown', (e) => {
+  if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+  if (
+    ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(
+      e.code,
+    )
+  )
+    e.preventDefault();
+  if (e.code === 'Escape') {
+    e.preventDefault();
+    e.stopPropagation();
+    if ($<HTMLDialogElement>('modal').open) closeModal();
+    else settingsModal();
+    return;
+  }
+  if (e.code === 'KeyI' && !e.repeat) {
+    inventory();
+    return;
+  }
+  keys.add(e.code);
+});
+window.addEventListener('keyup', (e) => keys.delete(e.code));
+window.addEventListener('blur', () => {
+  keys.clear();
+  pulses.clear();
+});
+let mouseDown = false;
+window.addEventListener('mouseup', () => {
+  mouseDown = false;
+});
+window.addEventListener('blur', () => {
+  mouseDown = false;
+});
+function readInput(): Input {
+  const i = neutralInput();
+  if (
+    paused ||
+    mode === 'menu' ||
+    (mode === 'online' && socket?.readyState !== WebSocket.OPEN)
+  )
+    return i;
+  i.x =
+    Number(keys.has('KeyD') || keys.has('ArrowRight')) -
+    Number(keys.has('KeyA') || keys.has('ArrowLeft'));
+  i.y =
+    Number(keys.has('KeyS') || keys.has('ArrowDown')) -
+    Number(keys.has('KeyW') || keys.has('ArrowUp'));
+  if (i.x || i.y)
+    lastFacing = {
+      x: i.x / Math.max(1, Math.hypot(i.x, i.y)),
+      y: i.y / Math.max(1, Math.hypot(i.x, i.y)),
+    };
+  const pad = navigator.getGamepads?.()[0];
+  if (pad) {
+    const x = pad.axes[0] ?? 0,
+      y = pad.axes[1] ?? 0;
+    if (Math.hypot(x, y) > 0.2) {
+      i.x = x;
+      i.y = y;
+      lastFacing = { x: x / Math.hypot(x, y), y: y / Math.hypot(x, y) };
+    }
+    i.attack = pad.buttons[0]?.pressed ?? false;
+    i.special = pad.buttons[2]?.pressed ?? false;
+    i.heal = pad.buttons[1]?.pressed ?? false;
+    i.interact = pad.buttons[3]?.pressed ?? false;
+    i.guard = pad.buttons[4]?.pressed ?? false;
+  }
+  i.aimX = lastFacing.x;
+  i.aimY = lastFacing.y;
+  i.attack ||= keys.has('Space') || pulses.has('Space') || mouseDown;
+  i.special ||= keys.has('KeyQ') || pulses.has('KeyQ');
+  i.heal ||= keys.has('KeyR') || pulses.has('KeyR');
+  i.guard ||= keys.has('ShiftLeft') || keys.has('ShiftRight');
+  i.interact ||= keys.has('KeyE');
+  pulses.clear();
+  return i;
+}
+class ForestScene extends Phaser.Scene {
+  sprites = new Map<string, Phaser.GameObjects.Sprite>();
+  labels = new Map<string, Phaser.GameObjects.Text>();
+  shadows = new Map<string, Phaser.GameObjects.Ellipse>();
+  graphics!: Phaser.GameObjects.Graphics;
+  water!: Phaser.GameObjects.Graphics;
+  cameraTarget = { x: WORLD.spawn.x, y: WORLD.spawn.y };
+  accumulator = 0;
+  hudTime = 0;
+  constructor() {
+    super('forest');
+  }
+  create() {
+    scene = this; // eslint-disable-line @typescript-eslint/no-this-alias
+    makeAssets(this);
+    this.add.image(0, 0, 'forest').setOrigin(0);
+    for (const o of obstacles)
+      if (o.kind === 'tree') {
+        this.add
+          .ellipse(o.x + o.w / 2, o.y + 12, 100, 36, 0x112e25, 0.34)
+          .setDepth(o.y - 2);
+        this.add
+          .image(o.x + o.w / 2, o.y + o.h, 'tree')
+          .setOrigin(0.5, 0.94)
+          .setDepth(o.y + o.h);
+      }
+    this.add.sprite(WORLD.npc.x, WORLD.npc.y, 'npc').setDepth(WORLD.npc.y);
+    this.add
+      .text(WORLD.npc.x, WORLD.npc.y - 48, 'ROWAN', {
+        fontFamily: 'Georgia',
+        fontSize: '12px',
+        color: '#e8d4a0',
+        stroke: '#253f2c',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(2000);
+    this.add
+      .text(1830, 210, 'ANCIENT GATE', {
+        fontFamily: 'Georgia',
+        fontSize: '12px',
+        color: '#ded0a5',
+        stroke: '#253f2c',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5);
+    this.graphics = this.add.graphics().setDepth(3000);
+    this.water = this.add.graphics().setDepth(1);
+    this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
+    this.cameras.main.startFollow(this.cameraTarget, true, 0.08, 0.08);
+    this.cameras.main.setZoom(0.85);
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (mode !== 'menu' && !paused) {
+        mouseDown = true;
+        const p = world.players.find((p) => p.id === playerId);
+        if (p) {
+          const dx = pointer.worldX - p.x,
+            dy = pointer.worldY - p.y,
+            d = Math.hypot(dx, dy) || 1;
+          lastFacing = { x: dx / d, y: dy / d };
+        }
+      }
+    });
+    document.body.classList.add('menu-open');
+  }
+  entity(
+    id: string,
+    x: number,
+    y: number,
+    texture: string,
+    frame: number,
+    dt: number,
+  ) {
+    let sprite = this.sprites.get(id);
+    if (!sprite) {
+      sprite = this.add.sprite(x, y, texture, frame);
+      this.sprites.set(id, sprite);
+      this.shadows.set(id, this.add.ellipse(x, y + 24, 35, 12, 0x10281f, 0.36));
+    }
+    sprite.setTexture(texture, frame);
+    const lerp = id === playerId ? 0.6 : Math.min(1, dt * 14);
+    sprite.x += (x - sprite.x) * lerp;
+    sprite.y += (y - sprite.y) * lerp;
+    sprite.setDepth(sprite.y + 25);
+    this.shadows
+      .get(id)!
+      .setPosition(sprite.x, sprite.y + 24)
+      .setDepth(sprite.y - 1);
+    return sprite;
+  }
+  update(time: number, delta: number) {
+    const dt = Math.min(delta / 1000, 0.05);
+    const input = readInput();
+    if (mode === 'solo' && !paused) {
+      this.accumulator += dt;
+      while (this.accumulator >= 1 / 60) {
+        const map = new Map<string, Input>([[playerId, input]]);
+        const leader = world.players.find((p) => p.id === playerId)!,
+          bot = world.players.find((p) => p.id === 'companion');
+        if (bot) map.set(bot.id, companionInput(world, bot, leader));
+        step(world, map, 1 / 60);
+        this.accumulator -= 1 / 60;
+      }
+    } else if (mode === 'online') {
+      for (const key of ['attack', 'special', 'heal', 'interact'] as const)
+        queuedActions[key] ||= input[key];
+      const p = world.players.find((p) => p.id === playerId);
+      if (p && p.hp > 0 && socket?.readyState === WebSocket.OPEN) {
+        const speed =
+            (p.hero === 'ape' ? 205 : 175) *
+            (input.guard && p.hero === 'panda' ? 0.45 : 1),
+          d = Math.hypot(input.x, input.y);
+        if (d)
+          move(
+            predicted,
+            (input.x / Math.max(1, d)) * speed * dt,
+            (input.y / Math.max(1, d)) * speed * dt,
+          );
+        if (time - lastSend >= 1000 / 30) {
+          for (const key of [
+            'attack',
+            'special',
+            'heal',
+            'interact',
+          ] as const) {
+            input[key] ||= queuedActions[key];
+            queuedActions[key] = false;
+          }
+          input.seq = ++seq;
+          send({ type: 'input', input });
+          pending.push({
+            input: { ...input },
+            dt: Math.min((time - lastSend) / 1000, 0.05),
+          });
+          pending = pending.slice(-90);
+          lastSend = time;
+        }
+      }
+    }
+    this.water.clear();
+    for (const o of obstacles)
+      if (o.kind === 'water') {
+        this.water.lineStyle(2, 0x91beb2, 0.27);
+        for (let n = 0; n < 7; n++) {
+          const x = o.x + 20 + ((time * 0.008 + n * 37) % (o.w - 45)),
+            y = o.y + 22 + (n * (o.h - 38)) / 7;
+          this.water.lineBetween(
+            x,
+            y,
+            x + 17 + Math.sin(time * 0.001 + n) * 7,
+            y,
+          );
+        }
+      }
+    this.graphics.clear();
+    const alive = new Set<string>();
+    for (const p of world.players) {
+      alive.add(p.id);
+      const pos = mode === 'online' && p.id === playerId ? predicted : p;
+      const moving =
+        p.id === playerId
+          ? Math.hypot(input.x, input.y) > 0.1
+          : p.action === 'walk';
+      const facing = p.id === playerId && moving ? lastFacing : p.facing;
+      let dir =
+        Math.round(
+          (Math.atan2(facing.y, facing.x) + Math.PI * 2) / (Math.PI / 4),
+        ) % 8;
+      dir = Math.max(0, dir);
+      const frame = dir * 4 + (moving ? Math.floor(time / 130) % 4 : 0);
+      const sprite = this.entity(p.id, pos.x, pos.y, p.hero, frame, dt);
+      sprite.setAlpha(p.connected ? 1 : 0.35);
+      sprite.setAngle(
+        p.cooldown > 0.2 && p.hero === 'panda' ? Math.sin(time * 0.05) * 7 : 0,
+      );
+      sprite.setTint(p.invulnerable > 0 ? 0xffcfb0 : 0xffffff);
+      if (p.action === 'guard') {
+        this.graphics.lineStyle(2, 0xb4dad1, 0.7);
+        this.graphics.strokeCircle(sprite.x, sprite.y, 35);
+      }
+      let label = this.labels.get(p.id);
+      if (!label) {
+        label = this.add
+          .text(pos.x, pos.y - 44, '', {
+            fontFamily: 'Arial',
+            fontSize: '10px',
+            color: '#f0e4c2',
+            stroke: '#183d2b',
+            strokeThickness: 3,
+          })
+          .setOrigin(0.5)
+          .setDepth(3001);
+        this.labels.set(p.id, label);
+      }
+      label
+        .setPosition(sprite.x, sprite.y - 43)
+        .setText(
+          `${p.hero === 'panda' ? 'Panda' : 'Ape'}${p.id === playerId ? ' · YOU' : p.id === 'companion' ? ' · COMPANION' : !p.connected ? ' · OFFLINE' : ' · FRIEND'}`,
+        );
+      if (p.hp <= 0) {
+        sprite.setAlpha(0.45);
+        label.setText('DOWNED · R to revive');
+      }
+    }
+    for (const e of world.enemies) {
+      if (e.hp <= 0) continue;
+      alive.add(e.id);
+      const sprite = this.entity(
+        e.id,
+        e.x,
+        e.y + (e.kind === 'wisp' ? Math.sin(time * 0.004) * 7 : 0),
+        e.kind,
+        0,
+        dt,
+      );
+      sprite.setScale(e.kind === 'guardian' ? 1.7 : 1);
+      sprite.setTint(e.hurt > 0 ? 0xffd8b4 : 0xffffff);
+      if (e.kind === 'slime') sprite.scaleY = 1 + Math.sin(time * 0.003) * 0.05;
+      const width = e.kind === 'guardian' ? 90 : 38;
+      this.graphics.fillStyle(0x183029, 0.8);
+      this.graphics.fillRect(
+        sprite.x - width / 2,
+        sprite.y - (e.kind === 'guardian' ? 70 : 39),
+        width,
+        4,
+      );
+      this.graphics.fillStyle(e.kind === 'guardian' ? 0xc5a571 : 0xb49b75);
+      this.graphics.fillRect(
+        sprite.x - width / 2,
+        sprite.y - (e.kind === 'guardian' ? 70 : 39),
+        (width * e.hp) / e.maxHp,
+        4,
+      );
+      if (e.kind === 'guardian') {
+        this.graphics.lineStyle(1, 0xddcc8a, 0.2);
+        this.graphics.strokeCircle(e.x, e.y, 170);
+      }
+    }
+    for (const [id, sprite] of this.sprites)
+      if (!alive.has(id)) {
+        sprite.destroy();
+        this.sprites.delete(id);
+        this.shadows.get(id)?.destroy();
+        this.shadows.delete(id);
+        this.labels.get(id)?.destroy();
+        this.labels.delete(id);
+      }
+    for (const item of world.loot) {
+      const y = item.y + Math.sin(time * 0.003 + item.x) * 3;
+      this.graphics.fillStyle(item.kind === 'potion' ? 0xe6b19b : 0xa8d6c0);
+      if (item.kind === 'potion') {
+        this.graphics.fillRect(item.x - 6, y - 6, 12, 15);
+        this.graphics.fillStyle(0xedd8b7);
+        this.graphics.fillRect(item.x - 3, y - 10, 6, 4);
+      } else
+        this.graphics.fillPoints(
+          [
+            new Phaser.Math.Vector2(item.x, y - 9),
+            new Phaser.Math.Vector2(item.x + 7, y),
+            new Phaser.Math.Vector2(item.x, y + 9),
+            new Phaser.Math.Vector2(item.x - 7, y),
+          ],
+          true,
+        );
+    }
+    for (const bolt of world.projectiles) {
+      this.graphics.fillStyle(bolt.hostile ? 0xc492d8 : 0x90d9d4, 0.2);
+      this.graphics.fillCircle(bolt.x, bolt.y, 14);
+      this.graphics.fillStyle(bolt.hostile ? 0xf0d0f5 : 0xe0fff0);
+      this.graphics.fillCircle(bolt.x, bolt.y, 5);
+    }
+    for (const f of world.effects) {
+      const a = Math.max(0, f.life / 0.45);
+      const color =
+        f.kind === 'hit'
+          ? 0xfad49e
+          : f.kind === 'warning'
+            ? 0xdb835f
+            : f.kind === 'heal'
+              ? 0xaedcb0
+              : 0xb9e7d5;
+      this.graphics.lineStyle(f.kind === 'slash' ? 5 : 3, color, a * 0.9);
+      this.graphics.strokeCircle(f.x, f.y, f.radius * (1 - f.life * 0.7));
+      if (f.kind === 'magic') {
+        this.graphics.lineStyle(1, color, a * 0.5);
+        this.graphics.strokeCircle(f.x, f.y, f.radius * 0.8);
+      }
+      if (f.text) {
+        let label = this.labels.get(f.id);
+        if (!label) {
+          label = this.add
+            .text(f.x, f.y - 30, f.text, {
+              fontFamily: 'Arial',
+              fontSize: '14px',
+              fontStyle: 'bold',
+              color: '#f4ddb1',
+              stroke: '#263b29',
+              strokeThickness: 3,
+            })
+            .setOrigin(0.5)
+            .setDepth(3001);
+          this.labels.set(f.id, label);
+          if (f.kind === 'hit') tone(160, 0.09, 'triangle', 0.12);
+        }
+        label.setPosition(f.x, f.y - 30 - (1 - f.life / 0.45) * 22).setAlpha(a);
+      }
+    }
+    const effectIds = new Set(world.effects.map((f) => f.id));
+    for (const [id, label] of this.labels)
+      if (!alive.has(id) && !effectIds.has(id)) {
+        label.destroy();
+        this.labels.delete(id);
+      }
+    // Firelight and drifting fireflies use deterministic positions and time only.
+    this.graphics.fillStyle(0xe5aa64, 0.08);
+    this.graphics.fillCircle(468, 1080, 45 + Math.sin(time * 0.01) * 4);
+    this.graphics.fillStyle(0xe7ad57);
+    this.graphics.fillRect(459, 1072, 18, 18);
+    this.graphics.fillStyle(0xfbe0a0);
+    this.graphics.fillRect(464, 1067 + Math.sin(time * 0.01) * 3, 8, 17);
+    for (let n = 0; n < 16; n++) {
+      const x = 250 + ((n * 173) % 1500) + Math.sin(time * 0.0003 + n) * 20,
+        y = 180 + ((n * 131) % 1100) + Math.cos(time * 0.0005 + n) * 14;
+      this.graphics.fillStyle(0xe6e9a6, 0.1);
+      this.graphics.fillCircle(x, y, 6);
+      this.graphics.fillStyle(0xf3e7ac, 0.4 + Math.sin(time * 0.002 + n) * 0.3);
+      this.graphics.fillRect(x, y, 2, 2);
+    }
+    const local = world.players.find((p) => p.id === playerId);
+    if (local) {
+      const pos = mode === 'online' ? predicted : local;
+      this.cameraTarget.x = mode === 'menu' ? 740 : pos.x;
+      this.cameraTarget.y = mode === 'menu' ? 850 : pos.y;
+    }
+    if (mode !== 'menu' && time - this.hudTime > 100) {
+      this.hudTime = time;
+      updateHud();
+    }
+  }
+}
+function updateHud() {
+  const p = world.players.find((p) => p.id === playerId);
+  if (!p) return;
+  $('health-bar').style.width = `${(p.hp / p.maxHp) * 100}%`;
+  $('health-text').textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+  $('mana-bar').style.width = `${p.mana}%`;
+  $('xp-bar').style.width = `${(p.xp / (p.level * 75)) * 100}%`;
+  $('level').textContent = `LV ${p.level}`;
+  $('potions').textContent = `Potion ×${p.potions}`;
+  $('quest-title').textContent = world.bossDefeated
+    ? 'A forest restored'
+    : world.quest === 'available'
+      ? 'A whisper in the woods'
+      : world.quest === 'rewarded'
+        ? 'The Thorn Guardian'
+        : 'A forest in need';
+  $('quest-body').textContent = world.bossDefeated
+    ? 'The guardian has fallen. Explore the ancient gate to the east.'
+    : world.quest === 'available'
+      ? 'Talk to Rowan at the woodland camp.'
+      : world.quest === 'active'
+        ? `Defeat forest creatures · ${Math.min(world.kills, 5)} / 5`
+        : world.quest === 'complete'
+          ? 'Return to Rowan for your reward.'
+          : 'Find the guardian in the northeast ruins.';
+  $('interact-hint').hidden = distance(p, WORLD.npc) > 90;
+  $('partner').textContent =
+    mode === 'solo'
+      ? world.players.length > 1
+        ? 'Companion following'
+        : 'Companion available in settings'
+      : world.players.length < 2
+        ? 'Waiting for your friend…'
+        : world.players.find((q) => q.id !== playerId)?.connected
+          ? 'Your friend is here'
+          : 'Friend disconnected · seat reserved';
+  if (world.message !== lastMessage) {
+    lastMessage = world.message;
+    notify(world.message, 6500);
+  }
+  if (performance.now() > noticeUntil) $('notice').textContent = '';
+  if (p.hp <= 0)
+    notify(
+      p.potions > 0
+        ? 'You are downed. Press R to use a potion and return to camp.'
+        : 'No potions left. Return to title to begin a new adventure.',
+      1200,
+    );
+  // Read-only observability used by browser tests and performance inspection.
+  const hud = $('hud');
+  hud.dataset.playerId = p.id;
+  hud.dataset.x = String(p.x);
+  hud.dataset.y = String(p.y);
+  hud.dataset.players = String(world.players.length);
+  hud.dataset.tick = String(world.tick);
+  hud.dataset.enemyHp = String(world.enemies.reduce((sum, e) => sum + e.hp, 0));
+  const other = world.players.find((q) => q.id !== p.id);
+  hud.dataset.remoteX = other ? String(other.x) : '';
+  hud.dataset.remoteY = other ? String(other.y) : '';
+  hud.dataset.remoteAction = other?.action ?? '';
+  hud.dataset.renderedPlayers = String(
+    world.players.filter((q) => scene.sprites.has(q.id)).length,
+  );
+  hud.dataset.snapshotAge = String(
+    Math.round(performance.now() - lastSnapshot),
+  );
+}
+new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: 'game',
+  width: 960,
+  height: 540,
+  backgroundColor: '#314c38',
+  pixelArt: true,
+  roundPixels: true,
+  scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scene: [ForestScene],
+  input: { keyboard: true },
+  render: { antialias: false },
+});
+// Design UI is 1920×1080; world pixels stay crisp on smaller displays.
+setInterval(() => {
+  if (mode === 'solo' && !paused)
+    safeStorage('panda-save', JSON.stringify(world));
+}, 15000);
+window.addEventListener('beforeunload', () => {
+  if (mode === 'solo') safeStorage('panda-save', JSON.stringify(world));
+});

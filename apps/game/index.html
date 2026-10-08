@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#102720" />
+    <title>Panda & Ape · The Adventure</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="game"></div>
+      <div class="vignette"></div>
+      <header>
+        <a class="brand" href="/"
+          >P<span>&</span>A <small>THE ADVENTURE</small></a
+        >
+        <div class="location">
+          <span class="diamond">◇</span> EMERALD FOREST
+          <small>CHAPTER I · THE AWAKENING</small>
+        </div>
+        <button id="settings" class="icon-button" aria-label="Settings">
+          ☰
+        </button>
+      </header>
+      <main id="menu">
+        <div class="eyebrow">A WORLD WORTH EXPLORING. TOGETHER.</div>
+        <h1>Panda <i>&</i> Ape<span>The Adventure</span></h1>
+        <p class="intro">
+          Two unlikely heroes. One ancient forest.<br />A little courage goes a
+          long way.
+        </p>
+        <div class="hero-select">
+          <button data-hero="panda" class="hero-card selected">
+            <canvas id="panda-portrait" width="96" height="96"></canvas
+            ><span
+              ><strong>Panda</strong><small>THE WARRIOR</small
+              ><em>Steel, strength & a brave heart</em></span
+            ></button
+          ><button data-hero="ape" class="hero-card">
+            <canvas id="ape-portrait" width="96" height="96"></canvas
+            ><span
+              ><strong>Ape</strong><small>THE MAGE</small
+              ><em>A spark of forest magic</em></span
+            >
+          </button>
+        </div>
+        <div class="start-actions">
+          <button id="solo" class="primary">
+            Begin adventure <span>→</span></button
+          ><button id="create" class="secondary">Create co-op room</button>
+        </div>
+        <div class="join">
+          <label for="room-code">HAVE A ROOM CODE?</label>
+          <div>
+            <input
+              id="room-code"
+              maxlength="5"
+              placeholder="ABCDE"
+              autocomplete="off"
+            /><button id="join">Join a friend ↗</button>
+          </div>
+        </div>
+        <button id="continue" class="text-button" hidden>
+          Continue saved solo adventure →
+        </button>
+        <button id="restore-session" class="text-button" hidden>
+          Reconnect to last co-op room →
+        </button>
+        <p id="menu-error" role="alert"></p>
+        <div class="menu-foot">
+          <span class="online-dot"></span> FULLY LOCAL · 1–2 PLAYERS
+          <span>ORIGINAL PIXEL WORLD</span>
+        </div>
+      </main>
+      <div id="hud" hidden>
+        <section class="player-panel panel">
+          <canvas id="hud-portrait" width="64" height="64"></canvas>
+          <div>
+            <div class="player-name">
+              <strong id="hero-name">Panda</strong><span id="level">LV 1</span>
+            </div>
+            <div class="bar health">
+              <span id="health-bar"></span><b id="health-text"></b>
+            </div>
+            <div class="bar mana"><span id="mana-bar"></span></div>
+            <div class="bar xp"><span id="xp-bar"></span></div>
+          </div>
+        </section>
+        <section id="quest" class="quest panel">
+          <div class="eyebrow">FOREST JOURNAL</div>
+          <strong id="quest-title">A whisper in the woods</strong>
+          <p id="quest-body">Find Rowan at the woodland camp.</p>
+        </section>
+        <section class="room panel">
+          <span id="connection-status">SOLO ADVENTURE</span
+          ><strong id="room-label"></strong
+          ><button id="invite" hidden>Copy invite link ↗</button
+          ><small id="partner"></small>
+        </section>
+        <div id="notice" role="status"></div>
+        <div id="interact-hint" hidden>E · Talk to Rowan</div>
+        <section class="quickbar panel">
+          <button id="attack-button">
+            <kbd>SPACE</kbd><strong id="attack-name">Sword</strong></button
+          ><button id="special-button">
+            <kbd>Q</kbd><strong id="special-name">Earthbreak</strong></button
+          ><button id="heal-button">
+            <kbd>R</kbd><strong id="potions">Potion ×3</strong></button
+          ><button id="inventory-button">
+            <kbd>I</kbd><strong>Satchel</strong>
+          </button>
+          <div class="controls">
+            WASD / ARROWS <small>MOVE · SHIFT TO GUARD</small>
+          </div>
+        </section>
+        <div class="region-tag">
+          Emerald Forest <small>THE OLD WOODLANDS</small>
+        </div>
+      </div>
+      <dialog id="modal">
+        <button id="close-modal" class="close" aria-label="Close">×</button>
+        <div id="modal-content"></div>
+      </dialog>
+      <footer id="footer">
+        <span>EXPLORE. PROTECT. BELONG.</span
+        ><span>CHAPTER 01 / EMERALD FOREST</span>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "license": "CC0-1.0",
+  "source": "apps/game/src/art.ts",
+  "heroes": {
+    "panda": { "frameWidth": 64, "frameHeight": 64, "columns": 4, "rows": 8 },
+    "ape": { "frameWidth": 64, "frameHeight": 64, "columns": 4, "rows": 8 }
+  },
+  "directions": [
+    "east",
+    "southeast",
+    "south",
+    "southwest",
+    "west",
+    "northwest",
+    "north",
+    "northeast"
+  ],
+  "enemies": ["slime", "wolf", "wisp", "guardian"],
+  "environment": ["forest", "tree", "npc"],
+  "audio": "original Web Audio synthesis; no downloads"
+}
