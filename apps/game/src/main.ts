@@ -20,12 +20,14 @@ import {
   obstacles,
   WORLD,
   type Hero,
+  type Player,
   type World,
   type Input,
   type ServerMessage,
   type ClientMessage,
 } from '@panda/shared';
 import { makeAssets, heroArt, heroFrame, preloadHeroSheets } from './art';
+import { makeWeaponTextures, weaponPose, type WeaponPose } from './weapons';
 import './style.css';
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
@@ -684,6 +686,8 @@ function readInput(): Input {
 class ForestScene extends Phaser.Scene {
   vegetation: Phaser.GameObjects.Image[] = [];
   sprites = new Map<string, Phaser.GameObjects.Sprite>();
+  weapons = new Map<string, Phaser.GameObjects.Image>();
+  weaponTiming = new Map<string, { cooldown: number; special: boolean }>();
   labels = new Map<string, Phaser.GameObjects.Text>();
   shadows = new Map<string, Phaser.GameObjects.Ellipse>();
   graphics!: Phaser.GameObjects.Graphics;
@@ -700,6 +704,7 @@ class ForestScene extends Phaser.Scene {
   create() {
     scene = this; // eslint-disable-line @typescript-eslint/no-this-alias
     makeAssets(this);
+    makeWeaponTextures(this);
     this.add.image(0, 0, 'forest').setOrigin(0);
     for (const o of obstacles)
       if (o.kind === 'tree') {
@@ -804,6 +809,92 @@ class ForestScene extends Phaser.Scene {
       .setDepth(sprite.y - 1);
     return sprite;
   }
+  renderWeapon(
+    p: Player,
+    sprite: Phaser.GameObjects.Sprite,
+    time: number,
+  ): void {
+    let weapon = this.weapons.get(p.id);
+    if (!weapon) {
+      weapon = this.add.image(
+        sprite.x,
+        sprite.y,
+        p.hero === 'panda' ? 'panda-sword' : 'ape-staff',
+      );
+      weapon.setOrigin(0.5, 0.87);
+      weapon.setName(`weapon-${p.id}`);
+      this.weapons.set(p.id, weapon);
+    }
+    if (p.hp <= 0) {
+      weapon.setVisible(false);
+      this.weaponTiming.delete(p.id);
+      return;
+    }
+    const normalCooldown = combatStats(p).cooldown;
+    const last = this.weaponTiming.get(p.id);
+    // Preserve special-attack timing across subsequent authoritative snapshots:
+    // simulation action returns to "attack" while the 1.1s cast is cooling down.
+    const newSwing =
+      !last || p.cooldown > last.cooldown + 0.06 || last.cooldown <= 0;
+    const special = newSwing
+      ? p.action === 'special' || p.cooldown > normalCooldown + 0.08
+      : last.special;
+    this.weaponTiming.set(p.id, { cooldown: p.cooldown, special });
+    const pose: WeaponPose = weaponPose(
+      p.hero,
+      p.facing,
+      p.action,
+      p.cooldown,
+      normalCooldown,
+      time,
+      special,
+    );
+    weapon
+      .setVisible(true)
+      .setPosition(sprite.x + pose.dx, sprite.y + pose.dy)
+      .setRotation(pose.rotation)
+      .setScale(p.hero === 'panda' ? 0.96 : 0.9)
+      .setDepth(p.facing.y < -0.15 ? sprite.y + 1 : sprite.y + 43)
+      .setAlpha(p.connected ? 1 : 0.35);
+
+    if (!pose.trail) return;
+    if (p.hero === 'panda') {
+      // Draw the steel's moving edge as a brief directional arc.
+      const center = pose.facingAngle - 1.12 + pose.sweep * 2.25;
+      for (let i = 0; i < 7; i++) {
+        const a = center - i * 0.09;
+        const b = center - (i + 1) * 0.09;
+        const radius = 55;
+        this.graphics.lineStyle(
+          Math.max(1, 6 - i),
+          i < 3 ? 0xfceac0 : 0xa4d6d4,
+          (0.75 - i * 0.08) * (p.connected ? 1 : 0.35),
+        );
+        this.graphics.lineBetween(
+          sprite.x + Math.cos(a) * radius,
+          sprite.y - 8 + Math.sin(a) * radius,
+          sprite.x + Math.cos(b) * radius,
+          sprite.y - 8 + Math.sin(b) * radius,
+        );
+      }
+    } else {
+      // The staff tip leads the cast. These sparks are entirely visual.
+      const tipAngle = pose.rotation - Math.PI / 2;
+      const tipX = weapon.x + Math.cos(tipAngle) * 47;
+      const tipY = weapon.y + Math.sin(tipAngle) * 47;
+      const pulse = 6 + Math.sin(time * 0.04) * 2;
+      this.graphics.fillStyle(0x83dbc8, 0.19);
+      this.graphics.fillCircle(tipX, tipY, pulse + 9);
+      this.graphics.fillStyle(0xe5ffde, 0.9);
+      this.graphics.fillCircle(tipX, tipY, pulse * 0.45);
+      this.graphics.lineStyle(2, 0xa2f6db, 0.74);
+      this.graphics.strokeCircle(tipX, tipY, pulse + 4);
+      if (pose.special) {
+        this.graphics.lineStyle(3, 0xb7a6ee, 0.68);
+        this.graphics.strokeCircle(tipX, tipY, pulse + 13);
+      }
+    }
+  }
   update(time: number, delta: number) {
     const dt = Math.min(delta / 1000, 0.05);
     const input = readInput();
@@ -902,6 +993,7 @@ class ForestScene extends Phaser.Scene {
         p.cooldown > 0.2 && p.hero === 'panda' ? Math.sin(time * 0.05) * 7 : 0,
       );
       sprite.setTint(p.invulnerable > 0 ? 0xffcfb0 : 0xffffff);
+      this.renderWeapon(p, sprite, time);
       if (p.action === 'guard') {
         this.graphics.lineStyle(2, 0xb4dad1, 0.7);
         this.graphics.strokeCircle(sprite.x, sprite.y, 35);
@@ -971,6 +1063,9 @@ class ForestScene extends Phaser.Scene {
       if (!alive.has(id)) {
         sprite.destroy();
         this.sprites.delete(id);
+        this.weapons.get(id)?.destroy();
+        this.weapons.delete(id);
+        this.weaponTiming.delete(id);
         this.shadows.get(id)?.destroy();
         this.shadows.delete(id);
         this.labels.get(id)?.destroy();
@@ -1177,6 +1272,12 @@ function updateHud() {
   // Read-only observability used by browser tests and performance inspection.
   const hud = $('hud');
   hud.dataset.cameraZoom = String(scene.cameras.main.zoom);
+  hud.dataset.weaponVisible = String(scene.weapons.get(p.id)?.visible ?? false);
+  hud.dataset.weaponActive = String(
+    p.hp > 0 &&
+      p.cooldown > 0 &&
+      (p.action === 'attack' || p.action === 'special'),
+  );
   hud.dataset.playerId = p.id;
   hud.dataset.x = String(p.x);
   hud.dataset.y = String(p.y);
