@@ -147,3 +147,32 @@ See [V0.2.0.md](V0.2.0.md) for manual gameplay, migration and backup testing and
 - Phone HUD adapts, but existing touch movement remains unimplemented. Animation
   uses the current sprites with visual body lean rather than new skeletal art.
   No cross-device frame-rate guarantee or manual controller test is claimed.
+
+## Ape mage casting polish — 2026-10-08
+
+- Started from the latest `feat/premium-combat-hud` on
+  `feat/ape-mage-casting-polish`; shared/server code and dependency lockfile are
+  unchanged.
+- `npm ci`, `npm run typecheck`, `npm run lint`, `npm run format:check`,
+  `npm test` (60 tests including real WebSocket integration), and
+  `npm run build` passed locally. Host runtime remains Node 25.9.0; production
+  Docker builds use the existing Node 24 image.
+- Production and development Compose configuration checks passed. Both
+  production images built and `docker compose up -d --build --wait` succeeded.
+  `npm run test:docker` passed the actual nginx WebSocket save/restart/reconnect
+  test for both heroes.
+- Chromium: all 13 browser tests passed on production, including existing
+  Panda/HUD, sound, progression, multiplayer and reconnect regressions plus
+  normal/special Ape cast pulses and staff pose bounds.
+- Reviewed idle, normal cast and special captures linked in
+  [APE_MAGE_CASTING.md](APE_MAGE_CASTING.md). Staff motion is restrained and faces
+  remain readable. Unit tests sample both casts in all eight directions, verify
+  compact amplitude and continuity, and cover release deduplication, empty mana,
+  hostile magic, reconnect baselines and rollback.
+- Initial pose assertions exposed signed zero at rest (normalized in code) and
+  overly tight floating-point/movement tolerances (corrected to sub-pixel
+  tolerances). These initial failures are not counted as passing runs.
+- Existing sprite arms/head are retained; no separate off-hand rig was added.
+  The authority releases immediately, so visual channeling never delays a spell,
+  sound, mana spend or damage. No manual gamepad/performance certification is
+  claimed.

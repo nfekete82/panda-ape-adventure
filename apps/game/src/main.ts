@@ -48,6 +48,7 @@ import { playSoundCue } from './sound-effects';
 import { StatusPresentation, statusPercent } from './hud';
 import { CombatFeedback } from './combat-feedback';
 import { WeaponTrails } from './weapon-trails';
+import { MageEffects, drawMageProjectile, isMageBloom } from './mage-effects';
 import './style.css';
 const statusPresentation = new StatusPresentation();
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -734,6 +735,7 @@ class ForestScene extends Phaser.Scene {
   weaponTiming = new Map<string, WeaponTiming>();
   feedback = new CombatFeedback();
   trails = new WeaponTrails();
+  mageEffects = new MageEffects();
   labels = new Map<string, Phaser.GameObjects.Text>();
   shadows = new Map<string, Phaser.GameObjects.Ellipse>();
   graphics!: Phaser.GameObjects.Graphics;
@@ -900,6 +902,12 @@ class ForestScene extends Phaser.Scene {
     if (p.id === playerId) {
       $('hud').dataset.weaponTrail = String(pose.trail);
       $('hud').dataset.weaponProgress = String(pose.progress);
+      $('hud').dataset.castPulse = String(
+        this.mageEffects.pulse(p.id, time).strength,
+      );
+      $('hud').dataset.staffAngle = String(
+        pose.rotation - pose.facingAngle - Math.PI / 2,
+      );
     }
     if (p.hp <= 0) {
       weapon.setVisible(false);
@@ -930,45 +938,16 @@ class ForestScene extends Phaser.Scene {
         reducedMotion.matches,
       );
     } else {
-      if (!pose.trail) return;
-      // The staff tip leads the cast. These sparks are entirely visual.
-      const tipAngle = pose.rotation - Math.PI / 2;
-      const tipX = weapon.x + Math.cos(tipAngle) * 47;
-      const tipY = weapon.y + Math.sin(tipAngle) * 47;
-      const released =
-        world.projectiles.some(
-          (bolt) => bolt.owner === p.id && bolt.life > 1.3,
-        ) ||
-        world.effects.some(
-          (effect) =>
-            effect.kind === 'magic' &&
-            effect.life > 0.25 &&
-            distance(effect, p) < 5,
-        );
-      const pulse = released ? 6 + Math.sin(time * 0.04) * 2 : 3;
-      for (let i = 0; i < 3; i++) {
-        const orbit = time * 0.006 + (i * Math.PI * 2) / 3;
-        this.graphics.fillStyle(
-          pose.special ? 0xc5b2f0 : 0xa2f6db,
-          reducedMotion.matches ? 0.25 : 0.6,
-        );
-        this.graphics.fillRect(
-          tipX + Math.cos(orbit) * 10,
-          tipY + Math.sin(orbit) * 6,
-          2,
-          2,
-        );
-      }
-      this.graphics.fillStyle(0x83dbc8, 0.19);
-      this.graphics.fillCircle(tipX, tipY, pulse + 9);
-      this.graphics.fillStyle(0xe5ffde, 0.9);
-      this.graphics.fillCircle(tipX, tipY, pulse * 0.45);
-      this.graphics.lineStyle(2, 0xa2f6db, 0.74);
-      if (released) this.graphics.strokeCircle(tipX, tipY, pulse + 4);
-      if (pose.special && released) {
-        this.graphics.lineStyle(3, 0xb7a6ee, 0.68);
-        this.graphics.strokeCircle(tipX, tipY, pulse + 13);
-      }
+      this.mageEffects.draw(
+        p.id,
+        this.graphics,
+        weapon.x,
+        weapon.y,
+        pose,
+        time,
+        reducedMotion.matches,
+        p.connected ? 1 : 0.35,
+      );
     }
   }
   update(time: number, delta: number) {
@@ -1030,6 +1009,7 @@ class ForestScene extends Phaser.Scene {
       if (soundEffects && audio)
         for (const cue of cues) playSoundCue(audio, cue, volume);
     }
+    this.mageEffects.observe(world, time);
     const confirmedHits = this.feedback.observe(world, time);
     const localHero = world.players.find((p) => p.id === playerId);
     if (
@@ -1248,6 +1228,8 @@ class ForestScene extends Phaser.Scene {
         );
     }
     for (const bolt of world.projectiles) {
+      if (world.players.some((p) => p.id === bolt.owner && p.hero === 'ape'))
+        drawMageProjectile(this.graphics, bolt, reducedMotion.matches);
       this.graphics.fillStyle(bolt.hostile ? 0xc492d8 : 0x90d9d4, 0.2);
       this.graphics.fillCircle(bolt.x, bolt.y, 14);
       this.graphics.fillStyle(bolt.hostile ? 0xf0d0f5 : 0xe0fff0);
@@ -1280,13 +1262,13 @@ class ForestScene extends Phaser.Scene {
             f.y + Math.sin(angle) * radius,
           );
         }
-      } else if (f.kind !== 'slash') {
-        // The equipped weapon now owns the slash crescent; avoid a second
+      } else if (f.kind !== 'slash' && !isMageBloom(f)) {
+        // Staff FX own Bloom; the sword owns its crescent; avoid a second
         // full circular melee effect over the character's face.
         this.graphics.lineStyle(3, color, a * 0.9);
         this.graphics.strokeCircle(f.x, f.y, f.radius * (1 - f.life * 0.7));
       }
-      if (f.kind === 'magic') {
+      if (f.kind === 'magic' && !isMageBloom(f)) {
         this.graphics.lineStyle(1, color, a * 0.5);
         this.graphics.strokeCircle(f.x, f.y, f.radius * 0.8);
       }

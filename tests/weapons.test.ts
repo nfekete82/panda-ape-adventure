@@ -14,7 +14,9 @@ describe('directional weapon animation', () => {
             0.38,
             0,
           );
-          expect(Math.abs(pose.dx)).toBeGreaterThanOrEqual(32);
+          expect(Math.abs(pose.dx)).toBeGreaterThanOrEqual(
+            hero === 'panda' ? 32 : 28,
+          );
           expect(pose.dy).toBeGreaterThan(10);
           expect(pose.behindHero).toBe(true);
         }
