@@ -128,7 +128,9 @@ export const obstacles: Obstacle[] = (() => {
     { x: 820, y: 920, w: 310, h: 170, kind: 'water' },
     { x: 1180, y: 1030, w: 240, h: 150, kind: 'water' },
   ];
-  for (let i = 0; i < 180; i++) {
+  // Keep the original seeded obstacle prefix but open up the crowded forest.
+  // Both server and browser import this same authoritative collision layout.
+  for (let i = 0; i < 140; i++) {
     const x = 50 + r() * 1820,
       y = 60 + r() * 1310;
     const path = Math.abs(y - (1120 - x * 0.46)) < 95;
