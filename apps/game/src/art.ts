@@ -4,6 +4,7 @@ import { WORLD } from '@panda/shared';
 import { paintForestWorld } from './environment-art';
 import { paintBambooCrossing } from './bamboo-art';
 import { paintBambooStand } from './bamboo-sprite';
+import { paintJadeWarden } from './shrine-art';
 import { conceptHero, conceptNpc } from './hero-design';
 import {
   paintWoodlandTree,
@@ -83,6 +84,9 @@ export function makeAssets(scene: Phaser.Scene) {
     paintWoodlandEnemy(ctx, kind);
     scene.textures.addCanvas(kind, c);
   }
+  const warden = canvas(64, 64);
+  paintJadeWarden(warden.ctx);
+  scene.textures.addCanvas('shrine-warden', warden.c);
   for (const [key, kind] of [
     ['npc', 'rowan'],
     ['bramble', 'bramble'],
