@@ -1,4 +1,24 @@
 import { test, expect } from '@playwright/test';
+test('curated forest art loads, animates and keeps the full game playable', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Begin adventure' }).click();
+  const hud = page.locator('#hud');
+  await expect(hud).toHaveAttribute('data-vendor-art', 'ready');
+  await expect
+    .poll(async () => Number(await hud.getAttribute('data-vendor-trees')))
+    .toBeGreaterThan(0);
+  await expect
+    .poll(async () => Number(await hud.getAttribute('data-vendor-enemies')))
+    .toBeGreaterThan(0);
+  await expect(page.locator('#game canvas')).toBeVisible();
+  await page.screenshot({ path: 'test-results/vendor-art-forest.png' });
+  expect(errors).toEqual([]);
+});
+
 test('Panda and Ape display equipped weapons while attacking', async ({
   page,
 }) => {
