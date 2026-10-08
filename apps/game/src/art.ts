@@ -142,7 +142,10 @@ export function makeAssets(scene: Phaser.Scene) {
   const worldAtlas: unknown = scene.textures.exists('vendor-world-tiles')
     ? scene.textures.get('vendor-world-tiles').getSourceImage()
     : undefined;
-  paintForestWorld(ctx, worldAtlas instanceof HTMLImageElement ? worldAtlas : undefined);
+  paintForestWorld(
+    ctx,
+    worldAtlas instanceof HTMLImageElement ? worldAtlas : undefined,
+  );
   scene.textures.addCanvas('forest', c);
   const tree = canvas(128, 160);
   const t = tree.ctx;
