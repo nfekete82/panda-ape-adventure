@@ -58,7 +58,10 @@ function cane(
 /** Three tree-family members share the same lighting and grounded root.
  * Palette, overall silhouette and feet placement are stable for multiplayer.
  */
-export function paintBambooStand(c: Canvas, variant: BambooVariant = 'leafy'): void {
+export function paintBambooStand(
+  c: Canvas,
+  variant: BambooVariant = 'leafy',
+): void {
   const stalks =
     variant === 'tall'
       ? [
