@@ -19,7 +19,14 @@ import {
 } from './bamboo-crossing.js';
 export * from './bamboo-crossing.js';
 export * from './rpg.js';
-import { createShrineWarden, prepareShrineQuest, interactShrine, shrineWardenDefeated, SHRINE_WARDEN_ID, type ShrineStage } from './shrine-quest.js';
+import {
+  createShrineWarden,
+  prepareShrineQuest,
+  interactShrine,
+  shrineWardenDefeated,
+  SHRINE_WARDEN_ID,
+  type ShrineStage,
+} from './shrine-quest.js';
 export * from './shrine-quest.js';
 export type Hero = 'panda' | 'ape';
 export type EnemyKind = 'slime' | 'wolf' | 'wisp' | 'guardian';
@@ -267,37 +274,39 @@ export function createWorld(respawn = RESPAWN): World {
     respawn: structuredClone(respawn),
     nextId: 0,
     players: [],
-    enemies: positions.map(([kind, x, y], i) => ({
-      id: `enemy${i}`,
-      kind,
-      x,
-      y,
-      spawn: { x, y },
-      hp:
-        positions.slice(0, i).filter(([other]) => other === kind).length >=
-        respawn[kind].maximum
-          ? 0
-          : kind === 'guardian'
+    enemies: positions
+      .map(([kind, x, y], i) => ({
+        id: `enemy${i}`,
+        kind,
+        x,
+        y,
+        spawn: { x, y },
+        hp:
+          positions.slice(0, i).filter(([other]) => other === kind).length >=
+          respawn[kind].maximum
+            ? 0
+            : kind === 'guardian'
+              ? 600
+              : kind === 'wolf'
+                ? 75
+                : kind === 'wisp'
+                  ? 55
+                  : 45,
+        maxHp:
+          kind === 'guardian'
             ? 600
             : kind === 'wolf'
               ? 75
               : kind === 'wisp'
                 ? 55
                 : 45,
-      maxHp:
-        kind === 'guardian'
-          ? 600
-          : kind === 'wolf'
-            ? 75
-            : kind === 'wisp'
-              ? 55
-              : 45,
-      cooldown: 1,
-      hurt: 0,
-      phase: 0,
-      respawnRemaining: respawn[kind].seconds,
-      generation: 0,
-    })).concat(createShrineWarden()),
+        cooldown: 1,
+        hurt: 0,
+        phase: 0,
+        respawnRemaining: respawn[kind].seconds,
+        generation: 0,
+      }))
+      .concat(createShrineWarden()),
     projectiles: [],
     loot: [
       { id: 'starter', x: 580, y: 1030, kind: 'potion', quantity: 1 },
