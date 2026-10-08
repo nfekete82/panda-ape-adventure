@@ -1272,9 +1272,7 @@ function updateHud() {
   // Read-only observability used by browser tests and performance inspection.
   const hud = $('hud');
   hud.dataset.cameraZoom = String(scene.cameras.main.zoom);
-  hud.dataset.weaponVisible = String(
-    scene.weapons.get(p.id)?.visible ?? false,
-  );
+  hud.dataset.weaponVisible = String(scene.weapons.get(p.id)?.visible ?? false);
   hud.dataset.weaponActive = String(
     p.hp > 0 &&
       p.cooldown > 0 &&
