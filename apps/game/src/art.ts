@@ -2,6 +2,8 @@ import sheets from '../../../assets/hero-sheets.json';
 import Phaser from 'phaser';
 import { WORLD } from '@panda/shared';
 import { paintForestWorld } from './environment-art';
+import { paintBambooCrossing } from './bamboo-art';
+import { paintBambooStand } from './bamboo-sprite';
 import { conceptHero, conceptNpc } from './hero-design';
 import {
   paintWoodlandTree,
@@ -91,7 +93,11 @@ export function makeAssets(scene: Phaser.Scene) {
   }
   const { c, ctx } = canvas(WORLD.width, WORLD.height);
   paintForestWorld(ctx);
+  paintBambooCrossing(ctx);
   scene.textures.addCanvas('forest', c);
+  const bamboo = canvas(TREE_FRAME.width, TREE_FRAME.height);
+  paintBambooStand(bamboo.ctx);
+  scene.textures.addCanvas('tree-bamboo', bamboo.c);
   for (const kind of ['broadleaf', 'conifer'] as const) {
     const tree = canvas(TREE_FRAME.width, TREE_FRAME.height);
     paintWoodlandTree(tree.ctx, kind);
