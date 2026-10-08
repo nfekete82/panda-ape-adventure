@@ -725,7 +725,10 @@ test('Bamboo Crossing bridge and mossbound shrine remain playable after loading 
       await page
         .getByRole('button', { name: 'Continue saved solo adventure' })
         .click();
-      await expect(page.locator('#hud')).toHaveAttribute('data-region', 'bamboo');
+      await expect(page.locator('#hud')).toHaveAttribute(
+        'data-region',
+        'bamboo',
+      );
       await expect(page.locator('#region-name')).toHaveText('BAMBOO CROSSING');
       await expect(page.locator('#region-label')).toHaveText('Bamboo Crossing');
       await expect(page.locator('#game canvas')).toBeVisible();
@@ -735,7 +738,9 @@ test('Bamboo Crossing bridge and mossbound shrine remain playable after loading 
       await page.keyboard.down('KeyD');
       try {
         await expect
-          .poll(async () => Number(await page.locator('#hud').getAttribute('data-x')))
+          .poll(async () =>
+            Number(await page.locator('#hud').getAttribute('data-x')),
+          )
           .toBeGreaterThan(x + 18);
       } finally {
         await page.keyboard.up('KeyD');
