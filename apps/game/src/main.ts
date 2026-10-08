@@ -30,7 +30,12 @@ import {
   type ClientMessage,
 } from '@panda/shared';
 import { makeAssets, heroArt, heroFrame, preloadHeroSheets } from './art';
-import { makeWeaponTextures, weaponPose, type WeaponPose } from './weapons';
+import {
+  makeWeaponTextures,
+  weaponAnimation,
+  type WeaponPose,
+  type WeaponTiming,
+} from './weapons';
 import {
   VENDOR_SPRITES,
   preloadVendorArt,
@@ -698,7 +703,7 @@ class ForestScene extends Phaser.Scene {
   ambient: Phaser.GameObjects.Sprite[] = [];
   sprites = new Map<string, Phaser.GameObjects.Sprite>();
   weapons = new Map<string, Phaser.GameObjects.Image>();
-  weaponTiming = new Map<string, { cooldown: number; special: boolean }>();
+  weaponTiming = new Map<string, WeaponTiming>();
   labels = new Map<string, Phaser.GameObjects.Text>();
   shadows = new Map<string, Phaser.GameObjects.Ellipse>();
   graphics!: Phaser.GameObjects.Graphics;
@@ -756,8 +761,7 @@ class ForestScene extends Phaser.Scene {
       }
     }
     this.add
-      .sprite(WORLD.smith.x, WORLD.smith.y, 'npc')
-      .setTint(0xd5af7d)
+      .sprite(WORLD.smith.x, WORLD.smith.y, 'bramble')
       .setDepth(WORLD.smith.y);
     this.add
       .text(WORLD.smith.x, WORLD.smith.y - 40, 'BRAMBLE · FORGE', {
@@ -850,6 +854,7 @@ class ForestScene extends Phaser.Scene {
     p: Player,
     sprite: Phaser.GameObjects.Sprite,
     time: number,
+    pose: WeaponPose,
   ): void {
     let weapon = this.weapons.get(p.id);
     if (!weapon) {
@@ -867,28 +872,12 @@ class ForestScene extends Phaser.Scene {
       this.weaponTiming.delete(p.id);
       return;
     }
-    const normalCooldown = combatStats(p).cooldown;
-    const last = this.weaponTiming.get(p.id);
-    // Preserve special-attack timing across subsequent authoritative snapshots:
-    // simulation action returns to "attack" while the 1.1s cast is cooling down.
-    const newSwing =
-      !last || p.cooldown > last.cooldown + 0.06 || last.cooldown <= 0;
-    const special = newSwing
-      ? p.action === 'special' || p.cooldown > normalCooldown + 0.08
-      : last.special;
-    this.weaponTiming.set(p.id, { cooldown: p.cooldown, special });
-    const pose: WeaponPose = weaponPose(
-      p.hero,
-      p.facing,
-      p.action,
-      p.cooldown,
-      normalCooldown,
-      time,
-      special,
-    );
     weapon
       .setVisible(true)
-      .setPosition(sprite.x + pose.dx, sprite.y + pose.dy)
+      .setPosition(
+        sprite.x + pose.bodyDx + pose.dx,
+        sprite.y + pose.bodyDy + pose.dy,
+      )
       .setRotation(pose.rotation)
       .setScale(p.hero === 'panda' ? 0.96 : 0.9)
       .setDepth(sprite.depth + (pose.behindHero ? -1 : 1))
@@ -896,22 +885,23 @@ class ForestScene extends Phaser.Scene {
 
     if (!pose.trail) return;
     if (p.hero === 'panda') {
-      // Draw the steel's moving edge as a brief directional arc.
-      const center = pose.facingAngle - 1.12 + pose.sweep * 2.25;
-      for (let i = 0; i < 7; i++) {
-        const a = center - i * 0.09;
-        const b = center - (i + 1) * 0.09;
-        const radius = 55;
+      // A short tapered crescent follows the actual blade around the grip,
+      // outside the face. It fades with strike speed instead of lingering.
+      const tipAngle = pose.rotation - Math.PI / 2;
+      for (let i = 0; i < 9; i++) {
+        const a = tipAngle - i * 0.065;
+        const b = a - 0.065;
+        const radius = 53;
         this.graphics.lineStyle(
-          Math.max(1, 6 - i),
-          i < 3 ? 0xfceac0 : 0xa4d6d4,
-          (0.75 - i * 0.08) * (p.connected ? 1 : 0.35),
+          Math.max(1, 4 - i * 0.35),
+          i < 3 ? 0xfff1d2 : 0xa4d6d4,
+          pose.trailAlpha * (1 - i / 10) * (p.connected ? 1 : 0.35),
         );
         this.graphics.lineBetween(
-          sprite.x + Math.cos(a) * radius,
-          sprite.y - 8 + Math.sin(a) * radius,
-          sprite.x + Math.cos(b) * radius,
-          sprite.y - 8 + Math.sin(b) * radius,
+          weapon.x + Math.cos(a) * radius,
+          weapon.y + Math.sin(a) * radius,
+          weapon.x + Math.cos(b) * radius,
+          weapon.y + Math.sin(b) * radius,
         );
       }
     } else {
@@ -934,6 +924,9 @@ class ForestScene extends Phaser.Scene {
   }
   update(time: number, delta: number) {
     const dt = Math.min(delta / 1000, 0.05);
+    if (paused && mode === 'solo')
+      for (const timing of this.weaponTiming.values())
+        timing.startedAt += delta;
     const input = readInput();
     if (mode === 'solo' && !paused) {
       this.accumulator += dt;
@@ -1036,11 +1029,26 @@ class ForestScene extends Phaser.Scene {
       sprite.setScale(1.22);
       this.shadows.get(p.id)?.setScale(1.2, 1.1);
       sprite.setAlpha(p.connected ? 1 : 0.35);
-      sprite.setAngle(
-        p.cooldown > 0.2 && p.hero === 'panda' ? Math.sin(time * 0.05) * 7 : 0,
+      const animation = weaponAnimation(
+        p.hero,
+        p.facing,
+        p.hp > 0 ? p.action : 'downed',
+        p.cooldown,
+        combatStats(p).cooldown,
+        time,
+        this.weaponTiming.get(p.id),
       );
+      if (p.hp > 0) this.weaponTiming.set(p.id, animation.timing);
+      const pose = animation.pose;
+      // Shift only the texture origin: interpolation, collision and camera
+      // continue to use the authoritative/predicted world position.
+      sprite.setOrigin(
+        0.5 - pose.bodyDx / (64 * 1.22),
+        0.5 - pose.bodyDy / (64 * 1.22),
+      );
+      sprite.setAngle(pose.bodyAngle);
       sprite.setTint(p.invulnerable > 0 ? 0xffcfb0 : 0xffffff);
-      this.renderWeapon(p, sprite, time);
+      this.renderWeapon(p, sprite, time, pose);
       if (p.action === 'guard') {
         this.graphics.lineStyle(2, 0xb4dad1, 0.7);
         this.graphics.strokeCircle(sprite.x, sprite.y, 35);
@@ -1060,7 +1068,8 @@ class ForestScene extends Phaser.Scene {
         this.labels.set(p.id, label);
       }
       label
-        .setPosition(sprite.x, sprite.y - 53)
+        // Names sit below the boots, leaving hero and nearby NPC faces clear.
+        .setPosition(sprite.x, sprite.y + 45)
         .setText(
           `${p.hero === 'panda' ? 'Panda' : 'Ape'}${p.id === playerId ? ' · YOU' : p.id === 'companion' ? ' · COMPANION' : !p.connected ? ' · OFFLINE' : ' · FRIEND'}`,
         );
@@ -1101,6 +1110,8 @@ class ForestScene extends Phaser.Scene {
       sprite.setTint(e.hurt > 0 ? 0xffd8b4 : 0xffffff);
       if (e.kind === 'slime')
         sprite.scaleY = sprite.scaleX * (1 + Math.sin(time * 0.003) * 0.045);
+      // A small impact compression follows only confirmed enemy hurt state.
+      sprite.scaleY *= 1 - Math.sin(Math.min(1, e.hurt / 0.2) * Math.PI) * 0.07;
       const width = e.kind === 'guardian' ? 94 : 46;
       this.graphics.fillStyle(0x183029, 0.8);
       this.graphics.fillRect(
@@ -1185,8 +1196,25 @@ class ForestScene extends Phaser.Scene {
             : f.kind === 'heal'
               ? 0xaedcb0
               : 0xb9e7d5;
-      this.graphics.lineStyle(f.kind === 'slash' ? 5 : 3, color, a * 0.9);
-      this.graphics.strokeCircle(f.x, f.y, f.radius * (1 - f.life * 0.7));
+      if (f.kind === 'hit') {
+        const fade = Math.min(1, a);
+        const radius = 5 + (1 - fade) * 10;
+        this.graphics.lineStyle(2, color, fade * 0.65);
+        for (let n = 0; n < 4; n++) {
+          const angle = Math.PI / 4 + (n * Math.PI) / 2;
+          this.graphics.lineBetween(
+            f.x + Math.cos(angle) * radius * 0.45,
+            f.y + Math.sin(angle) * radius * 0.45,
+            f.x + Math.cos(angle) * radius,
+            f.y + Math.sin(angle) * radius,
+          );
+        }
+      } else if (f.kind !== 'slash') {
+        // The equipped weapon now owns the slash crescent; avoid a second
+        // full circular melee effect over the character's face.
+        this.graphics.lineStyle(3, color, a * 0.9);
+        this.graphics.strokeCircle(f.x, f.y, f.radius * (1 - f.life * 0.7));
+      }
       if (f.kind === 'magic') {
         this.graphics.lineStyle(1, color, a * 0.5);
         this.graphics.strokeCircle(f.x, f.y, f.radius * 0.8);

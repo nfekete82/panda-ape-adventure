@@ -1,4 +1,42 @@
-# Executed validation — Emerald Forest cleanup, 8 October 2026
+# Executed validation — character/combat polish, 8 October 2026
+
+| Check                                        | Actual result                                                                          |
+| -------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `npm run typecheck`                          | Passed with strict TypeScript/noUncheckedIndexedAccess                                 |
+| `npm run lint`                               | Passed                                                                                 |
+| `npm run format:check`                       | Passed                                                                                 |
+| `npm test` on host                           | 45 tests passed across 8 files, including real WebSockets                              |
+| Tests in isolated Node 24 development image  | Same 45 tests passed                                                                   |
+| `npm run build`                              | Shared, server and game production builds passed                                       |
+| Production Chromium suite                    | All 9 scenarios passed against nginx                                                   |
+| Production/development Compose configuration | Both checks passed                                                                     |
+| Production server/web and development images | Built locally on ARM64; production stack healthy                                       |
+| `npm run test:docker`                        | Two-player save/restart/reconnect passed with progression and enemy-state comparisons  |
+| Hero eye raster check in Chromium            | Both eye highlights present in all 40 Panda/Ape front/side walk frames                 |
+| Visual review                                | Character/attack phase sheet, live production camp and confirmed melee strike reviewed |
+
+Host checks ran on macOS/Apple Silicon with Node 25.9.0; container tests use the
+Node 24 image. Installed Phaser 4.2.1 sources/declarations were inspected for
+origin, transform and canvas texture APIs. New weapon tests cover continuous
+phase boundaries in all eight directions, return to idle, coupled body motion,
+frame advancement between held snapshots, special timing, stale-snapshot expiry, fast upgraded attacks
+and downed cancellation. Existing combat, collision, multiplayer, progression
+and persistence checks still pass. Browser checks finished before production
+restart validation.
+
+Local image execution covers ARM64. AMD64, Safari and Firefox were not run in
+this pass. Face pixel checks and pose images used the actual procedural art
+functions through a local Vite preview; they are executed inspection, not new
+automated golden-image tests. Production screenshots and provenance are linked
+in [CHARACTER_COMBAT_POLISH.md](CHARACTER_COMBAT_POLISH.md).
+
+The first animation test fixture compared signed zero with positive zero;
+assertions now compare the numeric displacement. An initial ad hoc combat
+capture attempted to replace storage in an already-running solo game, whose
+unload save overwrote the fixture. A fresh browser initialization produced the
+confirmed-hit capture. Only completed successful checks are counted above.
+
+# Earlier validation — Emerald Forest cleanup, 8 October 2026
 
 Final source checks ran on macOS / Apple Silicon with host Node 25.9.0. The same
 41-test suite also passed in an isolated development image using Node 24.21.0.

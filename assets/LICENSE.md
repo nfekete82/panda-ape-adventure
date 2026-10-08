@@ -36,3 +36,12 @@ Selected PNGs from `Sunnyside_World_ASSET_PACK_V2.1.zip` are imported into `apps
 - Retain a working procedural fallback while converting existing world scenes and enemies; avoid altering server-authoritative collision and RPG logic.
 - System fonts and dependencies keep their respective licenses.
 - No Secret of Mana artwork, characters, maps, music or assets are reproduced.
+
+## Original character and combat polish
+
+The Rowan guide and Bramble smith designs, hero facial refinements and rendering
+of attack crescents/impact sparks are original procedural artwork created in
+`apps/game/src/hero-design.ts`, `apps/game/src/weapons.ts` and
+`apps/game/src/main.ts`, with textures generated through `art.ts`. They use
+CC0-1.0, as above. No external images, new reference assets or generated bitmap
+assets were introduced. Source code remains under the repository MIT license.
