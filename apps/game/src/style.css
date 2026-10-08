@@ -706,3 +706,177 @@ dialog button:disabled {
 #rpg-status {
   color: #f1cb65;
 }
+/* Readability pass: readable RPG HUD at desktop/40-inch monitor sizes. */
+.player-panel {
+  top: 96px;
+  left: 24px;
+  width: 310px;
+  padding: 14px 16px;
+  gap: 12px;
+}
+.player-panel > canvas {
+  width: 72px;
+  height: 72px;
+}
+.player-name strong {
+  font-size: 24px;
+}
+.player-name > span {
+  font-size: 12px;
+}
+.bar {
+  height: 13px;
+}
+.health b {
+  font-size: 10px;
+  line-height: 13px;
+}
+.mana {
+  height: 7px;
+}
+.xp {
+  height: 5px;
+}
+.quest {
+  top: 96px;
+  right: 24px;
+  width: 310px;
+  padding: 20px 22px;
+}
+.quest .eyebrow {
+  font-size: 10px;
+}
+.quest strong {
+  font-size: 22px;
+}
+.quest p {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.room {
+  top: 218px;
+  left: 24px;
+  padding: 14px 19px;
+  min-width: 210px;
+}
+.room > span {
+  font-size: 10px;
+}
+.room strong {
+  font-size: 20px;
+}
+.room small,
+.room button {
+  font-size: 12px;
+}
+.quickbar {
+  bottom: 26px;
+  gap: 10px;
+  padding: 12px;
+}
+.quickbar button {
+  min-width: 84px;
+  padding: 12px;
+}
+.quickbar kbd {
+  font-size: 11px;
+}
+.quickbar strong {
+  font-size: 13px;
+}
+.controls {
+  font-size: 11px;
+}
+.controls small {
+  font-size: 9px;
+}
+#interact-hint,
+#notice {
+  font-size: 14px;
+}
+.region-tag {
+  bottom: 30px;
+  font-size: 25px;
+}
+.region-tag small {
+  font-size: 10px;
+}
+.location {
+  font-size: 12px;
+}
+.location small {
+  font-size: 10px;
+}
+dialog {
+  width: min(520px, 92vw);
+}
+dialog p,
+dialog label {
+  font-size: 14px;
+}
+dialog .inventory-row small {
+  font-size: 12px;
+}
+#modal-content output {
+  min-width: 45px;
+  color: #ecd29a;
+  text-align: right;
+}
+#camera-zoom {
+  min-width: 110px;
+  accent-color: #d3b578;
+}
+@media (max-width: 850px) {
+  .player-panel {
+    left: 12px;
+    width: 260px;
+    padding: 10px;
+  }
+  .player-panel > canvas {
+    width: 58px;
+    height: 58px;
+  }
+  .player-name strong {
+    font-size: 20px;
+  }
+  .quest {
+    right: 12px;
+    width: 225px;
+    padding: 14px;
+  }
+  .quest strong {
+    font-size: 18px;
+  }
+  .room {
+    left: 12px;
+    top: 198px;
+  }
+  .quickbar {
+    bottom: 18px;
+    gap: 5px;
+    padding: 7px;
+  }
+  .quickbar button {
+    min-width: 65px;
+    padding: 9px;
+  }
+  .quickbar strong {
+    font-size: 11px;
+  }
+  .region-tag {
+    display: none;
+  }
+}
+@media (max-width: 560px) {
+  .quest {
+    top: 240px;
+    max-width: calc(100vw - 24px);
+  }
+  .room {
+    top: 180px;
+    padding: 10px;
+  }
+  .controls {
+    display: none;
+  }
+}

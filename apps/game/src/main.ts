@@ -49,6 +49,7 @@ let pending: { input: Input; dt: number }[] = [],
 
 let music = false,
   volume = 0.25,
+  cameraZoom = 1.5,
   audio: AudioContext | undefined,
   audioTimer: ReturnType<typeof setInterval> | undefined;
 const keys = new Set<string>(),
@@ -99,15 +100,38 @@ function safeSession(key: string, value?: string): string | null {
     return null;
   }
 }
+function applyCameraZoom() {
+  // Cover the entire viewport even on ultrawide screens without exposing map edges.
+  if (!scene) return;
+  scene.cameras.main.setZoom(
+    Math.max(
+      cameraZoom,
+      scene.scale.width / WORLD.width,
+      scene.scale.height / WORLD.height,
+    ),
+  );
+}
+function persistSettings() {
+  safeStorage('panda-settings', JSON.stringify({ music, volume, cameraZoom }));
+}
 const settings = safeStorage('panda-settings');
 if (settings) {
   try {
-    const saved = JSON.parse(settings) as { music: boolean; volume: number };
+    const saved = JSON.parse(settings) as {
+      music: boolean;
+      volume: number;
+      cameraZoom?: number;
+    };
     music = saved.music === true;
     volume =
       typeof saved.volume === 'number'
         ? Math.max(0, Math.min(1, saved.volume))
         : 0.25;
+    if (
+      typeof saved.cameraZoom === 'number' &&
+      Number.isFinite(saved.cameraZoom)
+    )
+      cameraZoom = Math.max(1.1, Math.min(1.9, saved.cameraZoom));
   } catch {
     /* Use defaults. */
   }
@@ -153,7 +177,7 @@ function enterGame() {
   pulses.clear();
   paused = false;
   startAudio();
-  scene.cameras.main.setZoom(1);
+  applyCameraZoom();
   notify('Welcome to Emerald Forest. Talk to Rowan at the camp.');
 }
 function startSolo(saved = false) {
@@ -468,16 +492,22 @@ $('modal').addEventListener('cancel', () => {
 });
 function settingsModal() {
   showModal(
-    `<div class="eyebrow">TAKE A BREATH</div><h2>${mode === 'menu' ? 'Settings' : 'Adventure paused'}</h2><p>${mode === 'online' ? 'Your hero stops moving. Your co-op world continues while this menu is open.' : 'The forest will wait for you.'}</p><label>Forest music & sound<input id="music" type="checkbox" ${music ? 'checked' : ''}></label><label>Volume<input id="volume" type="range" min="0" max="1" step="0.05" value="${volume}"></label>${mode === 'solo' ? '<label>AI companion<input id="companion-toggle" type="checkbox" ' + (world.players.some((p) => p.id === 'companion') ? 'checked' : '') + '></label>' : ''}<button id="resume-button">${mode === 'menu' ? 'Back' : 'Resume adventure'} →</button>${mode !== 'menu' ? '<button id="save-button">Save progress</button><button id="exit-button">Return to title</button>' : ''}<p>WASD / arrows: move · Space / left click: attack<br>Q: special · R: potion / revive · E: talk<br>Shift: shield (Panda) · I: inventory · Esc: pause<br>Gamepad: left stick, A attack, X special, B potion, Y talk.</p>`,
+    `<div class="eyebrow">TAKE A BREATH</div><h2>${mode === 'menu' ? 'Settings' : 'Adventure paused'}</h2><p>${mode === 'online' ? 'Your hero stops moving. Your co-op world continues while this menu is open.' : 'The forest will wait for you.'}</p><label>Forest music & sound<input id="music" type="checkbox" ${music ? 'checked' : ''}></label><label>Volume<input id="volume" type="range" min="0" max="1" step="0.05" value="${volume}"></label><label>Camera zoom <output id="zoom-value">${Math.round(cameraZoom * 100)}%</output><input id="camera-zoom" aria-label="Camera zoom" type="range" min="1.1" max="1.9" step="0.05" value="${cameraZoom}"></label>${mode === 'solo' ? '<label>AI companion<input id="companion-toggle" type="checkbox" ' + (world.players.some((p) => p.id === 'companion') ? 'checked' : '') + '></label>' : ''}<button id="resume-button">${mode === 'menu' ? 'Back' : 'Resume adventure'} →</button>${mode !== 'menu' ? '<button id="save-button">Save progress</button><button id="exit-button">Return to title</button>' : ''}<p>WASD / arrows: move · Space / left click: attack<br>Q: special · R: potion / revive · E: talk<br>Shift: shield (Panda) · I: inventory · Esc: pause<br>Gamepad: left stick, A attack, X special, B potion, Y talk.</p>`,
   );
   $<HTMLInputElement>('music').onchange = (e) => {
     music = (e.target as HTMLInputElement).checked;
     startAudio();
-    safeStorage('panda-settings', JSON.stringify({ music, volume }));
+    persistSettings();
   };
   $<HTMLInputElement>('volume').oninput = (e) => {
     volume = Number((e.target as HTMLInputElement).value);
-    safeStorage('panda-settings', JSON.stringify({ music, volume }));
+    persistSettings();
+  };
+  $<HTMLInputElement>('camera-zoom').oninput = (e) => {
+    cameraZoom = Number((e.target as HTMLInputElement).value);
+    $('zoom-value').textContent = `${Math.round(cameraZoom * 100)}%`;
+    if (mode !== 'menu') applyCameraZoom();
+    persistSettings();
   };
   $('resume-button').onclick = closeModal;
   if (mode !== 'menu') {
@@ -690,16 +720,28 @@ class ForestScene extends Phaser.Scene {
     this.add
       .text(WORLD.smith.x, WORLD.smith.y - 48, 'BRAMBLE · FORGE', {
         fontFamily: 'Georgia',
-        fontSize: '12px',
+        fontSize: '15px',
         color: '#f3d9a0',
+        stroke: '#172b24',
+        strokeThickness: 4,
       })
       .setOrigin(0.5)
       .setDepth(WORLD.smith.y + 1);
     this.add.sprite(WORLD.npc.x, WORLD.npc.y, 'npc').setDepth(WORLD.npc.y);
+    // Quiet ground markers establish where to interact without covering the art.
+    for (const [x, y, color] of [
+      [WORLD.npc.x, WORLD.npc.y, 0xdcc88e],
+      [WORLD.smith.x, WORLD.smith.y, 0xe5aa6f],
+    ] as const) {
+      this.add
+        .ellipse(x, y + 15, 56, 19, color, 0.12)
+        .setStrokeStyle(2, color, 0.42)
+        .setDepth(y - 1);
+    }
     this.add
       .text(WORLD.npc.x, WORLD.npc.y - 48, 'ROWAN', {
         fontFamily: 'Georgia',
-        fontSize: '12px',
+        fontSize: '15px',
         color: '#e8d4a0',
         stroke: '#253f2c',
         strokeThickness: 4,
@@ -720,6 +762,9 @@ class ForestScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
     this.cameras.main.startFollow(this.cameraTarget, true, 0.08, 0.08);
     this.cameras.main.setZoom(0.85);
+    this.scale.on('resize', () => {
+      if (mode !== 'menu') applyCameraZoom();
+    });
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (mode !== 'menu' && !paused) {
         mouseDown = true;
@@ -850,6 +895,8 @@ class ForestScene extends Phaser.Scene {
               : p.action;
       const frame = heroFrame(p.hero, state, dir, time);
       const sprite = this.entity(p.id, pos.x, pos.y, p.hero, frame, dt);
+      sprite.setScale(1.22);
+      this.shadows.get(p.id)?.setScale(1.2, 1.1);
       sprite.setAlpha(p.connected ? 1 : 0.35);
       sprite.setAngle(
         p.cooldown > 0.2 && p.hero === 'panda' ? Math.sin(time * 0.05) * 7 : 0,
@@ -864,7 +911,7 @@ class ForestScene extends Phaser.Scene {
         label = this.add
           .text(pos.x, pos.y - 44, '', {
             fontFamily: 'Arial',
-            fontSize: '10px',
+            fontSize: '13px',
             color: '#f0e4c2',
             stroke: '#183d2b',
             strokeThickness: 3,
@@ -874,7 +921,7 @@ class ForestScene extends Phaser.Scene {
         this.labels.set(p.id, label);
       }
       label
-        .setPosition(sprite.x, sprite.y - 43)
+        .setPosition(sprite.x, sprite.y - 53)
         .setText(
           `${p.hero === 'panda' ? 'Panda' : 'Ape'}${p.id === playerId ? ' · YOU' : p.id === 'companion' ? ' · COMPANION' : !p.connected ? ' · OFFLINE' : ' · FRIEND'}`,
         );
@@ -894,21 +941,24 @@ class ForestScene extends Phaser.Scene {
         0,
         dt,
       );
-      sprite.setScale(e.kind === 'guardian' ? 1.7 : 1);
+      sprite.setScale(
+        e.kind === 'guardian' ? 1.8 : e.kind === 'slime' ? 1.15 : 1.23,
+      );
       sprite.setTint(e.hurt > 0 ? 0xffd8b4 : 0xffffff);
-      if (e.kind === 'slime') sprite.scaleY = 1 + Math.sin(time * 0.003) * 0.05;
-      const width = e.kind === 'guardian' ? 90 : 38;
+      if (e.kind === 'slime')
+        sprite.scaleY = 1.15 + Math.sin(time * 0.003) * 0.05;
+      const width = e.kind === 'guardian' ? 94 : 46;
       this.graphics.fillStyle(0x183029, 0.8);
       this.graphics.fillRect(
         sprite.x - width / 2,
-        sprite.y - (e.kind === 'guardian' ? 70 : 39),
+        sprite.y - (e.kind === 'guardian' ? 78 : 48),
         width,
         4,
       );
       this.graphics.fillStyle(e.kind === 'guardian' ? 0xc5a571 : 0xb49b75);
       this.graphics.fillRect(
         sprite.x - width / 2,
-        sprite.y - (e.kind === 'guardian' ? 70 : 39),
+        sprite.y - (e.kind === 'guardian' ? 78 : 48),
         (width * e.hp) / e.maxHp,
         4,
       );
@@ -928,6 +978,14 @@ class ForestScene extends Phaser.Scene {
       }
     for (const item of world.loot) {
       const y = item.y + Math.sin(time * 0.003 + item.x) * 3;
+      this.graphics.fillStyle(0x11281f, 0.6);
+      this.graphics.fillCircle(item.x, y + 4, 12);
+      this.graphics.lineStyle(2, 0xf2db9b, 0.55);
+      this.graphics.strokeCircle(
+        item.x,
+        y,
+        14 + Math.sin(time * 0.004 + item.x) * 1.5,
+      );
       this.graphics.fillStyle(
         item.kind === 'potion'
           ? 0xe6b19b
@@ -1018,6 +1076,22 @@ class ForestScene extends Phaser.Scene {
       this.graphics.fillRect(x, y, 2, 2);
     }
     const local = world.players.find((p) => p.id === playerId);
+    if (local && mode !== 'menu') {
+      // Nearby NPCs get a subtle animated ground ring, not permanent UI clutter.
+      for (const [x, y, color] of [
+        [WORLD.npc.x, WORLD.npc.y, 0xf0d99e],
+        [WORLD.smith.x, WORLD.smith.y, 0xeeb67c],
+      ] as const) {
+        if (Math.hypot(local.x - x, local.y - y) > 205) continue;
+        this.graphics.lineStyle(3, color, 0.75);
+        this.graphics.strokeEllipse(
+          x,
+          y + 16,
+          70 + Math.sin(time * 0.004) * 5,
+          28,
+        );
+      }
+    }
     if (local) {
       const pos = mode === 'online' ? predicted : local;
       this.cameraTarget.x = mode === 'menu' ? 740 : pos.x;
@@ -1054,8 +1128,14 @@ function updateHud() {
         : world.quest === 'complete'
           ? 'Return to Rowan for your reward.'
           : 'Find the guardian in the northeast ruins.';
-  $('interact-hint').hidden =
-    Math.min(distance(p, WORLD.npc), distance(p, WORLD.smith)) > 90;
+  const nearRowan = distance(p, WORLD.npc) <= 90;
+  const nearSmith = distance(p, WORLD.smith) <= 90;
+  $('interact-hint').hidden = !(nearRowan || nearSmith);
+  $('interact-hint').textContent =
+    nearSmith &&
+    (!nearRowan || distance(p, WORLD.smith) < distance(p, WORLD.npc))
+      ? 'E · Talk to Bramble / Improve weapon'
+      : 'E · Talk to Rowan';
   if (
     $<HTMLDialogElement>('modal').open &&
     document.getElementById('upgrade-weapon') &&
@@ -1096,6 +1176,7 @@ function updateHud() {
     );
   // Read-only observability used by browser tests and performance inspection.
   const hud = $('hud');
+  hud.dataset.cameraZoom = String(scene.cameras.main.zoom);
   hud.dataset.playerId = p.id;
   hud.dataset.x = String(p.x);
   hud.dataset.y = String(p.y);
