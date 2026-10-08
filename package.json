@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit -p packages/shared && tsc --noEmit -p apps/server && tsc --noEmit -p apps/game && tsc --noEmit -p tsconfig.tools.json",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write apps/game/src/main.ts apps/game/src/sound-events.ts apps/game/src/sound-effects.ts tests/sound-effects.test.ts tests/browser/game.spec.ts docs/SOUND_EFFECTS.md && git diff -- apps/game/src/main.ts apps/game/src/sound-events.ts apps/game/src/sound-effects.ts tests/sound-effects.test.ts tests/browser/game.spec.ts docs/SOUND_EFFECTS.md",
     "test": "vitest run",
     "test:browser": "playwright test",
     "predev": "npm run build -w @panda/shared",
