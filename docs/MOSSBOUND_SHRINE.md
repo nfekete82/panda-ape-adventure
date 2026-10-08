@@ -17,7 +17,7 @@ The quest display switches to the shrine steps **only while in the bamboo region
 
 - New optional world field `shrine` (`dormant | hunting | return | blessed`), preserved in saves and propagated through ordinary co-op world snapshots. Existing saves without this field automatically upgrade to `dormant` during migration; old worlds also gain the dormant Warden as needed.
 - Stable ID `shrine-warden`, using the existing wisp ranged combat class, with a **unique original pixel-art sprite**. It does not respawn and has no random drops or phantom boss-reset interactions.
-- Unique quest reward has a persistent world state and a per-player receipt guard, so holding E, reconnecting or revisiting the altar cannot repeatedly grant points.
+- Unique quest reward has a persistent world state and a **permanent per-character receipt** (`milestone:grove-blessing:v1`), so holding E, reconnecting, revisiting the altar or starting another adventure cannot repeatedly grant points.
 - Players already in a shared room receive the reward when it is claimed. Later joiners do not retroactively receive a prior world quest reward.
 - All interactions, health, damage, reward allocation and status changes run in the authoritative `step()`; the client draws only informational UI, glow, runes, particles and an event-derived short 3-tone magic chime.
 - Reduced-motion support freezes rune orbit/particles. No external audio files or assets, additional deps, network packet types or new controls required.
