@@ -14,9 +14,24 @@ export const BAMBOO_SHRINE_CLEARING: Bounds = {
   h: 230,
 };
 
+/** Shared centerline and variable-width banks for both visuals and collisions.
+ * The bridge is the only dry crossing; curvature fades gently near its deck.
+ */
 export function bambooRiverSpan(y: number): { left: number; right: number } {
-  const bend = Math.round(Math.sin(y / 105) * 14 + Math.sin(y / 47) * 5);
-  return { left: 2224 + bend, right: 2360 + bend };
+  const fromBridge = y - (BAMBOO_BRIDGE.y + BAMBOO_BRIDGE.h / 2);
+  const center =
+    2285 +
+    Math.sin(fromBridge / 136) * 35 +
+    Math.sin(fromBridge / 59) * 11 +
+    Math.sin(fromBridge / 310) * 13;
+  const halfWidth =
+    66 +
+    Math.sin(fromBridge / 178) * 12 +
+    (1 - Math.cos(fromBridge / 110)) * 5;
+  return {
+    left: Math.round(center - halfWidth),
+    right: Math.round(center + halfWidth),
+  };
 }
 
 /** The river flows under the bridge; only the full deck is collision-free. */
