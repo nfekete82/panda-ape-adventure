@@ -7,6 +7,7 @@ import {
   damageEnemy,
   collides,
   SHRINE_WARDEN_ID,
+  SHRINE_BLESSING_RECEIPT,
   SHRINE_WARDEN_SPAWN,
   BAMBOO_SHRINE,
   interactShrine,
@@ -75,7 +76,7 @@ describe('Mossbound Shrine adventure', () => {
       expect(hero.points).toBe(5); // 2 Grove points plus 3 from the normal level-up (100 XP)
       expect(quantity(hero, 'ancient')).toBe(2);
       expect(quantity(hero, 'crystal')).toBe(8);
-      expect(hero.receipts.some((r) => r.endsWith(':shrine-blessing'))).toBe(
+      expect(hero.receipts.includes(SHRINE_BLESSING_RECEIPT)).toBe(
         true,
       );
     }
