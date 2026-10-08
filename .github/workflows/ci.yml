@@ -31,8 +31,10 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: success()
         with:
-          name: bamboo-crossing-captures
-          path: test-results/bamboo-crossing-*.png
+          name: shrine-and-bamboo-captures
+          path: |
+            test-results/bamboo-crossing-*.png
+            test-results/shrine-*.png
           if-no-files-found: error
       - run: docker compose down
         if: always()

@@ -19,6 +19,15 @@ import {
 } from './bamboo-crossing.js';
 export * from './bamboo-crossing.js';
 export * from './rpg.js';
+import {
+  createShrineWarden,
+  prepareShrineQuest,
+  interactShrine,
+  shrineWardenDefeated,
+  SHRINE_WARDEN_ID,
+  type ShrineStage,
+} from './shrine-quest.js';
+export * from './shrine-quest.js';
 export type Hero = 'panda' | 'ape';
 export type EnemyKind = 'slime' | 'wolf' | 'wisp' | 'guardian';
 export interface Vec {
@@ -110,6 +119,7 @@ export interface World {
   loot: Loot[];
   effects: Effect[];
   quest: 'available' | 'active' | 'complete' | 'rewarded';
+  shrine?: ShrineStage; // Optional for legacy save files.
   kills: number;
   bossDefeated: boolean;
   message: string;
@@ -264,37 +274,39 @@ export function createWorld(respawn = RESPAWN): World {
     respawn: structuredClone(respawn),
     nextId: 0,
     players: [],
-    enemies: positions.map(([kind, x, y], i) => ({
-      id: `enemy${i}`,
-      kind,
-      x,
-      y,
-      spawn: { x, y },
-      hp:
-        positions.slice(0, i).filter(([other]) => other === kind).length >=
-        respawn[kind].maximum
-          ? 0
-          : kind === 'guardian'
+    enemies: positions
+      .map(([kind, x, y], i) => ({
+        id: `enemy${i}`,
+        kind,
+        x,
+        y,
+        spawn: { x, y },
+        hp:
+          positions.slice(0, i).filter(([other]) => other === kind).length >=
+          respawn[kind].maximum
+            ? 0
+            : kind === 'guardian'
+              ? 600
+              : kind === 'wolf'
+                ? 75
+                : kind === 'wisp'
+                  ? 55
+                  : 45,
+        maxHp:
+          kind === 'guardian'
             ? 600
             : kind === 'wolf'
               ? 75
               : kind === 'wisp'
                 ? 55
                 : 45,
-      maxHp:
-        kind === 'guardian'
-          ? 600
-          : kind === 'wolf'
-            ? 75
-            : kind === 'wisp'
-              ? 55
-              : 45,
-      cooldown: 1,
-      hurt: 0,
-      phase: 0,
-      respawnRemaining: respawn[kind].seconds,
-      generation: 0,
-    })),
+        cooldown: 1,
+        hurt: 0,
+        phase: 0,
+        respawnRemaining: respawn[kind].seconds,
+        generation: 0,
+      }))
+      .concat(createShrineWarden()),
     projectiles: [],
     loot: [
       { id: 'starter', x: 580, y: 1030, kind: 'potion', quantity: 1 },
@@ -302,6 +314,7 @@ export function createWorld(respawn = RESPAWN): World {
       { id: 'shrine-crystals', x: 2640, y: 498, kind: 'crystal', quantity: 2 },
     ],
     effects: [],
+    shrine: 'dormant',
     quest: 'available',
     kills: 0,
     bossDefeated: false,
@@ -337,6 +350,10 @@ export function damageEnemy(
   const u = unit(e.x - owner.x, e.y - owner.y);
   if (e.kind !== 'guardian') move(e, u.x * 12, u.y * 12);
   if (e.hp === 0) {
+    if (e.id === SHRINE_WARDEN_ID) {
+      shrineWardenDefeated(w);
+      return; // The shrine awards its prize, never ordinary random drops.
+    }
     w.kills++;
     e.respawnRemaining = w.respawn[e.kind].seconds;
     // Drop rolls depend only on the authority's world state, never client input.
@@ -383,6 +400,7 @@ function hurtPlayer(w: World, p: Player, amount: number, source: Vec) {
   move(p, u.x * 20, u.y * 20);
 }
 export function step(w: World, inputs: Map<string, Input>, dt: number): void {
+  prepareShrineQuest(w);
   dt = Math.min(0.05, Math.max(0, dt));
   w.tick++;
   for (const p of w.players) {
@@ -430,7 +448,9 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
       p.hp = Math.min(p.maxHp, p.hp + 70);
       effect(w, p, 'heal', 32, '+70');
     }
-    if (input.interact && distance(p, WORLD.npc) < 90) {
+    if (input.interact && interactShrine(w, p)) {
+      // The shrine handles its own interaction before Rowan's quest.
+    } else if (input.interact && distance(p, WORLD.npc) < 90) {
       if (w.quest === 'available') {
         w.quest = 'active';
         w.message =
@@ -511,13 +531,17 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
   }
   for (const e of w.enemies) {
     if (e.hp <= 0) {
-      if (e.kind === 'guardian') continue;
+      if (e.kind === 'guardian' || e.id === SHRINE_WARDEN_ID) continue;
       e.respawnRemaining = Math.max(0, e.respawnRemaining - dt);
       const config = w.respawn[e.kind];
       if (
         e.respawnRemaining > 0 ||
-        w.enemies.filter((other) => other.kind === e.kind && other.hp > 0)
-          .length >= config.maximum ||
+        w.enemies.filter(
+          (other) =>
+            other.id !== SHRINE_WARDEN_ID &&
+            other.kind === e.kind &&
+            other.hp > 0,
+        ).length >= config.maximum ||
         collides(e.spawn.x, e.spawn.y) ||
         w.players.some((p) => distance(p, e.spawn) < config.safeDistance) ||
         w.enemies.some((other) => other.hp > 0 && distance(other, e.spawn) < 40)

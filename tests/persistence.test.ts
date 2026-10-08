@@ -130,7 +130,11 @@ it('permanent character resumes into a fresh world independently of expired room
     const next = manager.create('ape', character!, session.token);
     expect(next.room.code).not.toBe(room.code);
     expect(next.room.world.players[0]!.level).toBe(3);
-    expect(next.room.world.enemies.every((e) => e.hp === e.maxHp)).toBe(true);
+    expect(
+      next.room.world.enemies.every((e) =>
+        e.id === 'shrine-warden' ? e.hp === 0 : e.hp === e.maxHp,
+      ),
+    ).toBe(true);
     expect(
       await store.character('00000000-0000-0000-0000-000000000000'),
     ).toBeNull();

@@ -98,6 +98,27 @@ export function playSoundCue(
   // This randomness is audio-only, never part of the authoritative simulation.
   const pitch = 0.95 + Math.random() * 0.1;
   const presets: Record<SoundCueName, () => void> = {
+    shrine: () => {
+      note(ctx, now, 420 * pitch, 560 * pitch, 0.42, 'sine', level * 0.3);
+      note(
+        ctx,
+        now + 0.14,
+        630 * pitch,
+        840 * pitch,
+        0.53,
+        'sine',
+        level * 0.29,
+      );
+      note(
+        ctx,
+        now + 0.32,
+        840 * pitch,
+        1260 * pitch,
+        0.48,
+        'triangle',
+        level * 0.19,
+      );
+    },
     sword: () => {
       breath(ctx, now, 0.19, 730 * pitch, 2400 * pitch, level * 0.68);
       note(
