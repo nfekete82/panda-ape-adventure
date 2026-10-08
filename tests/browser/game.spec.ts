@@ -826,13 +826,10 @@ test('Mossbound Shrine begins its Jade Warden quest and grants a one-time blessi
     panda.x = BAMBOO_SHRINE.x;
     panda.y = BAMBOO_SHRINE.y;
     saved.players = [panda];
-    await page.addInitScript(
-      (value) => {
-        if (!localStorage.getItem('panda-save'))
-          localStorage.setItem('panda-save', value);
-      },
-      JSON.stringify(saved),
-    );
+    await page.addInitScript((value) => {
+      if (!localStorage.getItem('panda-save'))
+        localStorage.setItem('panda-save', value);
+    }, JSON.stringify(saved));
     await page.goto('/');
     await page
       .getByRole('button', { name: 'Continue saved solo adventure' })
@@ -844,11 +841,12 @@ test('Mossbound Shrine begins its Jade Warden quest and grants a one-time blessi
     await expect(page.locator('#quest-title')).toHaveText(
       'The sleeping emerald',
     );
-    await page.keyboard.press('KeyE');
+    await page.keyboard.down('KeyE');
     await expect(page.locator('#hud')).toHaveAttribute(
       'data-shrine-stage',
       'hunting',
     );
+    await page.keyboard.up('KeyE');
     await expect(page.locator('#quest-title')).toHaveText(
       'Echoes in the bamboo',
     );
@@ -869,11 +867,12 @@ test('Mossbound Shrine begins its Jade Warden quest and grants a one-time blessi
     await page
       .getByRole('button', { name: 'Continue saved solo adventure' })
       .click();
-    await page.keyboard.press('KeyE');
+    await page.keyboard.down('KeyE');
     await expect(page.locator('#hud')).toHaveAttribute(
       'data-shrine-stage',
       'blessed',
     );
+    await page.keyboard.up('KeyE');
     await expect(page.locator('#quest-title')).toHaveText(
       'Blessing of the grove',
     );
