@@ -1,5 +1,5 @@
 import { BAMBOO_BRIDGE, BAMBOO_GATE_X, BAMBOO_WORLD_WIDTH, bambooRiverSpan, random } from '@panda/shared';
-import { paintBambooFootbridge, paintEasternGate, paintMossboundShrine } from './bamboo-landmarks';
+import { paintBambooFootbridge, paintEasternGate, paintMossboundShrine, paintRiverbankDetails } from './bamboo-landmarks';
 
 type P = { x: number; y: number };
 const block = (
@@ -142,6 +142,7 @@ export function paintBambooCrossing(c: CanvasRenderingContext2D) {
   paintTrail(c, 1580, BAMBOO_BRIDGE.x + 12);
   paintTrail(c, BAMBOO_BRIDGE.x + BAMBOO_BRIDGE.w - 9, 2718);
   drawRiver(c);
+  paintRiverbankDetails(c);
   paintBambooFootbridge(c);
   paintMossboundShrine(c);
   paintEasternGate(c);
