@@ -222,13 +222,14 @@ export function makeAssets(scene: Phaser.Scene) {
   }
   const { c, ctx } = canvas(WORLD.width, WORLD.height);
   const rng = random(93);
-  rect(ctx, '#314c38', 0, 0, c.width, c.height);
-  for (let i = 0; i < 19000; i++) {
+  rect(ctx, '#34563e', 0, 0, c.width, c.height);
+  // Reserve visual contrast for characters, enemies and interactable objects.
+  for (let i = 0; i < 10500; i++) {
     const x = Math.floor((rng() * c.width) / 4) * 4,
       y = Math.floor((rng() * c.height) / 4) * 4;
     rect(
       ctx,
-      ['#3c593c', '#38533a', '#45623e', '#2c4435'][Math.floor(rng() * 4)]!,
+      ['#3c6344', '#365b40', '#446a47', '#30523d'][Math.floor(rng() * 4)]!,
       x,
       y,
       4 + rng() * 6,
@@ -242,11 +243,11 @@ export function makeAssets(scene: Phaser.Scene) {
   ctx.moveTo(200, 1150);
   ctx.bezierCurveTo(700, 1150, 850, 650, 1580, 340);
   ctx.stroke();
-  ctx.strokeStyle = '#8a8053';
+  ctx.strokeStyle = '#a48f63';
   ctx.lineWidth = 78;
   ctx.stroke();
-  ctx.strokeStyle = '#a29662';
-  ctx.lineWidth = 58;
+  ctx.strokeStyle = '#c1ad78';
+  ctx.lineWidth = 64;
   ctx.stroke();
   for (let i = 0; i < 2400; i++) {
     const x = rng() * c.width,
@@ -265,7 +266,7 @@ export function makeAssets(scene: Phaser.Scene) {
     ctx.beginPath();
     ctx.ellipse(x!, y!, r!, r! * 0.72, 0, 0, Math.PI * 2);
     ctx.fill();
-    for (let i = 0; i < 250; i++) {
+    for (let i = 0; i < 140; i++) {
       const px = x! + (rng() - 0.5) * r! * 1.6,
         py = y! + (rng() - 0.5) * r! * 1.1;
       rect(ctx, '#889061', px, py, 4, 2);
@@ -301,7 +302,7 @@ export function makeAssets(scene: Phaser.Scene) {
   }
   // Seeded forest-floor detailing: flowers, moss, mushrooms and pebble clusters.
   // Purely visual decorations do not affect authoritative collision geometry.
-  for (let i = 0; i < 1650; i++) {
+  for (let i = 0; i < 850; i++) {
     const x = Math.floor((rng() * c.width) / 4) * 4;
     const y = Math.floor((rng() * c.height) / 4) * 4;
     const blocked = obstacles.some(
@@ -355,7 +356,7 @@ export function makeAssets(scene: Phaser.Scene) {
   rect(ctx, '#2c463d', 1814, 248, 37, 126);
   rect(ctx, '#6e8d74', 1818, 255, 29, 105);
   rect(ctx, '#cab887', 1827, 270, 8, 64);
-  for (let i = 0; i < 650; i++) {
+  for (let i = 0; i < 320; i++) {
     const x = rng() * c.width,
       y = rng() * c.height;
     if (
