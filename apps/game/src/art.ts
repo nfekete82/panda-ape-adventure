@@ -2,7 +2,7 @@ import sheets from '../../../assets/hero-sheets.json';
 import Phaser from 'phaser';
 import { random, WORLD } from '@panda/shared';
 import { paintForestWorld } from './environment-art';
-import { conceptHero } from './hero-design';
+import { conceptHero, conceptNpc } from './hero-design';
 const canvas = (w: number, h: number) => {
   const c = document.createElement('canvas');
   c.width = w;
@@ -41,10 +41,15 @@ export function heroFrame(
   time: number,
 ): number {
   const block = Math.max(0, activeStates[hero].indexOf(state));
+  const plantedAttack =
+    (state === 'attack' || state === 'special') &&
+    !activeStates[hero].includes(state);
   return (
     block * 32 +
     direction * 4 +
-    (state === 'idle' || state === 'downed' ? 0 : Math.floor(time / 130) % 4)
+    (state === 'idle' || state === 'downed' || plantedAttack
+      ? 0
+      : Math.floor(time / 130) % 4)
   );
 }
 export function makeAssets(scene: Phaser.Scene) {
@@ -76,7 +81,7 @@ export function makeAssets(scene: Phaser.Scene) {
       frameHeight: 64,
     });
   }
-  for (const kind of ['slime', 'wolf', 'wisp', 'guardian', 'npc']) {
+  for (const kind of ['slime', 'wolf', 'wisp', 'guardian']) {
     const { c, ctx } = canvas(64, 64);
     ctx.scale(2, 2);
     if (kind === 'slime') {
@@ -124,19 +129,15 @@ export function makeAssets(scene: Phaser.Scene) {
       rect(ctx, '#b0c574', 9, 1, 4, 5);
       rect(ctx, '#b0c574', 27, 4, 5, 4);
     }
-    if (kind === 'npc') {
-      rect(ctx, '#352e35', 10, 24, 4, 7);
-      rect(ctx, '#352e35', 20, 24, 4, 7);
-      rect(ctx, '#b18a55', 8, 15, 17, 13);
-      rect(ctx, '#e4bd87', 11, 5, 12, 13);
-      rect(ctx, '#77775b', 8, 4, 18, 6);
-      rect(ctx, '#adad86', 10, 2, 13, 4);
-      rect(ctx, '#4a4038', 13, 11, 2, 2);
-      rect(ctx, '#4a4038', 20, 11, 2, 2);
-      rect(ctx, '#dad7b8', 14, 15, 7, 6);
-      rect(ctx, '#6e7653', 5, 16, 5, 10);
-    }
     scene.textures.addCanvas(kind, c);
+  }
+  for (const [key, kind] of [
+    ['npc', 'rowan'],
+    ['bramble', 'bramble'],
+  ] as const) {
+    const { c, ctx } = canvas(64, 64);
+    conceptNpc(ctx, kind);
+    scene.textures.addCanvas(key, c);
   }
   const { c, ctx } = canvas(WORLD.width, WORLD.height);
   const worldAtlas: unknown = scene.textures.exists('vendor-world-tiles')

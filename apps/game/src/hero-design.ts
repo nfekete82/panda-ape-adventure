@@ -115,17 +115,34 @@ export function conceptHero(
     } else {
       // A three-quarter profile keeps both eyes readable; the near eye faces
       // the travel direction. Mirroring preserves the same face facing west.
-      oval(c, '#2b3337', side ? 25 : 23, 23, side ? 5 : 7, 10);
-      oval(c, '#2b3337', 41, 23, 7, 10);
+      oval(c, '#2b3337', side ? 25 : 23, 23, side ? 5 : 7, 8);
+      oval(c, '#2b3337', 41, 23, 7, 8);
       oval(c, '#fff6e5', side ? 26 : 24, 21, side ? 3 : 4, 4);
       oval(c, '#fff6e5', 41, 21, 4, 4);
       px(c, '#4c3026', 25, 19, 3, 4);
       px(c, '#4c3026', 42, 19, 3, 4);
       px(c, '#fcffff', 26, 19, 2, 2);
       px(c, '#fcffff', 43, 19, 2, 2);
-      oval(c, '#f5ecd8', side ? 43 : 33, 30, 10, 7);
-      px(c, '#313438', side ? 47 : 31, 26, 6, 4);
-      px(c, '#a77b66', side ? 42 : 31, 34, 6, 2);
+      // Small rounded cheeks, a soft nose and a short upturned smile keep
+      // the snout separate from the eyes and crimson scarf.
+      if (side) {
+        oval(c, '#dfd4bd', 42, 30, 9, 5);
+        oval(c, '#fff3da', 43, 29, 8, 4);
+        oval(c, '#30383a', 49, 27, 3, 2);
+        px(c, '#617070', 48, 26, 2, 1);
+        px(c, '#77594c', 45, 32, 4, 1);
+        px(c, '#77594c', 44, 31, 1, 1);
+      } else {
+        oval(c, '#dfd4bd', 33, 31, 10, 5);
+        oval(c, '#fff3da', 29, 29, 6, 4);
+        oval(c, '#fff3da', 37, 29, 6, 4);
+        oval(c, '#30383a', 33, 27, 3.5, 2);
+        px(c, '#617070', 32, 26, 2, 1);
+        px(c, '#77594c', 33, 29, 1, 3);
+        px(c, '#77594c', 30, 32, 6, 1);
+        px(c, '#77594c', 29, 31, 1, 1);
+        px(c, '#77594c', 36, 31, 1, 1);
+      }
       px(c, '#e9a9a0', 20, 31, 4, 2);
       if (!side) px(c, '#e9a9a0', 43, 31, 4, 2);
     }
@@ -148,18 +165,20 @@ export function conceptHero(
       px(c, '#7b5036', 19, 21, 28, 11);
       px(c, '#a16d49', 20, 13, 24, 7);
     } else {
-      oval(c, bright, 32, 28, 16, 10);
-      oval(c, lit, 32, 32, 9, 5);
-      px(c, '#2c2c29', 23, 21, 5, 6);
-      if (!side) px(c, '#2c2c29', 39, 21, 5, 6);
-      px(c, '#fff9df', 24, 20, 4, 4);
-      if (!side) px(c, '#fff9df', 40, 20, 4, 4);
-      px(c, '#251f20', 26, 21, 3, 3);
-      if (!side) px(c, '#251f20', 41, 21, 3, 3);
-      px(c, '#ffffff', 27, 20, 1, 2);
-      if (!side) px(c, '#ffffff', 42, 20, 1, 2);
-      px(c, '#ad714e', 30, 28, 6, 4);
-      px(c, '#553c30', 32, 32, 5, 2);
+      oval(c, bright, side ? 38 : 32, 28, side ? 14 : 16, 10);
+      oval(c, lit, side ? 40 : 32, 31, 9, 5);
+      // Matching three-quarter eyes keep Ape's side face as readable as Panda.
+      px(c, '#2c2c29', 23, 21, side ? 4 : 5, 6);
+      px(c, '#2c2c29', 39, 21, 5, 6);
+      px(c, '#fff9df', 24, 20, side ? 3 : 4, 4);
+      px(c, '#fff9df', 40, 20, 4, 4);
+      px(c, '#251f20', 26, 21, 2, 3);
+      px(c, '#251f20', 41, 21, 3, 3);
+      px(c, '#ffffff', 26, 20, 1, 2);
+      px(c, '#ffffff', 42, 20, 1, 2);
+      oval(c, '#a66c48', side ? 46 : 33, 28, 3, 2);
+      px(c, '#684431', side ? 42 : 30, 33, 6, 1);
+      px(c, '#684431', side ? 41 : 29, 32, 1, 1);
       px(c, '#f3c18b', 23, 33, 5, 3);
     }
   }
@@ -178,5 +197,107 @@ export function conceptHero(
       px(c, '#7da654', 51, 10, 11, 4);
     }
   }
+  c.restore();
+}
+
+/** Original camp residents, drawn at the same native resolution as the heroes.
+ * Rowan is a silver-haired woodland guide; Bramble is a broad, bearded smith. */
+export function conceptNpc(c: Canvas, kind: 'rowan' | 'bramble'): void {
+  const smith = kind === 'bramble';
+  c.save();
+  oval(c, '#1c382f', 32, 60, smith ? 22 : 19, 4);
+  // Boots, trousers and a distinct cloak/apron silhouette.
+  px(c, rim, 19, 47, 12, 14);
+  px(c, rim, 35, 47, 12, 14);
+  px(c, '#51483b', 21, 47, 9, 10);
+  px(c, '#51483b', 36, 47, 9, 10);
+  px(c, '#b18a59', 21, 56, 9, 2);
+  px(c, '#b18a59', 36, 56, 9, 2);
+  oval(c, rim, 32, 39, smith ? 22 : 19, 17);
+  oval(c, smith ? '#6b5340' : '#3c6550', 32, 39, smith ? 20 : 17, 15);
+  px(c, smith ? '#9b7452' : '#73946a', 16, 30, 8, 20);
+  px(c, smith ? '#78543c' : '#537e5a', 40, 30, 8, 20);
+  px(c, rim, 10, 31, 9, 19);
+  px(c, rim, 46, 31, 9, 19);
+  px(c, smith ? '#c19369' : '#648661', 11, 32, 8, 13);
+  px(c, smith ? '#c19369' : '#648661', 46, 32, 8, 13);
+  oval(c, '#ebbd87', 15, 46, 4, 4);
+  oval(c, '#ebbd87', 50, 46, 4, 4);
+  if (smith) {
+    // Apron straps, brass rivets and a useful pocket full of tools.
+    px(c, '#c48c50', 23, 28, 4, 12);
+    px(c, '#c48c50', 38, 28, 4, 12);
+    px(c, '#443830', 22, 35, 22, 20);
+    px(c, '#a16c41', 24, 35, 18, 18);
+    px(c, '#d39b58', 24, 36, 2, 15);
+    px(c, '#e7c88b', 25, 36, 2, 2);
+    px(c, '#e7c88b', 39, 36, 2, 2);
+    px(c, '#67452f', 28, 44, 11, 7);
+    px(c, '#b7834f', 29, 45, 9, 2);
+    px(c, '#aeb8ac', 32, 40, 2, 6);
+    px(c, '#e4c384', 36, 41, 2, 6);
+    // Small hammer held low, leaving the face unobstructed.
+    px(c, '#704c32', 50, 45, 3, 13);
+    px(c, rim, 45, 51, 14, 7);
+    px(c, '#9ca99c', 46, 52, 12, 4);
+    px(c, '#d5d8bd', 47, 52, 6, 1);
+  } else {
+    // Folded cloak, leaf clasp and a traveller's satchel with a rolled map.
+    px(c, '#b4b278', 24, 28, 17, 4);
+    px(c, '#aeca91', 30, 31, 5, 5);
+    px(c, '#354f40', 28, 39, 3, 15);
+    px(c, '#87a474', 32, 39, 2, 12);
+    px(c, '#6f4d34', 39, 31, 4, 20);
+    px(c, '#513e2f', 38, 45, 14, 11);
+    px(c, '#a27645', 40, 46, 10, 7);
+    px(c, '#dfc58b', 43, 48, 4, 2);
+    px(c, '#dfd0a0', 9, 42, 5, 12);
+    px(c, '#9c8b61', 9, 44, 5, 2);
+  }
+  // Human faces retain the heroes' warm highlights and dark, rounded outline.
+  oval(c, rim, 32, 20, smith ? 18 : 16, 17);
+  oval(c, '#b78259', 17, 22, 4, 5);
+  oval(c, '#b78259', 47, 22, 4, 5);
+  oval(c, '#e4ae77', 32, 21, smith ? 16 : 14, 14);
+  oval(c, '#f3c991', 30, 19, 12, 10);
+  if (smith) {
+    oval(c, '#684638', 32, 29, 14, 10);
+    oval(c, '#95634a', 32, 29, 12, 8);
+    px(c, '#bd8962', 23, 30, 3, 5);
+    px(c, '#bd8962', 29, 34, 6, 2);
+    oval(c, '#e5ad77', 32, 25, 5, 4);
+    px(c, '#9d6245', 30, 27, 5, 1);
+    px(c, '#dfae81', 28, 30, 8, 2);
+    // Rolled leather cap and a copper buckle, rather than another guide hood.
+    oval(c, rim, 32, 10, 17, 7);
+    oval(c, '#855536', 32, 10, 15, 5);
+    px(c, '#bb8350', 19, 12, 27, 4);
+    px(c, '#ebbe73', 37, 12, 5, 3);
+  } else {
+    oval(c, '#c4c6ae', 20, 16, 5, 9);
+    oval(c, '#c4c6ae', 44, 16, 5, 9);
+    oval(c, '#f3c991', 32, 21, 11, 12);
+    px(c, '#d9dbc1', 22, 10, 7, 4);
+    px(c, '#a1aa91', 36, 10, 9, 5);
+    // Soft sage hood frames the silver fringe without hiding the eyebrows.
+    oval(c, rim, 32, 8, 17, 6);
+    oval(c, '#54775a', 32, 7, 15, 5);
+    px(c, '#90a879', 22, 7, 13, 2);
+    px(c, '#657954', 17, 11, 5, 8);
+    px(c, '#657954', 43, 11, 5, 8);
+    px(c, '#a57352', 30, 27, 5, 1);
+    px(c, '#986748', 28, 31, 7, 1);
+    px(c, '#986748', 35, 30, 1, 1);
+  }
+  px(c, smith ? '#543b31' : '#737d65', 23, 17, 6, 2);
+  px(c, smith ? '#543b31' : '#737d65', 36, 17, 6, 2);
+  oval(c, '#fff3d7', 26, 21, 3, 3);
+  oval(c, '#fff3d7', 39, 21, 3, 3);
+  px(c, '#35433b', 26, 20, 2, 4);
+  px(c, '#35433b', 38, 20, 2, 4);
+  px(c, '#ffffff', 26, 20, 1, 1);
+  px(c, '#ffffff', 38, 20, 1, 1);
+  oval(c, '#d39464', 33, 25, 3, 2);
+  px(c, '#e7b986', 32, 24, 2, 1);
   c.restore();
 }

@@ -12,9 +12,69 @@ export interface WeaponPose {
   special: boolean;
   trail: boolean;
   behindHero: boolean;
+  bodyAngle: number;
+  bodyDx: number;
+  bodyDy: number;
+  trailAlpha: number;
 }
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
+const ease = (value: number): number => {
+  const t = clamp01(value);
+  return t * t * t * (t * (t * 6 - 15) + 10);
+};
+const mix = (a: number, b: number, t: number) => a + (b - a) * t;
+
+export interface WeaponTiming {
+  cooldown: number;
+  special: boolean;
+  startedAt: number;
+  duration: number;
+}
+
+/** Continue between snapshots on a visual clock; never modify the room/player. */
+export function weaponAnimation(
+  hero: WeaponHero,
+  facing: { x: number; y: number },
+  action: string,
+  cooldown: number,
+  normalCooldown: number,
+  time: number,
+  previous?: WeaponTiming,
+): { timing: WeaponTiming; pose: WeaponPose } {
+  const newSwing =
+    // Cooldown only rises on a new authoritative action. A large threshold
+    // can miss fast upgraded attacks sampled between network snapshots.
+    !previous || cooldown > previous.cooldown + 0.001 || previous.cooldown <= 0;
+  const special = newSwing
+    ? action === 'special' || cooldown > normalCooldown + 0.08
+    : previous.special;
+  const duration = special ? 1.1 : Math.max(0.1, normalCooldown);
+  const timing: WeaponTiming = {
+    cooldown,
+    special,
+    startedAt: newSwing
+      ? time - Math.max(0, duration - cooldown) * 1000
+      : previous.startedAt,
+    duration: newSwing ? duration : previous.duration,
+  };
+  const visualCooldown =
+    cooldown > 0
+      ? Math.max(0, timing.duration - (time - timing.startedAt) / 1000)
+      : 0;
+  return {
+    timing,
+    pose: weaponPose(
+      hero,
+      facing,
+      action,
+      visualCooldown,
+      normalCooldown,
+      time,
+      special,
+    ),
+  };
+}
 
 /**
  * Rendering-only pose based on the authoritative action/cooldown/facing.
@@ -40,20 +100,30 @@ export function weaponPose(
       (action === 'special' || cooldown > normalCooldown + 0.08));
   const duration = special ? 1.1 : Math.max(0.1, normalCooldown);
   const progress = active ? clamp01(1 - cooldown / duration) : 0;
-  // Wind-up, strike and recovery are visible without altering combat timings.
-  const t = clamp01((progress - 0.2) / 0.56);
-  const sweep = t * t * (3 - 2 * t);
-  const rotation =
-    facingAngle +
-    Math.PI / 2 +
-    (hero === 'panda'
-      ? active
-        ? -1.12 + sweep * 2.25
-        : -0.18
-      : active
-        ? -0.55 + sweep * 1.1
-        : 0.06 + Math.sin(time * 0.003) * 0.045);
-  const reach = active && hero === 'ape' ? 32 + sweep * 9 : 32;
+  // Each phase joins with zero velocity: a modest draw-back, quick sweep and
+  // longer settle. Start/end match idle, so repeated attacks do not snap.
+  const anticipation = ease(progress / 0.22);
+  const sweep = ease((progress - 0.22) / 0.34);
+  const recovery = ease((progress - 0.56) / 0.44);
+  const idle = hero === 'panda' ? -0.18 : 0.06 + Math.sin(time * 0.002) * 0.018;
+  const windup = hero === 'panda' ? -1.15 : -0.5;
+  const followThrough = hero === 'panda' ? 1.3 : 0.72;
+  const angle = !active
+    ? idle
+    : progress < 0.22
+      ? mix(idle, windup, anticipation)
+      : progress < 0.56
+        ? mix(windup, followThrough, sweep)
+        : mix(followThrough, idle, recovery);
+  const body = !active
+    ? 0
+    : progress < 0.22
+      ? -anticipation
+      : progress < 0.56
+        ? mix(-1, 1, sweep)
+        : 1 - recovery;
+  const reach = 32 + (active ? 4 * sweep * (1 - recovery) : 0);
+  const rotation = facingAngle + Math.PI / 2 + angle;
   return {
     dx: fx * reach - fy * 7,
     // Keep the grip at hand height on either side, away from the face.
@@ -64,8 +134,14 @@ export function weaponPose(
     sweep,
     active,
     special,
-    trail: active && progress >= 0.26 && progress <= 0.83,
+    trail: active && progress > 0.25 && progress < 0.62,
     behindHero: fy <= 0.15,
+    bodyAngle: body * (fx < -0.15 ? -1 : 1) * (hero === 'panda' ? 4 : 2.5),
+    bodyDx: fx * body * 2.5,
+    bodyDy: fy * body * 1.5,
+    trailAlpha: active
+      ? Math.sin(clamp01((progress - 0.25) / 0.37) * Math.PI) * 0.48
+      : 0,
   };
 }
 

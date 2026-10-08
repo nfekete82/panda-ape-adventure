@@ -25,3 +25,17 @@ The command validates the PNG signature, 256-pixel width, height `512 × stateCo
 After import, run typecheck, lint, format check, build and browser tests. Inspect walk direction, origin/feet, attack/cast/guard/hit/downed states and transparency at runtime. Commit the PNG and registry together; add any attribution obligations to `assets/LICENSE.md`. Procedural and externally supplied licenses must remain distinct: the importer never assumes that user references or resulting art are CC0.
 
 The owner's Panda and Ape reference images may arrive later. Keep references under `assets/references/` when supplied, document authorship and permitted use, then derive sprite sheets matching this contract. A reference portrait is a source for creating sprites, not an animation sheet that can be imported directly. No absent reference images or art-generation claims are part of this release.
+
+## Camp resident textures and attack fallback
+
+`npc` remains a single 64×64 frame for Rowan, preserving the existing key and
+center origin. `bramble` adds a distinct single 64×64 frame for the smith. Both
+are original locally drawn artwork in `hero-design.ts`, registered by `art.ts`;
+provenance and CC0-1.0 are recorded in `assets/LICENSE.md`. Their world positions
+and interaction ranges are unchanged.
+
+When an external hero sheet provides an attack/special state, that block still
+animates normally. The procedural walk-only fallback plants its feet on frame
+zero during attack/special, while rendering applies coordinated body lean and
+small texture-origin offsets. These transformations never move the collision
+body or change authoritative combat timings.
