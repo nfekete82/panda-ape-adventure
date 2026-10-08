@@ -12,7 +12,11 @@ import {
   forestFootprint,
 } from './forest-layout.js';
 export * from './forest-layout.js';
-import { bambooObstacles, bambooRiverColliders, BAMBOO_WORLD_WIDTH } from './bamboo-crossing.js';
+import {
+  bambooObstacles,
+  bambooRiverColliders,
+  BAMBOO_WORLD_WIDTH,
+} from './bamboo-crossing.js';
 export * from './bamboo-crossing.js';
 export * from './rpg.js';
 export type Hero = 'panda' | 'ape';
