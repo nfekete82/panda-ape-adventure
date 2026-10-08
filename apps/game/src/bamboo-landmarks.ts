@@ -72,20 +72,25 @@ export function paintBambooFootbridge(c: Canvas): void {
       px(c, '#796348', sx + 7, y + h - 24, 2, 2);
     }
   }
-  // Fine railings are elevated by a few pixels, not solid wood barriers.
+  // The thin handrails are broken into short sections, leaving the entrances
+  // open and the wooden deck visible instead of enclosing it like a crate.
   for (const [railY, side] of [
     [y - 7, -1],
     [y + h + 4, 1],
   ] as const) {
-    px(c, '#3b4134', x - 10, railY + 4, w + 20, 5);
-    px(c, '#98704a', x - 10, railY, w + 20, 6);
-    px(c, '#dfbb83', x - 7, railY, w + 14, 2);
-    for (const dx of [10, 73, 139, 195]) {
-      // Uprights never intrude far into the actual walkable corridor.
-      const py = railY + (side > 0 ? -3 : -12);
-      px(c, '#574734', x + dx - 3, py, 10, 19);
-      px(c, '#b8915f', x + dx, py, 5, 16);
-      px(c, '#e7c58a', x + dx, py, 5, 2);
+    for (const [offset, length] of [
+      [18, 74],
+      [109, 80],
+    ] as const) {
+      px(c, '#4c4839', x + offset, railY + 4, length, 3);
+      px(c, '#b38a58', x + offset, railY, length, 4);
+      px(c, '#edcb92', x + offset + 3, railY, length - 6, 1);
+    }
+    for (const dx of [19, 89, 113, 188]) {
+      const postY = railY + (side > 0 ? -3 : -9);
+      px(c, '#5b4a36', x + dx - 2, postY, 8, 15);
+      px(c, '#bc9665', x + dx, postY, 4, 12);
+      px(c, '#f2d29c', x + dx, postY, 4, 2);
     }
   }
   // Light gaps / shadows below planks.
