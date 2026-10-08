@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { obstacles } from '@panda/shared';
 
 const BASE = '/assets/vendor';
 
@@ -94,6 +95,17 @@ export function createForestGroundTexture(
     if (Math.abs(y - (1120 - x * 0.46)) < 105) continue;
     if (Math.hypot(x - 450, y - 1030) < 180) continue;
     if (Math.hypot(x - 1580, y - 340) < 175) continue;
+    if (
+      obstacles.some(
+        (obstacle) =>
+          obstacle.kind === 'water' &&
+          x > obstacle.x - 32 &&
+          x < obstacle.x + obstacle.w + 16 &&
+          y > obstacle.y - 32 &&
+          y < obstacle.y + obstacle.h + 16,
+      )
+    )
+      continue;
     // The moss-green patch in the upper-left 16x16 grid of world-16.png.
     const cropX = 16 + Math.floor(rand() * 3) * 16;
     const cropY = 16 + Math.floor(rand() * 3) * 16;
