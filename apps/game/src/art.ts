@@ -1,6 +1,6 @@
 import sheets from '../../../assets/hero-sheets.json';
 import Phaser from 'phaser';
-import { random, WORLD, type Hero } from '@panda/shared';
+import { random, WORLD } from '@panda/shared';
 import { paintForestWorld } from './environment-art';
 import { conceptHero } from './hero-design';
 const canvas = (w: number, h: number) => {
