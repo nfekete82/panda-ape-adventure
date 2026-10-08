@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit -p packages/shared && tsc --noEmit -p apps/server && tsc --noEmit -p apps/game && tsc --noEmit -p tsconfig.tools.json",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --write tests/browser/game.spec.ts && git diff -- tests/browser/game.spec.ts",
+    "format:check": "prettier --check .",
     "test": "vitest run",
     "test:browser": "playwright test",
     "predev": "npm run build -w @panda/shared",
