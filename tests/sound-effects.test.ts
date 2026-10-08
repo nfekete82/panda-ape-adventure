@@ -35,7 +35,7 @@ describe('one-shot game sound events', () => {
       ['loot', '+2 crystal'],
       ['heal', '+70'],
       ['level', 'LEVEL UP'],
-    ]) world.effects.push({
+    ] as const) world.effects.push({
       id, x: player.x, y: player.y,
       life: 0.45, kind: 'heal', radius: 12, text,
     });
