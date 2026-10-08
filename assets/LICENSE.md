@@ -4,6 +4,14 @@
 
 The project's original procedural character, terrain, enemy, effect and synthesized-audio artwork (including sources in `apps/game/src/art.ts`, `apps/game/src/weapons.ts` and `apps/game/src/main.ts`) is dedicated to the public domain under CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/ . Source code remains licensed under the repository's MIT license.
 
+The Emerald Forest cleanup's Panda facial redraw, authored lake outlines/banks,
+and camp hearth/prop arrangement are original procedural artwork created directly
+in `apps/game/src/hero-design.ts`, `apps/game/src/environment-art.ts` and
+`packages/shared/src/forest-layout.ts`, rendered through `art.ts`. These additions
+also use CC0-1.0; no new external images or reference assets were used. Sunnyside
+tree images remain under their separate license below; the cleanup uses their
+existing first frame with a subtle rotation rather than the canopy frame loop.
+
 ## Ninja Adventure - Asset Pack
 
 Source: https://pixel-boy.itch.io/ninja-adventure-asset-pack

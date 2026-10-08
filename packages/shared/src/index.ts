@@ -6,6 +6,12 @@ import {
   RESPAWN,
   type Progress,
 } from './rpg.js';
+import {
+  lakeColliders,
+  sceneryFits,
+  forestFootprint,
+} from './forest-layout.js';
+export * from './forest-layout.js';
 export * from './rpg.js';
 export type Hero = 'panda' | 'ape';
 export type EnemyKind = 'slime' | 'wolf' | 'wisp' | 'guardian';
@@ -124,6 +130,8 @@ export function random(seed: number): () => number {
 }
 export const obstacles: Obstacle[] = (() => {
   const r = random(482);
+  // Retain old exclusions during seeded generation so relocating water does
+  // not reshuffle unrelated trees/rocks or obstruct established enemy spawns.
   const result: Obstacle[] = [
     { x: 820, y: 920, w: 310, h: 170, kind: 'water' },
     { x: 1180, y: 1030, w: 240, h: 150, kind: 'water' },
@@ -157,7 +165,24 @@ export const obstacles: Obstacle[] = (() => {
     { x: 1400, y: 180, w: 34, h: 95, kind: 'ruin' },
     { x: 1740, y: 180, w: 34, h: 95, kind: 'ruin' },
   );
-  return result;
+  return [
+    ...lakeColliders.map((o): Obstacle => ({ ...o, kind: 'water' })),
+    ...result.filter((o) => {
+      if (o.kind === 'water') return false;
+      if (o.kind === 'ruin') return true;
+      const footprint = forestFootprint(o);
+      return (
+        sceneryFits(footprint) &&
+        !lakeColliders.some(
+          (water) =>
+            footprint.x < water.x + water.w + 28 &&
+            footprint.x + footprint.w > water.x - 28 &&
+            footprint.y < water.y + water.h + 28 &&
+            footprint.y + footprint.h > water.y - 28,
+        )
+      );
+    }),
+  ];
 })();
 export function collides(x: number, y: number, radius = 14): boolean {
   return (

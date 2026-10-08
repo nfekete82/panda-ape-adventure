@@ -1,4 +1,48 @@
-# Executed validation — version 0.2.0, 8 October 2026
+# Executed validation — Emerald Forest cleanup, 8 October 2026
+
+Final source checks ran on macOS / Apple Silicon with host Node 25.9.0. The same
+41-test suite also passed in an isolated development image using Node 24.21.0.
+Phaser remains pinned to 4.2.1; installed Transform, Origin, TextureManager sources
+and declarations were inspected for the rendering APIs used in this pass.
+
+| Check                                               | Actual result                                                                         |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `npm run typecheck`                                 | Passed, strict TypeScript and noUncheckedIndexedAccess                                |
+| `npm run lint`                                      | Passed                                                                                |
+| `npm run format:check`                              | Passed                                                                                |
+| `npm test` on host                                  | 41 tests passed across 8 files, including real WebSockets                             |
+| `npm test` in isolated Node 24 image                | Same 41 tests passed across 8 files                                                   |
+| `npm run build`                                     | Shared, server and Vite production builds passed                                      |
+| `PLAYWRIGHT_EXTERNAL_SERVER=1 npm run test:browser` | 9 Chromium scenarios passed against the final production nginx build                  |
+| Production and development Compose configuration    | Both `docker compose config --quiet` checks passed                                    |
+| Production server/web and development images        | All built locally on ARM64; production stack healthy                                  |
+| `npm run test:docker`                               | Two-player save, production restart and both reconnects passed                        |
+| Panda face raster inspection in Chromium            | Both eye highlights present in all 20 front/side direction × walk-frame combinations  |
+| Visual inspection                                   | Eight facings with idle/wind-up weapons, full map, and camp at gameplay zoom reviewed |
+
+New geometry checks cover complete canopy/rock keep-out envelopes, camp props,
+water blocking and bank movement, the dry inlet notch, separated pond placement,
+and safe fixed player/NPC/enemy positions. Directional weapon checks cover both
+side-view grips during idle/attack and the rendering layer for side/north/south.
+Existing combat, progression, persistence and multiplayer suites remain passing.
+The production restart check also compares attributes, equipment, inventory,
+reward receipts and enemy state. Browser checks ran before restart validation.
+
+Initial sandbox attempts could not bind the WebSocket integration server or use
+the Docker socket/GitHub keychain. These were rerun successfully with approved
+execution access; initial failures are not counted as passes. Early layout tests
+caught an unintended seeded tree shuffle and an outdated rectangular-lake sliding
+fixture; generation now retains the old seed exclusions, and the fixture checks
+sliding at the authored bank from a verified clear starting position.
+
+Local container coverage is ARM64. AMD64, Safari and Firefox were not executed in
+this cleanup. Eye pixel inspection used the actual procedural hero generator in
+Chromium through a local Vite preview; it is additional executed verification,
+not a claimed new automated golden-image regression test. Screenshots are in
+[FOREST_VISUAL_CLEANUP.md](FOREST_VISUAL_CLEANUP.md); other inspection artifacts
+remain in ignored `test-results/`. No new external art assets were introduced.
+
+## Earlier release validation — version 0.2.0, 8 October 2026
 
 Reference environment: macOS / Apple Silicon, Node 25.9.0 on the host; Node 24 in the built Docker production and development images. Phaser remains exactly 4.2.1. Results below apply to this release, not the previous vertical slice.
 

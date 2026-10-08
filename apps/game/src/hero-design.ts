@@ -113,17 +113,19 @@ export function conceptHero(
       px(c, '#f5edde', 23, 14, 17, 9);
       px(c, '#a9794f', 35, 27, 6, 12);
     } else {
-      oval(c, '#2b3337', 23, 23, 7, 10);
-      if (!side) oval(c, '#2b3337', 41, 23, 7, 10);
-      oval(c, '#fff6e5', 24, 21, 4, 4);
-      if (!side) oval(c, '#fff6e5', 41, 21, 4, 4);
+      // A three-quarter profile keeps both eyes readable; the near eye faces
+      // the travel direction. Mirroring preserves the same face facing west.
+      oval(c, '#2b3337', side ? 25 : 23, 23, side ? 5 : 7, 10);
+      oval(c, '#2b3337', 41, 23, 7, 10);
+      oval(c, '#fff6e5', side ? 26 : 24, 21, side ? 3 : 4, 4);
+      oval(c, '#fff6e5', 41, 21, 4, 4);
       px(c, '#4c3026', 25, 19, 3, 4);
-      if (!side) px(c, '#4c3026', 42, 19, 3, 4);
+      px(c, '#4c3026', 42, 19, 3, 4);
       px(c, '#fcffff', 26, 19, 2, 2);
-      if (!side) px(c, '#fcffff', 43, 19, 2, 2);
-      oval(c, '#f5ecd8', 33, 30, 10, 7);
-      px(c, '#313438', 31, 26, 6, 4);
-      px(c, '#a77b66', 31, 34, 6, 2);
+      px(c, '#fcffff', 43, 19, 2, 2);
+      oval(c, '#f5ecd8', side ? 43 : 33, 30, 10, 7);
+      px(c, '#313438', side ? 47 : 31, 26, 6, 4);
+      px(c, '#a77b66', side ? 42 : 31, 34, 6, 2);
       px(c, '#e9a9a0', 20, 31, 4, 2);
       if (!side) px(c, '#e9a9a0', 43, 31, 4, 2);
     }

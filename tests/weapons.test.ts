@@ -2,6 +2,31 @@ import { describe, expect, it } from 'vitest';
 import { weaponPose } from '../apps/game/src/weapons';
 
 describe('directional weapon animation', () => {
+  it('keeps side-view grips below the face and layers north/side weapons behind it', () => {
+    for (const hero of ['panda', 'ape'] as const) {
+      for (const x of [-1, 1]) {
+        for (const cooldown of [0, 0.1, 0.25, 0.38]) {
+          const pose = weaponPose(
+            hero,
+            { x, y: 0 },
+            'attack',
+            cooldown,
+            0.38,
+            0,
+          );
+          expect(Math.abs(pose.dx)).toBeGreaterThanOrEqual(32);
+          expect(pose.dy).toBeGreaterThan(10);
+          expect(pose.behindHero).toBe(true);
+        }
+      }
+      expect(
+        weaponPose(hero, { x: 0, y: -1 }, 'idle', 0, 0.38, 0).behindHero,
+      ).toBe(true);
+      expect(
+        weaponPose(hero, { x: 0, y: 1 }, 'idle', 0, 0.38, 0).behindHero,
+      ).toBe(false);
+    }
+  });
   it('draws Panda sword in the facing direction at rest', () => {
     const east = weaponPose('panda', { x: 1, y: 0 }, 'idle', 0, 0.38, 0);
     const south = weaponPose('panda', { x: 0, y: 1 }, 'idle', 0, 0.38, 0);

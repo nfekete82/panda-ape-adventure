@@ -11,6 +11,7 @@ export interface WeaponPose {
   active: boolean;
   special: boolean;
   trail: boolean;
+  behindHero: boolean;
 }
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
@@ -52,11 +53,11 @@ export function weaponPose(
       : active
         ? -0.55 + sweep * 1.1
         : 0.06 + Math.sin(time * 0.003) * 0.045);
-  const reach =
-    active && hero === 'ape' ? 23 + sweep * 9 : hero === 'panda' ? 20 : 19;
+  const reach = active && hero === 'ape' ? 32 + sweep * 9 : 32;
   return {
     dx: fx * reach - fy * 7,
-    dy: fy * reach + fx * 7 - 10,
+    // Keep the grip at hand height on either side, away from the face.
+    dy: fy * reach + Math.abs(fx) * 8 + 7,
     rotation,
     facingAngle,
     progress,
@@ -64,6 +65,7 @@ export function weaponPose(
     active,
     special,
     trail: active && progress >= 0.26 && progress <= 0.83,
+    behindHero: fy <= 0.15,
   };
 }
 
