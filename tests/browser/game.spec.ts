@@ -751,3 +751,35 @@ test('Bamboo Crossing bridge and mossbound shrine remain playable after loading 
     }
   }
 });
+
+test('Ancient Gate blends continuously into Bamboo Crossing when explored', async ({
+  page,
+}) => {
+  const { createWorld, createPlayer } = await import('@panda/shared');
+  const saved = createWorld();
+  const hero = createPlayer('local', 'panda');
+  hero.x = 1860;
+  hero.y = 348;
+  saved.players = [hero];
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.addInitScript(
+    (value) => localStorage.setItem('panda-save', value),
+    JSON.stringify(saved),
+  );
+  await page.goto('/');
+  await page
+    .getByRole('button', { name: 'Continue saved solo adventure' })
+    .click();
+  await expect(page.locator('#hud')).toHaveAttribute('data-region', 'forest');
+  await page.screenshot({ path: 'test-results/bamboo-crossing-gate-before.png' });
+  await page.keyboard.down('KeyD');
+  try {
+    await expect(page.locator('#hud')).toHaveAttribute('data-region', 'bamboo');
+  } finally {
+    await page.keyboard.up('KeyD');
+  }
+  await expect(page.locator('#region-name')).toHaveText('BAMBOO CROSSING');
+  await page.screenshot({ path: 'test-results/bamboo-crossing-gate-after.png' });
+  expect(errors).toEqual([]);
+});
