@@ -610,3 +610,35 @@ test('confirmed solo combat displays damage and a mid-swing blade trail', async 
     await page.keyboard.up('Space');
   }
 });
+
+test('Ape uses a restrained staff pose and authority release pulses for normal and special casts', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.locator('[data-hero="ape"]').click();
+  await page.getByRole('button', { name: 'Begin adventure' }).click();
+  const hud = page.locator('#hud');
+  await expect(hud).toHaveAttribute('data-weapon-texture', 'ape-staff');
+  await page.screenshot({ path: 'test-results/ape-mage-idle.png' });
+  await page.keyboard.down('Space');
+  try {
+    await expect
+      .poll(async () => Number(await hud.getAttribute('data-cast-pulse')))
+      .toBeGreaterThan(0);
+    expect(
+      Math.abs(Number(await hud.getAttribute('data-staff-angle'))),
+    ).toBeLessThan(0.17);
+    await page.screenshot({ path: 'test-results/ape-mage-normal.png' });
+  } finally {
+    await page.keyboard.up('Space');
+  }
+  // The presentation can settle before asking the authority for a special.
+  await expect(hud).toHaveAttribute('data-weapon-active', 'false');
+  await page.locator('#special-button').click();
+  await expect
+    .poll(async () => Number(await hud.getAttribute('data-cast-pulse')))
+    .toBeGreaterThan(0);
+  await page.screenshot({ path: 'test-results/ape-mage-special.png' });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.locator('#mana-text')).toHaveText(/\d+ \/ 100/);
+});

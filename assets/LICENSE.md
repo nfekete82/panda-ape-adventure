@@ -53,3 +53,11 @@ blade-tip trails and staff particles are original code-generated presentation
 in `apps/game/src/style.css`, `main.ts`, `weapons.ts` and `weapon-trails.ts`.
 Artwork uses CC0-1.0 and code uses MIT. No external reference artwork, textures,
 sounds or runtime downloads were added. Existing vendor licenses are unchanged.
+
+## Ape mage casting polish
+
+The restrained staff poses, mint/teal/blue tip glow, drifting motes, release rings
+and bolt wakes in `apps/game/src/mage-pose.ts` and `mage-effects.ts` are original
+procedural presentation. Artwork uses CC0-1.0; source code uses MIT. Existing
+staff/character textures and their provenance are retained. No external artwork,
+generated bitmap assets, sounds or textures were added.

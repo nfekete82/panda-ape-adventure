@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { magePose } from './mage-pose';
 
 export type WeaponHero = 'panda' | 'ape';
 export interface WeaponPose {
@@ -104,33 +105,16 @@ export function weaponPose(
       (action === 'special' || cooldown > normalCooldown + 0.08));
   const duration = special ? 1.1 : Math.max(0.1, normalCooldown);
   const progress = active ? clamp01(1 - cooldown / duration) : 0;
+  if (hero === 'ape') return magePose(fx, fy, active, special, progress, time);
   // Each phase joins with zero velocity: a modest draw-back, quick sweep and
   // longer settle. Start/end match idle, so repeated attacks do not snap.
   const anticipation = ease(progress / 0.22);
   const sweep = ease((progress - 0.22) / 0.34);
   const recovery = ease((progress - 0.56) / 0.44);
-  const idle = hero === 'panda' ? -0.18 : 0.06 + Math.sin(time * 0.002) * 0.018;
+  const idle = -0.18;
   const variation = (((combo + 2) % 3) + 3) % 3;
-  const windup =
-    hero === 'ape'
-      ? special
-        ? -0.85
-        : -0.5
-      : variation === 1
-        ? 1.05
-        : variation === 2
-          ? -1.65
-          : -1.15;
-  const followThrough =
-    hero === 'ape'
-      ? special
-        ? 0.95
-        : 0.72
-      : variation === 1
-        ? -1.25
-        : variation === 2
-          ? 0.95
-          : 1.3;
+  const windup = variation === 1 ? 1.05 : variation === 2 ? -1.65 : -1.15;
+  const followThrough = variation === 1 ? -1.25 : variation === 2 ? 0.95 : 1.3;
   const angle = !active
     ? idle
     : progress < 0.22
@@ -163,7 +147,7 @@ export function weaponPose(
     special,
     trail: active && progress > 0.25 && progress < 0.62,
     behindHero: fy <= 0.15,
-    bodyAngle: body * (fx < -0.15 ? -1 : 1) * (hero === 'panda' ? 4 : 2.5),
+    bodyAngle: body * (fx < -0.15 ? -1 : 1) * 4,
     bodyDx: fx * body * 2.5,
     bodyDy: fy * body * 1.5,
     trailAlpha: active
