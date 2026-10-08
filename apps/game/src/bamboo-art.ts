@@ -1,5 +1,16 @@
-import { BAMBOO_BRIDGE, BAMBOO_GATE_X, BAMBOO_WORLD_WIDTH, bambooRiverSpan, random } from '@panda/shared';
-import { paintBambooFootbridge, paintEasternGate, paintMossboundShrine, paintRiverbankDetails } from './bamboo-landmarks';
+import {
+  BAMBOO_BRIDGE,
+  BAMBOO_GATE_X,
+  BAMBOO_WORLD_WIDTH,
+  bambooRiverSpan,
+  random,
+} from '@panda/shared';
+import {
+  paintBambooFootbridge,
+  paintEasternGate,
+  paintMossboundShrine,
+  paintRiverbankDetails,
+} from './bamboo-landmarks';
 
 type P = { x: number; y: number };
 const block = (
@@ -116,7 +127,14 @@ function crossingGround(c: CanvasRenderingContext2D) {
         Math.sin(x * 0.009 + Math.sin(y * 0.008) * 1.5) +
         Math.cos(y * 0.012 - x * 0.004);
       c.globalAlpha = blend;
-      block(c, field > 0.65 ? '#54774b' : field < -0.6 ? '#385b42' : '#416749', x, y, 8, 8);
+      block(
+        c,
+        field > 0.65 ? '#54774b' : field < -0.6 ? '#385b42' : '#416749',
+        x,
+        y,
+        8,
+        8,
+      );
       if (rng() > 0.96) block(c, '#73915a', x + 2, y + 3, 4, 2);
     }
   }
@@ -126,7 +144,10 @@ function crossingGround(c: CanvasRenderingContext2D) {
     const x = 1930 + rng() * (BAMBOO_WORLD_WIDTH - 1930);
     const y = rng() * 1440;
     const span = bambooRiverSpan(y);
-    if (Math.abs(y - bambooTrailY(x)) < 108 || x > span.left - 55 && x < span.right + 55)
+    if (
+      Math.abs(y - bambooTrailY(x)) < 108 ||
+      (x > span.left - 55 && x < span.right + 55)
+    )
       continue;
     const palette = rng() > 0.4 ? '#819967' : '#456b48';
     block(c, palette, x, y, 8 + rng() * 11, 3);
