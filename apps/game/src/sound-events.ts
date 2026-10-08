@@ -39,18 +39,13 @@ export class WorldSoundTracker {
     this.tick = world.tick;
     this.effects = new Set(world.effects.map((effect) => effect.id));
     this.projectiles = new Set(world.projectiles.map((bolt) => bolt.id));
-    this.enemies = new Map(
-      world.enemies.map((enemy) => [enemy.id, enemy.hp]),
-    );
+    this.enemies = new Map(world.enemies.map((enemy) => [enemy.id, enemy.hp]));
   }
 
   observe(world: World, listenerId: string): SoundCue[] {
     // New game, first network state, rollback or reconnect: baseline without
     // replaying all the sounds of events that have already happened.
-    if (
-      this.instanceId !== world.instanceId ||
-      world.tick < this.tick
-    ) {
+    if (this.instanceId !== world.instanceId || world.tick < this.tick) {
       this.snapshot(world);
       return [];
     }
