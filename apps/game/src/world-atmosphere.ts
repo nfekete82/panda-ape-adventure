@@ -28,7 +28,7 @@ export function treePresentation(x: number, y: number) {
     // region and small groups rather than independent species scatter.
     texture:
       x >= 1930
-        ? 'tree-bamboo'
+        ? ['tree-bamboo', 'tree-bamboo-tall', 'tree-bamboo-young'][seed % 3]
         : (y < 620 && x > 920) || Math.floor(x / 240 + y / 180) % 5 === 0
           ? 'tree-conifer'
           : 'tree',
