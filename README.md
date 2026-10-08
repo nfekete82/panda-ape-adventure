@@ -1,6 +1,6 @@
 # Panda & Ape: The Adventure
 
-An original, locally playable top-down action RPG built with **Phaser 4.2.1**, strict TypeScript and an authoritative two-player WebSocket server. Explore **Emerald Forest**, help Rowan, fight woodland creatures and defeat the Thorn Guardian. This is the first playable vertical slice.
+An original, locally playable top-down action RPG built with **Phaser 4.2.1**, strict TypeScript and an authoritative two-player WebSocket server. Explore **Emerald Forest**, help Rowan, fight woodland creatures and defeat the Thorn Guardian. Version **0.2.0** adds permanent RPG progression, attribute allocation, a blacksmith, weapon upgrades, material loot and controlled enemy respawns. See [the 0.2.0 guide](docs/V0.2.0.md) for local testing and migration details.
 
 ![Emerald Forest gameplay](docs/screenshots/forest.png)
 
@@ -90,7 +90,7 @@ Solo progress is saved to localStorage every 15 seconds, on page unload and with
 
 The quickbar also has clickable actions. Gamepad support uses the standard browser mapping; physical controllers have not been manually validated.
 
-**Panda:** 160 base HP, sword with three-hit damage combo, shield and Earthbreak area attack. **Ape:** 110 base HP, faster movement, mana-powered projectiles and Bloom area damage with nearby ally healing. Mana regenerates. Level-ups restore health/mana and increase maximum health and damage. Collect dropped potions and crystals by walking over them.
+**Panda:** 160 base HP, sword with three-hit damage combo, shield and Earthbreak area attack. **Ape:** 110 base HP, faster movement, mana-powered projectiles and Bloom area damage with nearby ally healing. Mana regenerates. Level-ups restore health/mana, increase combat stats and grant three attribute points. Press I to allocate vitality, strength, dexterity and magic. Collect coins, leather, crystals, ancient materials and potions by walking over drops. Visit Bramble west of Rowan (E or I) to upgrade your weapon from +0 to +10 with materials and coins.
 
 Talk to **Rowan** at the camp, defeat five creatures, then return for supplies. Follow the trail northeast to challenge the **Thorn Guardian**. Its orange ring warns of an incoming area attack; leave the ring before it lands. The eastern ancient gate is the visible extension point and currently remains sealed.
 
@@ -98,7 +98,7 @@ Talk to **Rowan** at the camp, defeat five creatures, then return for supplies. 
 
 ```text
 apps/game/        Phaser scene, Vite, HTML/CSS HUD, procedural asset pipeline
-apps/server/      Node HTTP health endpoint, WebSockets, rooms, JSON persistence
+apps/server/      Node HTTP health endpoint, WebSockets, rooms, SQLite persistence
 packages/shared/  Protocol validation, world geometry, deterministic simulation
 assets/           Asset manifest, map descriptor, provenance and replacement slots
 docker/           Multi-stage production/development images and nginx proxy
@@ -110,7 +110,9 @@ The **server** alone determines online movement, collisions, damage, enemy AI, b
 
 A small `ws` server is used instead of Colyseus: the two-player slice needs no additional matchmaking/schema framework, and neither transport depends on Phaser's rendering version. Room membership and hero ownership remain server controlled. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes tradeoffs.
 
-Co-op saves use serialized atomic JSON writes via `SaveStore`, with auto-save every 15 seconds and graceful shutdown saving. This is a **recent-room recovery mechanism**, not a permanent account/character system. SQLite or MySQL adapters can later implement the same interface. Empty rooms are cleaned up after two minutes. Old on-disk snapshots are currently ignored rather than deleted.
+Co-op saves use serialized atomic SQLite transactions through `SaveStore`. Permanent characters, inventory and reward receipts are separated from temporary rooms. Existing JSON saves are migrated once with backups, including expired rooms' character progression. Browser credentials restore a character into a new room after its reserved seat expires; recent-room reconnect still has a 60-second window. Solo browser saves are versioned and migrate the original localStorage format. Starting a new solo region retains the selected hero's progression. See [migration, backup and test instructions](docs/V0.2.0.md).
+
+Slimes, wolves and wisps respawn at fixed points after 20/30/40 seconds when safe and below population limits. Bosses require a deliberate encounter reset at Rowan after loot collection and retreat. Rules and formulas are in `packages/shared/src/rpg.ts`; online configuration accepts `RESPAWN_CONFIG`.
 
 ## Quality checks
 
@@ -149,6 +151,6 @@ See [docs/VALIDATION.md](docs/VALIDATION.md) for checks actually executed in the
 
 Production frontend and `/ws` must share an origin. Terminate TLS at an outer reverse proxy and pass WebSocket upgrade headers; the browser selects `wss` automatically for HTTPS. This version targets trusted local co-op and does not implement public accounts, password-protected rooms or public-service abuse protection beyond bounded messages/rates/capacity.
 
-To add regions, extract the current world descriptor and collision list into map registries; keep map IDs and transitions authoritative. Replace procedural art using the texture keys, 64×64 frames and eight-direction layout in `assets/manifest.json`; rendering is separated from combat. Add enemy definitions to shared simulation, then test behavior without Phaser. A later release can add pathfinding, richer directional combat/cast animations, durable saves and expanded content.
+To add regions, extract the current world descriptor and collision list into map registries; keep map IDs and transitions authoritative. Replace procedural art using the texture keys, 64×64 frames and eight-direction layout in `assets/manifest.json`; rendering is separated from combat. Add enemy definitions to shared simulation, then test behavior without Phaser. A later release can add pathfinding, richer directional combat/cast animations, expanded content. [The sprite-sheet pipeline](docs/SPRITES.md) imports finished local sheets with explicit provenance and licensing; future Panda/Ape reference images can guide replacements without changing combat.
 
 Code: MIT. Original generated art/audio: CC0; see [assets/LICENSE.md](assets/LICENSE.md). The repository is intended to remain **private**.

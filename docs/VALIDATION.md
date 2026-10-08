@@ -1,54 +1,40 @@
-# Executed validation — 8 October 2026
+# Executed validation — version 0.2.0, 8 October 2026
 
-Reference environment: macOS on Apple Silicon, Node 25.9.0 / npm 11.12.1 on the host, Node 24 in Docker, OrbStack Docker 29.4.0. Recommended development runtime is Node 24 LTS. Dependencies are pinned in the lockfile; Phaser is exactly 4.2.1.
+Reference environment: macOS / Apple Silicon, Node 25.9.0 on the host; Node 24 in the built Docker production and development images. Phaser remains exactly 4.2.1. Results below apply to this release, not the previous vertical slice.
 
-| Check                                       | Actual result                                                    |
-| ------------------------------------------- | ---------------------------------------------------------------- |
-| TypeScript strict check                     | Passed for shared, server, game, tests, scripts and tool configs |
-| ESLint                                      | Passed                                                           |
-| Prettier check                              | Passed                                                           |
-| Vitest                                      | 14 tests passed across 3 files                                   |
-| Shared package build                        | Passed                                                           |
-| Server production build                     | Passed                                                           |
-| Vite production build                       | Passed; bundled local engine/assets, no runtime CDN              |
-| Chromium against production nginx           | 2 browser tests passed                                           |
-| Chromium against Vite development container | Same 2 browser tests passed                                      |
-| Production Compose config                   | Passed                                                           |
-| Development Compose config                  | Passed                                                           |
-| Production server + web images, ARM64       | Built successfully; both run healthy                             |
-| Production server + web images, AMD64       | Built successfully under emulation on Apple Silicon              |
-| Non-root development image                  | Built and started successfully; Vite and server reachable        |
-| `npm run test:docker`                       | Passed real Compose restart and two-session restoration          |
-| npm audit                                   | Zero reported vulnerabilities after dependency fixes             |
+| Check                                            | Actual result                                                                                                                           |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run typecheck`                              | Passed, strict TypeScript including noUncheckedIndexedAccess                                                                            |
+| `npm run lint`                                   | Passed                                                                                                                                  |
+| `npm run format:check`                           | Passed                                                                                                                                  |
+| `npm test` on host                               | 28 tests passed across 5 files, including real WebSockets                                                                               |
+| `npm test` in isolated Node 24 development image | 28 tests passed across 5 files                                                                                                          |
+| `npm run build`                                  | Shared, server and Vite production builds passed                                                                                        |
+| Chromium against production nginx on 8080        | 6 browser tests passed, including migration of old browser credentials                                                                  |
+| Production and development Compose configuration | Both passed                                                                                                                             |
+| Production server and web images, ARM64          | Built; both healthy at localhost:8080                                                                                                   |
+| Development image, ARM64                         | Built; Node 24 test suite executed inside it                                                                                            |
+| Production restart / reconnect                   | Passed two real sessions and comparison of RPG data, inventory, receipts, enemy generations, positions and HP                           |
+| Live JSON migration in existing project volume   | Schema 1, 13 recorded imports; permanent characters retained                                                                            |
+| Sprite importer                                  | Tested dimensions/state order, registry output, provenance and preservation of the other hero                                           |
+| CI configuration                                 | Inspected; includes Node 24 checks, Chromium, production restart and ARM64/AMD64 builds; remote results are tracked on the pull request |
 
-## What the tests prove
+## Evidence and practical limits
 
-Simulation tests exercise diagonal normalization, obstacle sliding, damage/cooldowns, combo damage, ranged projectiles, shield reduction, invulnerability, potion healing/revival, XP/levels, loot, NPC quest rewards, boss defeat and the guardian's pre-damage warning.
+Simulation tests cover the existing movement/collision/combat/revive/quest/boss behavior and the new XP curve, three points per level, stat effects, actual upgraded melee/projectile damage, atomic costs through +10, rejected spending, population limits at creation, fixed safe respawn points, delayed timers, generation receipts, shared XP, one-time pickups and deliberate boss reset. The original blocked slime spawn was corrected and all fixed spawn points are checked for collision.
 
-Room/protocol tests verify shared world membership, unique hero ownership, the two-player cap, invalid-room rejection, active-session takeover rejection, disconnect reservation/expiry, and malformed/unbounded input rejection. The persistence test performs concurrent saves, restores HP and reconnect identity, preserves a disconnected token's expiry and ignores corrupt snapshots.
+SQLite tests exercise concurrent saves, consistent character/item/receipt restoration, no XP re-award for a restored dead enemy, original versionless data migration, expired JSON room character retention, once-only import, startup backups and permanent progression in a fresh room after a seat expires. An actual upgrade of the existing Docker saves volume imported 13 historical room files without deleting originals. No reconnect credentials are printed by the migration checks.
 
-The real WebSocket test starts an isolated server on port 3002. Panda and Ape join one room, duplicate selection is rejected, Ape observes Panda's movement, both receive damage to the same enemy IDs, saving is acknowledged and a disconnected Ape reconnects with the same identity. Additional socket tests enforce message rate and payload limits.
+Real WebSocket clients verify unique heroes, two-player capacity, shared movement/combat, disconnect reservation, save and reconnect, attribute/upgrade synchronization, shared XP/drop quantities, automatic enemy generation changes, command replay rejection, unaffordable upgrade rejection, malformed commands, rate limits and oversized payloads.
 
-Browser tests launch independent Chromium contexts. They verify a visible rendered canvas/HUD, solo movement, inventory, Escape pause, local save, Panda/Ape selection, one shared room, both rendered players, mutual observed movement, shared enemy damage and tab-local reconnect after page reload. A third test verifies automatic recovery after transport loss and cancellation of a pending reconnect when returning to title. A fourth lets real server-controlled enemies down Ape, sends R, and verifies HP recovery, camp position and potion consumption. No JavaScript page errors occurred in the successful runs. Screenshots are checked visually and selected captures are committed under `docs/screenshots/`.
+Chromium verifies rendered gameplay, two independent browser contexts, reconnect/revive, versionless solo migration with an original backup, persisted attribute spending, material expenditure, increasing weapon damage, a visible unaffordable-upgrade error and permanent equipment across fresh solo regions. Old browser reconnect credentials are adopted for permanent characters. The forge screenshot was inspected for readable costs, attributes and rejection feedback. Traces and screenshots remain in ignored `test-results/`.
 
-The Docker test uses `/ws` through nginx, creates both players, moves and saves, runs `docker compose restart`, and reconnects both original tokens. It compares hero identities, positions, HP and shared enemy IDs/HP after restart. Both production services are healthy and use non-root users (`node`, `101`). The internal server port is not published.
+The production restart script reconnects both original tokens through nginx and compares level, XP, attributes, weapon, identified inventory, receipts, enemy HP/generation/timers and the previous identity/position/health checks. Browser runs and restart tests are sequential so the restart cannot interrupt Chromium scenarios.
 
-## Earlier failures and corrections
+Initial sandbox runs could not bind the integration server on port 3002 or access the Docker socket. Those attempts were not counted as successes; the actual checks were rerun with execution access. One initial Docker development build omitted the `-f docker/Dockerfile` argument; the corrected build succeeded. Early tests also exposed outdated single-drop assumptions and a pickup already consumed before the snapshot; assertions now verify conserved server-side quantities. All reported successful checks refer to completed reruns.
 
-The sandbox initially blocked npm network access and the isolated integration server's local port. Those checks were rerun with execution access and passed; none is counted as passed from the blocked runs. GitHub keychain authentication also required execution access.
+Local Docker builds and runtime tests cover ARM64. This release's AMD64 build is covered by the configured remote CI job; no local AMD64 execution is claimed. CI status must be read from the PR checks, not inferred from host success. Chromium is tested; Safari, Firefox, physical gamepads and universal 60 FPS are not claimed. Existing procedural sprites remain a fallback; the owner's future Panda/Ape reference images were not present or fabricated.
 
-Actual Phaser 4 type errors exposed removed `Geom.Point` and the canvas spritesheet texture contract; both were corrected against the installed 4.2.1 sources. Browser tests found a zero-sized HUD parent, Escape immediately cancelling the newly opened native dialog, and mismatched storage for reload recovery. These were corrected and the complete browser scenarios rerun successfully. The first Linux CI browser run exposed timing assumptions on slow software WebGL. Movement checks now await observed positions, and GPU-less CI explicitly tests Phaser's Canvas fallback. The additional Linux production run revealed a test reading the player ID before the first snapshot; it now explicitly awaits that state. CI trace upload runs after both browser passes to retain failures from either. A review also caught the client incorrectly suppressing revive inputs at zero HP; the complete online down/revive browser scenario now verifies the fix. Critical transitive dependency findings were resolved by pinning/overriding the patched version; the final online audit reported zero findings.
+Permanent characters use private browser credentials, not accounts. Solo storage remains browser-local and is not trusted as online progression. Ordinary room movement/health/timers autosave every 15 seconds, so an abrupt process kill can lose the most recent transient state. Rewards and successful progression commands schedule atomic saves immediately; graceful shutdown flushes queued writes. Recent-room reconnect remains 60 seconds while permanent character progress survives room expiration. Backups accumulate and require owner-managed retention.
 
-Port 8081 was occupied by another service. It was left untouched. The development smoke test used 18080, and only the project's temporary test container was removed afterward. The production game remains at port 8080.
-
-## Scope and limits
-
-- Local authoritative co-op is tested; Internet matchmaking/accounts and a public production-service threat model are outside this slice.
-- AMD64 images were built on Apple Silicon under emulation, not exercised on a separate physical Linux AMD64 machine. ARM64 production and development stacks were exercised directly.
-- Chromium was tested; Safari/Firefox and a physical gamepad were not manually exercised.
-- No universal 60 FPS claim: this is a responsive desktop slice targeting 60 FPS. Hardware-specific profiling remains open.
-- Current directional art and attack/cast poses are simplified procedural assets. More animation frames, advanced pathfinding, additional regions, permanent campaign saves and touch movement remain extensions, documented in `ARCHITECTURE.md`.
-- Recent co-op recovery has a 60-second token window. Historical snapshots remain in the volume but do not become permanent campaign saves.
-- GitHub Actions is configured to execute checks and multi-architecture builds remotely. Remote execution status must be checked separately; local success does not imply remote success.
-
-GitHub target: **private** `nfekete82/panda-ape-adventure`; checked absent before creation. No existing repository history was replaced.
+See [V0.2.0.md](V0.2.0.md) for manual gameplay, migration and backup testing and [SPRITES.md](SPRITES.md) for the art contract.
