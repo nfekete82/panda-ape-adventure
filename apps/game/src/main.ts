@@ -1275,6 +1275,11 @@ function updateHud() {
   hud.dataset.weaponVisible = String(
     scene.weapons.get(p.id)?.visible ?? false,
   );
+  hud.dataset.weaponActive = String(
+    p.hp > 0 &&
+      p.cooldown > 0 &&
+      (p.action === 'attack' || p.action === 'special'),
+  );
   hud.dataset.playerId = p.id;
   hud.dataset.x = String(p.x);
   hud.dataset.y = String(p.y);
