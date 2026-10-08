@@ -28,6 +28,12 @@ jobs:
       - run: npm run test:browser
         env:
           PLAYWRIGHT_EXTERNAL_SERVER: 1
+      - uses: actions/upload-artifact@v7
+        if: success()
+        with:
+          name: bamboo-crossing-captures
+          path: test-results/bamboo-crossing-*.png
+          if-no-files-found: error
       - run: docker compose down
         if: always()
       - uses: actions/upload-artifact@v7
