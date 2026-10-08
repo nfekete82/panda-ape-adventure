@@ -4,6 +4,7 @@ import type { Enemy, Player, World } from './index.js';
 
 export type ShrineStage = 'dormant' | 'hunting' | 'return' | 'blessed';
 export const SHRINE_WARDEN_ID = 'shrine-warden';
+export const SHRINE_BLESSING_RECEIPT = 'milestone:grove-blessing:v1';
 export const SHRINE_WARDEN_SPAWN = { x: 2590, y: 646 } as const;
 export const SHRINE_INTERACT_RADIUS = 104;
 
@@ -100,7 +101,7 @@ export function interactShrine(w: World, p: Player): boolean {
   } else if (w.shrine === 'return') {
     w.shrine = 'blessed';
     for (const hero of w.players) {
-      const receipt = `${w.instanceId}:shrine-blessing`;
+      const receipt = SHRINE_BLESSING_RECEIPT;
       if (hero.receipts.includes(receipt)) continue;
       hero.receipts.push(receipt);
       hero.points += 2; // Original permanent level-up attribute system.
