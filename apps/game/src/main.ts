@@ -729,7 +729,7 @@ class ForestScene extends Phaser.Scene {
     for (const [x, y, color] of [
       [WORLD.npc.x, WORLD.npc.y, 0xdcc88e],
       [WORLD.smith.x, WORLD.smith.y, 0xe5aa6f],
-    ]) {
+    ] as const) {
       this.add
         .ellipse(x, y + 15, 56, 19, color, 0.12)
         .setStrokeStyle(2, color, 0.42)
@@ -1075,7 +1075,7 @@ class ForestScene extends Phaser.Scene {
       for (const [x, y, color] of [
         [WORLD.npc.x, WORLD.npc.y, 0xf0d99e],
         [WORLD.smith.x, WORLD.smith.y, 0xeeb67c],
-      ]) {
+      ] as const) {
         if (Math.hypot(local.x - x, local.y - y) > 205) continue;
         this.graphics.lineStyle(3, color, 0.75);
         this.graphics.strokeEllipse(
