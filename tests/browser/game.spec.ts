@@ -827,7 +827,10 @@ test('Mossbound Shrine begins its Jade Warden quest and grants a one-time blessi
     panda.y = BAMBOO_SHRINE.y;
     saved.players = [panda];
     await page.addInitScript(
-      (value) => localStorage.setItem('panda-save', value),
+      (value) => {
+        if (!localStorage.getItem('panda-save'))
+          localStorage.setItem('panda-save', value);
+      },
       JSON.stringify(saved),
     );
     await page.goto('/');
