@@ -1,6 +1,6 @@
 import type { World } from '@panda/shared';
 
-export type SoundCueName = 'sword' | 'arcane' | 'pickup' | 'defeat' | 'hit';
+export type SoundCueName = 'sword' | 'arcane' | 'pickup' | 'defeat' | 'hit' | 'shrine';
 export interface SoundCue {
   name: SoundCueName;
   strength: number;
@@ -60,7 +60,8 @@ export class WorldSoundTracker {
 
       for (const effect of world.effects) {
         if (this.effects.has(effect.id)) continue;
-        if (effect.kind === 'slash') add('sword', effect);
+        if (effect.kind === 'magic' && (effect.text === 'SHRINE AWAKENED' || effect.text === 'GROVE BLESSING')) add('shrine', effect);
+        else if (effect.kind === 'slash') add('sword', effect);
         else if (effect.kind === 'hit' && effect.text) add('hit', effect);
         else if (effect.kind === 'heal' && LOOT.test(effect.text ?? ''))
           add('pickup', effect);
@@ -83,11 +84,12 @@ export class WorldSoundTracker {
     // A single area attack can defeat many enemies simultaneously.
     // Prioritize the distinct sounds over an overwhelming chorus.
     const rank: Record<SoundCueName, number> = {
-      pickup: 0,
-      defeat: 1,
-      sword: 2,
-      arcane: 3,
-      hit: 4,
+      shrine: 0,
+      pickup: 1,
+      defeat: 2,
+      sword: 3,
+      arcane: 4,
+      hit: 5,
     };
     return cues.sort((a, b) => rank[a.name] - rank[b.name]).slice(0, 6);
   }
