@@ -26,20 +26,26 @@ export function heroArt(
   frame: number,
   dir: number,
 ) {
-  const bounce = frame % 2;
+  const bounce = frame === 1 || frame === 3 ? 1 : 0;
+  const stride = [0, 2, 0, -2][frame] ?? 0;
   const back = dir >= 5;
   const side = dir === 0 || dir === 4;
   ctx.save();
   ctx.translate(0, -bounce);
-  rect(ctx, '#16252c', 8, 27, 6, 4);
-  rect(ctx, '#16252c', 18, 27, 6, 4);
+  // Distinct four-frame walk cycle with alternating feet and arm movement.
+  rect(ctx, '#132527', 7 + stride, 28, 7, 3);
+  rect(ctx, '#132527', 18 - stride, 28, 7, 3);
+  rect(ctx, '#16252c', 8 + stride, 27, 6, 4);
+  rect(ctx, '#16252c', 18 - stride, 27, 6, 4);
   rect(ctx, hero === 'panda' ? '#496874' : '#65478b', 9, 17, 14, 12);
   rect(ctx, hero === 'panda' ? '#9eb1b0' : '#9b7bca', 10, 17, 12, 3);
   // Shared red adventurer scarf and leather harness from concept art.
   rect(ctx, '#75251f', 9, 15, 16, 5);
   rect(ctx, '#c74330', 8, 14, 17, 4);
   rect(ctx, '#f06740', 10, 14, 11, 1);
-  rect(ctx, '#a62c25', back ? 21 : 6, 18, 5, 8);
+  // Animated scarf tail bends opposite to the walking rhythm.
+  rect(ctx, '#a62c25', (back ? 21 : 6) - stride, 18, 5, 8);
+  rect(ctx, '#e65a37', (back ? 21 : 6) - stride, 18, 5, 2);
   rect(ctx, '#704b32', 13, 19, 3, 8);
   rect(ctx, '#b78248', 14, 22, 3, 3);
   rect(ctx, '#d3af65', 9, 26, 14, 2);
@@ -56,7 +62,7 @@ export function heroArt(
       rect(ctx, '#d1e6db', side ? 19 : 11, 12, 2, 2);
       rect(ctx, '#26343c', 15, 17, 3, 2);
     }
-    rect(ctx, '#253d48', 6, 20, 5, 7);
+    rect(ctx, '#253d48', 6, 20 + (stride > 0 ? 1 : 0), 5, 7);
     rect(ctx, '#d0a65b', 5, 21, 5, 5);
     rect(ctx, '#263744', 24, 18, 3, 10);
     rect(ctx, '#bbd9d7', 26, 12, 3, 13);
@@ -82,7 +88,7 @@ export function heroArt(
       if (!side) rect(ctx, '#252c35', 19, 10, 2, 3);
       rect(ctx, '#6c3e32', 14, 16, 5, 2);
     }
-    rect(ctx, '#bc8c60', 6, 20, 4, 6);
+    rect(ctx, '#bc8c60', 6, 20 + (stride > 0 ? 1 : 0), 4, 6);
     rect(ctx, '#bc8c60', 23, 20, 4, 6);
     rect(ctx, '#ad8652', 27, 10, 2, 21);
     rect(ctx, '#58467c', 25, 6, 6, 6);
