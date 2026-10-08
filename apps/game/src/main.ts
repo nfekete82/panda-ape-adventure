@@ -43,6 +43,8 @@ import {
   sceneryFrame,
   vendorEnemyTexture,
 } from './vendor-art';
+import { WorldSoundTracker } from './sound-events';
+import { playSoundCue } from './sound-effects';
 import './style.css';
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
@@ -65,6 +67,7 @@ let pending: { input: Input; dt: number }[] = [],
   lastSend = 0;
 
 let music = false,
+  soundEffects = true,
   volume = 0.25,
   cameraZoom = 1.5,
   audio: AudioContext | undefined,
@@ -80,6 +83,7 @@ const queuedActions = {
 let lastFacing = { x: 1, y: 0 };
 let noticeUntil = 0,
   lastMessage = '';
+const soundTracker = new WorldSoundTracker();
 world.players.push(
   createPlayer('local', 'panda'),
   createPlayer('companion', 'ape'),
@@ -129,17 +133,22 @@ function applyCameraZoom() {
   );
 }
 function persistSettings() {
-  safeStorage('panda-settings', JSON.stringify({ music, volume, cameraZoom }));
+  safeStorage(
+    'panda-settings',
+    JSON.stringify({ music, soundEffects, volume, cameraZoom }),
+  );
 }
 const settings = safeStorage('panda-settings');
 if (settings) {
   try {
     const saved = JSON.parse(settings) as {
       music: boolean;
+      soundEffects?: boolean;
       volume: number;
       cameraZoom?: number;
     };
     music = saved.music === true;
+    soundEffects = saved.soundEffects !== false;
     volume =
       typeof saved.volume === 'number'
         ? Math.max(0, Math.min(1, saved.volume))
@@ -193,6 +202,7 @@ function enterGame() {
   keys.clear();
   pulses.clear();
   paused = false;
+  soundTracker.reset();
   startAudio();
   applyCameraZoom();
   notify('Welcome to Emerald Forest. Talk to Rowan at the camp.');
@@ -509,11 +519,16 @@ $('modal').addEventListener('cancel', () => {
 });
 function settingsModal() {
   showModal(
-    `<div class="eyebrow">TAKE A BREATH</div><h2>${mode === 'menu' ? 'Settings' : 'Adventure paused'}</h2><p>${mode === 'online' ? 'Your hero stops moving. Your co-op world continues while this menu is open.' : 'The forest will wait for you.'}</p><label>Forest music & sound<input id="music" type="checkbox" ${music ? 'checked' : ''}></label><label>Volume<input id="volume" type="range" min="0" max="1" step="0.05" value="${volume}"></label><label>Camera zoom <output id="zoom-value">${Math.round(cameraZoom * 100)}%</output><input id="camera-zoom" aria-label="Camera zoom" type="range" min="1.1" max="1.9" step="0.05" value="${cameraZoom}"></label>${mode === 'solo' ? '<label>AI companion<input id="companion-toggle" type="checkbox" ' + (world.players.some((p) => p.id === 'companion') ? 'checked' : '') + '></label>' : ''}<button id="resume-button">${mode === 'menu' ? 'Back' : 'Resume adventure'} →</button>${mode !== 'menu' ? '<button id="save-button">Save progress</button><button id="exit-button">Return to title</button>' : ''}<p>WASD / arrows: move · Space / left click: attack<br>Q: special · R: potion / revive · E: talk<br>Shift: shield (Panda) · I: inventory · Esc: pause<br>Gamepad: left stick, A attack, X special, B potion, Y talk.</p>`,
+    `<div class="eyebrow">TAKE A BREATH</div><h2>${mode === 'menu' ? 'Settings' : 'Adventure paused'}</h2><p>${mode === 'online' ? 'Your hero stops moving. Your co-op world continues while this menu is open.' : 'The forest will wait for you.'}</p><label>Forest music<input id="music" type="checkbox" ${music ? 'checked' : ''}></label><label>Combat & item sounds<input id="sound-effects" type="checkbox" ${soundEffects ? 'checked' : ''}></label><label>Master volume<input id="volume" type="range" min="0" max="1" step="0.05" value="${volume}"></label><label>Camera zoom <output id="zoom-value">${Math.round(cameraZoom * 100)}%</output><input id="camera-zoom" aria-label="Camera zoom" type="range" min="1.1" max="1.9" step="0.05" value="${cameraZoom}"></label>${mode === 'solo' ? '<label>AI companion<input id="companion-toggle" type="checkbox" ' + (world.players.some((p) => p.id === 'companion') ? 'checked' : '') + '></label>' : ''}<button id="resume-button">${mode === 'menu' ? 'Back' : 'Resume adventure'} →</button>${mode !== 'menu' ? '<button id="save-button">Save progress</button><button id="exit-button">Return to title</button>' : ''}<p>WASD / arrows: move · Space / left click: attack<br>Q: special · R: potion / revive · E: talk<br>Shift: shield (Panda) · I: inventory · Esc: pause<br>Gamepad: left stick, A attack, X special, B potion, Y talk.</p>`,
   );
   $<HTMLInputElement>('music').onchange = (e) => {
     music = (e.target as HTMLInputElement).checked;
     startAudio();
+    persistSettings();
+  };
+  $<HTMLInputElement>('sound-effects').onchange = (e) => {
+    soundEffects = (e.target as HTMLInputElement).checked;
+    if (soundEffects) startAudio();
     persistSettings();
   };
   $<HTMLInputElement>('volume').oninput = (e) => {
@@ -974,6 +989,13 @@ class ForestScene extends Phaser.Scene {
         }
       }
     }
+    // Server and solo simulations emit the same authoritative one-shot events.
+    // Re-observing an unchanged multiplayer snapshot cannot replay a sound.
+    if (mode !== 'menu' && !(mode === 'solo' && paused)) {
+      const cues = soundTracker.observe(world, playerId);
+      if (soundEffects && audio)
+        for (const cue of cues) playSoundCue(audio, cue, volume);
+    }
     for (const tree of this.vegetation) {
       // Stable canopy frame; the vendor loop noticeably stretches the crown.
       tree.setAngle(Math.sin(time * 0.00035 + tree.x * 0.01) * 0.06);
@@ -1234,7 +1256,7 @@ class ForestScene extends Phaser.Scene {
             .setOrigin(0.5)
             .setDepth(3001);
           this.labels.set(f.id, label);
-          if (f.kind === 'hit') tone(160, 0.09, 'triangle', 0.12);
+          // Hit sound is owned by the one-shot event tracker, not the label.
         }
         label.setPosition(f.x, f.y - 30 - (1 - f.life / 0.45) * 22).setAlpha(a);
       }
@@ -1364,6 +1386,7 @@ function updateHud() {
   hud.dataset.cameraZoom = String(scene.cameras.main.zoom);
   hud.dataset.landscapeStyle = 'illustrated-forest-v2';
   hud.dataset.heroStyle = 'concept-64px';
+  hud.dataset.sfxEnabled = String(soundEffects);
   hud.dataset.vendorArt =
     scene.textures.exists(VENDOR_SPRITES.tree1.key) &&
     scene.textures.exists(VENDOR_SPRITES.slime.key)
