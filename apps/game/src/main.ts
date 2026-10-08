@@ -242,7 +242,9 @@ function connect(message: ClientMessage, isReconnect = false) {
       if (mode === 'menu') $('menu-error').textContent = m.message;
       else notify(m.message);
       if (!welcomed) {
-        quitting = true;
+        quitting = !(
+          isReconnect && m.message === 'This session is already connected.'
+        );
         connecting = false;
         current.close();
       }
@@ -268,10 +270,10 @@ function connect(message: ClientMessage, isReconnect = false) {
       $('connection-status').textContent = 'CO-OP · RECONNECTING';
       notify('Connection lost. Restoring your session…');
       if (Date.now() - reconnectStart < 55000)
-        setTimeout(
-          () => connect({ type: 'resume', code: roomCode, token }, true),
-          1200,
-        );
+        setTimeout(() => {
+          if (mode === 'online' && !quitting && socket === current)
+            connect({ type: 'resume', code: roomCode, token }, true);
+        }, 1200);
       else {
         notify(
           'Reconnect expired. Return to the title screen and create a new room.',
@@ -509,6 +511,7 @@ function readInput(): Input {
   return i;
 }
 class ForestScene extends Phaser.Scene {
+  vegetation: Phaser.GameObjects.Image[] = [];
   sprites = new Map<string, Phaser.GameObjects.Sprite>();
   labels = new Map<string, Phaser.GameObjects.Text>();
   shadows = new Map<string, Phaser.GameObjects.Ellipse>();
@@ -529,10 +532,12 @@ class ForestScene extends Phaser.Scene {
         this.add
           .ellipse(o.x + o.w / 2, o.y + 12, 100, 36, 0x112e25, 0.34)
           .setDepth(o.y - 2);
-        this.add
-          .image(o.x + o.w / 2, o.y + o.h, 'tree')
-          .setOrigin(0.5, 0.94)
-          .setDepth(o.y + o.h);
+        this.vegetation.push(
+          this.add
+            .image(o.x + o.w / 2, o.y + o.h, 'tree')
+            .setOrigin(0.5, 0.94)
+            .setDepth(o.y + o.h),
+        );
       }
     this.add.sprite(WORLD.npc.x, WORLD.npc.y, 'npc').setDepth(WORLD.npc.y);
     this.add
@@ -647,6 +652,8 @@ class ForestScene extends Phaser.Scene {
         }
       }
     }
+    for (const tree of this.vegetation)
+      tree.setAngle(Math.sin(time * 0.0007 + tree.x * 0.01) * 0.3);
     this.water.clear();
     for (const o of obstacles)
       if (o.kind === 'water') {

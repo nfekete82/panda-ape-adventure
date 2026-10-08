@@ -125,3 +125,48 @@ test('two browser windows join one room and observe shared movement and combat',
     await cb.close();
   }
 });
+
+test('transport loss restores the same session and returning to title cancels pending reconnect', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const NativeWebSocket = window.WebSocket;
+    window.WebSocket = class extends NativeWebSocket {
+      constructor(url: string | URL, protocols?: string | string[]) {
+        super(url, protocols);
+        (window as unknown as { testSocket: WebSocket }).testSocket = this;
+      }
+    };
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Create co-op room' }).click();
+  await expect(page.locator('#connection-status')).toHaveText(
+    'CO-OP · CONNECTED',
+  );
+  const playerId = await page.locator('#hud').getAttribute('data-player-id');
+  await page.evaluate(() =>
+    (window as unknown as { testSocket: WebSocket }).testSocket.close(),
+  );
+  await expect(page.locator('#connection-status')).toHaveText(
+    'CO-OP · RECONNECTING',
+  );
+  await expect(page.locator('#connection-status')).toHaveText(
+    'CO-OP · CONNECTED',
+    { timeout: 6000 },
+  );
+  await expect(page.locator('#hud')).toHaveAttribute(
+    'data-player-id',
+    playerId!,
+  );
+  await page.evaluate(() =>
+    (window as unknown as { testSocket: WebSocket }).testSocket.close(),
+  );
+  await expect(page.locator('#connection-status')).toHaveText(
+    'CO-OP · RECONNECTING',
+  );
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Return to title' }).click();
+  await page.waitForTimeout(1800);
+  await expect(page.locator('#menu')).toBeVisible();
+  await expect(page.locator('#hud')).toBeHidden();
+});
