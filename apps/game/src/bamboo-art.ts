@@ -8,14 +8,25 @@ import {
 } from '@panda/shared';
 
 type P = { x: number; y: number };
-const block = (c: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) => {
+const block = (
+  c: CanvasRenderingContext2D,
+  color: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) => {
   c.fillStyle = color;
   c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
 };
-function fillPolygon(c: CanvasRenderingContext2D, vertices: readonly P[], color: string) {
+function fillPolygon(
+  c: CanvasRenderingContext2D,
+  vertices: readonly P[],
+  color: string,
+) {
   c.fillStyle = color;
   c.beginPath();
-  vertices.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y));
+  vertices.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
   c.closePath();
   c.fill();
 }
@@ -29,8 +40,11 @@ export function bambooTrailY(x: number): number {
 }
 function paintTrail(c: CanvasRenderingContext2D, start: number, end: number) {
   for (const [width, color] of [
-    [110, '#2b513b'], [94, '#547047'], [80, '#887f56'],
-    [70, '#aa9764'], [60, '#c8af77'],
+    [110, '#2b513b'],
+    [94, '#547047'],
+    [80, '#887f56'],
+    [70, '#aa9764'],
+    [60, '#c8af77'],
   ] as const) {
     c.strokeStyle = color;
     c.lineWidth = width;
@@ -52,7 +66,8 @@ function paintTrail(c: CanvasRenderingContext2D, start: number, end: number) {
   }
 }
 function streamPolygon(pad: number): P[] {
-  const left: P[] = [], right: P[] = [];
+  const left: P[] = [],
+    right: P[] = [];
   for (let y = -16; y <= 1456; y += 8) {
     const span = bambooRiverSpan(y);
     left.push({ x: span.left - pad, y });
@@ -63,9 +78,14 @@ function streamPolygon(pad: number): P[] {
 function drawRiver(c: CanvasRenderingContext2D) {
   // Dark marsh edge, bank, shallows, moving-looking water stripes and deep middle.
   for (const [pad, color] of [
-    [36, '#214c3b'], [28, '#6f865a'], [20, '#b4a171'],
-    [12, '#5b9c93'], [4, '#448c90'], [-10, '#2c687a'],
-  ] as const) fillPolygon(c, streamPolygon(pad), color);
+    [36, '#214c3b'],
+    [28, '#6f865a'],
+    [20, '#b4a171'],
+    [12, '#5b9c93'],
+    [4, '#448c90'],
+    [-10, '#2c687a'],
+  ] as const)
+    fillPolygon(c, streamPolygon(pad), color);
   const rng = random(29184);
   for (let y = 17; y < 1430; y += 17) {
     const span = bambooRiverSpan(y);
@@ -127,8 +147,16 @@ function drawRuin(c: CanvasRenderingContext2D) {
   c.fill();
   const rng = random(379);
   for (let i = 0; i < 62; i++) {
-    const dx = (rng() - 0.5) * 185, dy = (rng() - 0.5) * 82;
-    block(c, i % 2 ? '#939f86' : '#7a8878', x + dx, y + 20 + dy, 9 + rng() * 18, 3);
+    const dx = (rng() - 0.5) * 185,
+      dy = (rng() - 0.5) * 82;
+    block(
+      c,
+      i % 2 ? '#939f86' : '#7a8878',
+      x + dx,
+      y + 20 + dy,
+      9 + rng() * 18,
+      3,
+    );
   }
   // Two ancient columns and a fractured lintel make a shrine, not a city gate.
   for (const px of [x - 104, x + 82]) {
@@ -151,24 +179,41 @@ function drawRuin(c: CanvasRenderingContext2D) {
   block(c, '#29483e', x - 30, y + 9, 63, 39);
   block(c, '#6e826e', x - 27, y + 6, 57, 31);
   block(c, '#98a48c', x - 22, y + 4, 48, 8);
-  fillPolygon(c, [
-    { x, y: y - 39 }, { x: x + 16, y: y - 17 },
-    { x, y: y + 4 }, { x: x - 16, y: y - 17 },
-  ], '#336e69');
-  fillPolygon(c, [
-    { x, y: y - 32 }, { x: x + 10, y: y - 16 },
-    { x, y: y - 3 }, { x: x - 10, y: y - 16 },
-  ], '#81c3a0');
+  fillPolygon(
+    c,
+    [
+      { x, y: y - 39 },
+      { x: x + 16, y: y - 17 },
+      { x, y: y + 4 },
+      { x: x - 16, y: y - 17 },
+    ],
+    '#336e69',
+  );
+  fillPolygon(
+    c,
+    [
+      { x, y: y - 32 },
+      { x: x + 10, y: y - 16 },
+      { x, y: y - 3 },
+      { x: x - 10, y: y - 16 },
+    ],
+    '#81c3a0',
+  );
   block(c, '#d1dfb0', x - 4, y - 26, 5, 13);
 }
 function crossingGround(c: CanvasRenderingContext2D) {
   const rng = random(88661);
   for (let y = 0; y < 1440; y += 8)
     for (let x = BAMBOO_GATE_X; x < BAMBOO_WORLD_WIDTH; x += 8) {
-      const field = Math.sin(x * 0.012 + y * 0.005) + Math.cos(y * 0.015 - x * 0.003);
-      block(c,
+      const field =
+        Math.sin(x * 0.012 + y * 0.005) + Math.cos(y * 0.015 - x * 0.003);
+      block(
+        c,
         field > 0.5 ? '#40694b' : field < -0.6 ? '#315943' : '#3a6247',
-        x, y, 8, 8,
+        x,
+        y,
+        8,
+        8,
       );
       if (rng() > 0.95) block(c, '#537950', x + 2, y + 3, 3, 2);
     }
@@ -190,13 +235,20 @@ export function paintBambooCrossing(c: CanvasRenderingContext2D) {
   drawRuin(c);
   // Tiny west-bank stepping stones and southeast quiet bamboo garden.
   for (let i = 0; i < 7; i++) {
-    const x = 2020 + i * 21, y = 549 + Math.sin(i * 0.9) * 12;
+    const x = 2020 + i * 21,
+      y = 549 + Math.sin(i * 0.9) * 12;
     block(c, '#536a5b', x - 2, y + 3, 17, 7);
     block(c, '#98a38c', x, y, 13, 5);
   }
-  for (const [x, y] of [[2510, 600], [2715, 615], [2550, 855], [2710, 1010]] as const) {
+  for (const [x, y] of [
+    [2510, 600],
+    [2715, 615],
+    [2550, 855],
+    [2710, 1010],
+  ] as const) {
     for (let i = 0; i < 7; i++) {
-      const px = x + (i % 4) * 10, py = y + Math.floor(i / 4) * 13;
+      const px = x + (i % 4) * 10,
+        py = y + Math.floor(i / 4) * 13;
       block(c, '#31593e', px, py + 4, 5, 10);
       block(c, '#a2b47a', px + 2, py, 4, 8);
     }
