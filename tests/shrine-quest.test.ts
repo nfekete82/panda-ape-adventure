@@ -60,7 +60,7 @@ describe('Mossbound Shrine adventure', () => {
     expect(interactShrine(world, panda)).toBe(true);
     expect(world.shrine).toBe('blessed');
     for (const hero of [panda, ape]) {
-      expect(hero.points).toBe(2);
+      expect(hero.points).toBe(5); // 2 Grove points plus 3 from the normal level-up (100 XP)
       expect(quantity(hero, 'ancient')).toBe(2);
       expect(quantity(hero, 'crystal')).toBe(8);
       expect(hero.receipts.some((r) => r.endsWith(':shrine-blessing'))).toBe(true);
@@ -69,7 +69,7 @@ describe('Mossbound Shrine adventure', () => {
     expect(interactShrine(world, panda)).toBe(true);
     expect(interactShrine(world, ape)).toBe(true);
     for (const hero of [panda, ape]) {
-      expect(hero.points).toBe(2);
+      expect(hero.points).toBe(5); // 2 Grove points plus 3 from the normal level-up (100 XP)
       expect(quantity(hero, 'ancient')).toBe(2);
       expect(quantity(hero, 'crystal')).toBe(8);
     }
