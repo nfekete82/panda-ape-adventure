@@ -6,7 +6,6 @@ import {
   bambooRiverSpan,
   random,
 } from '@panda/shared';
-import { WOODLAND } from './world-style';
 
 type P = { x: number; y: number };
 const block = (c: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) => {
@@ -23,8 +22,10 @@ function fillPolygon(c: CanvasRenderingContext2D, vertices: readonly P[], color:
 
 /** One east-west trail that continues from the forest's ancient gate. */
 export function bambooTrailY(x: number): number {
-  const t = Math.max(0, Math.min(1, (x - 1845) / 850));
-  return 347 + 112 * (t * t * (3 - 2 * t)) + Math.sin(t * Math.PI * 2) * 12;
+  const first = Math.max(0, Math.min(1, (x - 1845) / 425));
+  const second = Math.max(0, Math.min(1, (x - 2270) / 370));
+  const smooth = (t: number) => t * t * (3 - 2 * t);
+  return x <= 2270 ? 347 + 113 * smooth(first) : 460 - 28 * smooth(second);
 }
 function paintTrail(c: CanvasRenderingContext2D, start: number, end: number) {
   for (const [width, color] of [
@@ -200,5 +201,4 @@ export function paintBambooCrossing(c: CanvasRenderingContext2D) {
       block(c, '#a2b47a', px + 2, py, 4, 8);
     }
   }
-  void WOODLAND;
 }
