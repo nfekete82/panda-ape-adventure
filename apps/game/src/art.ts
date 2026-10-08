@@ -1,3 +1,4 @@
+import sheets from '../../../assets/hero-sheets.json';
 import Phaser from 'phaser';
 import { obstacles, random, WORLD, type Hero } from '@panda/shared';
 const canvas = (w: number, h: number) => {
@@ -74,9 +75,37 @@ export function heroArt(
   }
   ctx.restore();
 }
+export const HERO_FRAME = { width: 64, height: 64, columns: 4, directions: 8 };
+const activeStates: Record<'panda' | 'ape', string[]> = {
+  panda: ['walk'],
+  ape: ['walk'],
+};
+export function preloadHeroSheets(scene: Phaser.Scene) {
+  for (const hero of ['panda', 'ape'] as const) {
+    const source = sheets[hero].source;
+    if (typeof source === 'string') scene.load.image(`${hero}-source`, source);
+  }
+}
+export function heroFrame(
+  hero: 'panda' | 'ape',
+  state: string,
+  direction: number,
+  time: number,
+): number {
+  const block = Math.max(0, activeStates[hero].indexOf(state));
+  return (
+    block * 32 +
+    direction * 4 +
+    (state === 'idle' || state === 'downed' ? 0 : Math.floor(time / 130) % 4)
+  );
+}
 export function makeAssets(scene: Phaser.Scene) {
   for (const hero of ['panda', 'ape'] as const) {
-    const { c, ctx } = canvas(64 * 4, 64 * 8);
+    const external = scene.textures.exists(`${hero}-source`);
+    const { c, ctx } = canvas(
+      64 * 4,
+      64 * 8 * (external ? sheets[hero].states.length : 1),
+    );
     for (let dir = 0; dir < 8; dir++)
       for (let frame = 0; frame < 4; frame++) {
         ctx.save();
@@ -85,6 +114,15 @@ export function makeAssets(scene: Phaser.Scene) {
         heroArt(ctx, hero, frame, dir);
         ctx.restore();
       }
+    if (external) {
+      const source: unknown = scene.textures
+        .get(`${hero}-source`)
+        .getSourceImage();
+      if (source instanceof HTMLImageElement) {
+        ctx.drawImage(source, 0, 0);
+        activeStates[hero] = sheets[hero].states;
+      }
+    }
     const texture = scene.textures.addCanvas(hero, c)!;
     scene.textures.addSpriteSheet(hero, texture, {
       frameWidth: 64,

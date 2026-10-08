@@ -1,0 +1,14 @@
+{
+  "panda": {
+    "source": null,
+    "states": ["walk"],
+    "provenance": "Original procedural art in art.ts",
+    "license": "CC0-1.0"
+  },
+  "ape": {
+    "source": null,
+    "states": ["walk"],
+    "provenance": "Original procedural art in art.ts",
+    "license": "CC0-1.0"
+  }
+}

@@ -54,7 +54,8 @@ describe('authoritative simulation', () => {
     damageEnemy(w, e, 100, p);
     expect(w.kills).toBe(1);
     expect(ally.xp).toBe(25);
-    expect(w.loot.length).toBe(2);
+    expect(w.loot.some((item) => item.kind === 'coin')).toBe(true);
+    expect(w.loot.some((item) => item.kind === 'crystal')).toBe(true);
   });
   it('casts server simulated projectiles', () => {
     const w = createWorld(),

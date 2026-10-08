@@ -5,12 +5,19 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 import {
+  awardXp,
+  grant,
+  WORLD,
   neutralInput,
   type ServerMessage,
   type World,
   type ClientMessage,
 } from '@panda/shared';
+import { RoomManager } from '../apps/server/src/rooms';
+import { SqliteSaveStore } from '../apps/server/src/sqlite';
 let server: ChildProcess, saveDir: string;
+let fixture: ReturnType<RoomManager['create']>,
+  partner: ReturnType<RoomManager['join']>;
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 class Client {
   ws = new WebSocket('ws://127.0.0.1:3002/ws');
@@ -51,6 +58,25 @@ class Client {
 }
 beforeAll(async () => {
   saveDir = await mkdtemp(join(tmpdir(), 'panda-test-'));
+  const manager = new RoomManager();
+  fixture = manager.create('panda');
+  partner = manager.join(fixture.room.code, 'ape');
+  for (const p of fixture.room.world.players) {
+    awardXp(p, 75);
+    grant(p, 'coin', 50);
+    grant(p, 'leather', 4);
+    grant(p, 'crystal', 3);
+    p.x = WORLD.smith.x;
+    p.y = WORLD.smith.y;
+  }
+  const enemy = fixture.room.world.enemies[0]!;
+  enemy.x = WORLD.smith.x + 45;
+  enemy.y = WORLD.smith.y;
+  enemy.hp = 1;
+  fixture.room.world.respawn.slime.seconds = 1;
+  const store = new SqliteSaveStore(saveDir);
+  await store.save(fixture.room);
+  await store.close();
   server = spawn(
     process.execPath,
     ['--import', 'tsx', 'apps/server/src/index.ts'],
@@ -175,4 +201,88 @@ it('rejects oversized messages and enforces message rate limits', async () => {
   const oversized = new Promise<number>((r) => b.ws.once('close', r));
   b.ws.send('x'.repeat(3000));
   expect(await oversized).toBe(1009);
+});
+
+it('real clients synchronize attribute spending, upgrades, XP, drops and respawns; replays and forged actions fail', async () => {
+  const a = new Client(),
+    b = new Client();
+  try {
+    await Promise.all([a.open(), b.open()]);
+    a.send({
+      type: 'resume',
+      code: fixture.room.code,
+      token: fixture.session.token,
+    });
+    b.send({
+      type: 'resume',
+      code: fixture.room.code,
+      token: partner.session.token,
+    });
+    await a.until(
+      () => !!a.welcome && a.world?.players.every((p) => p.connected) === true,
+    );
+    await b.until(() => !!b.world);
+    a.send({
+      type: 'rpg',
+      seq: 1,
+      action: { kind: 'attribute', attribute: 'strength' },
+    });
+    await b.until(
+      () =>
+        b.world!.players.find((p) => p.hero === 'panda')!.attributes
+          .strength === 1,
+    );
+    a.send({
+      type: 'rpg',
+      seq: 1,
+      action: { kind: 'attribute', attribute: 'strength' },
+    });
+    await a.until(() => a.errors.some((e) => e.includes('Stale')));
+    expect(b.world!.players.find((p) => p.hero === 'panda')!.points).toBe(2);
+    a.send({ type: 'rpg', seq: 2, action: { kind: 'upgrade' } });
+    await b.until(
+      () =>
+        b.world!.players.find((p) => p.hero === 'panda')!.weapon.upgrade === 1,
+    );
+    expect(
+      b
+        .world!.players.find((p) => p.hero === 'panda')!
+        .inventory.find((i) => i.kind === 'coin')!.quantity,
+    ).toBe(30);
+    a.send({ type: 'rpg', seq: 3, action: { kind: 'upgrade' } });
+    await a.until(() => a.errors.some((e) => e.includes('Not enough')));
+    a.ws.send(
+      JSON.stringify({
+        type: 'rpg',
+        seq: 4,
+        action: { kind: 'grant', coins: 99999 },
+      }),
+    );
+    await a.until(() => a.errors.some((e) => e.includes('Invalid')));
+    a.send({
+      type: 'input',
+      input: { ...neutralInput(), attack: true, seq: 1 },
+    });
+    await b.until(() => b.world!.kills === 1);
+    expect(b.world!.players.every((p) => p.xp === 25)).toBe(true);
+    const coins =
+      b.world!.players.reduce(
+        (sum, p) =>
+          sum + (p.inventory.find((i) => i.kind === 'coin')?.quantity ?? 0),
+        0,
+      ) +
+      b
+        .world!.loot.filter((l) => l.kind === 'coin')
+        .reduce((sum, l) => sum + l.quantity, 0);
+    expect(coins).toBe(92);
+    a.send({ type: 'input', input: { ...neutralInput(), seq: 2 } });
+    await b.until(() => b.world!.enemies[0]!.generation === 1);
+    expect(b.world!.enemies[0]!.hp).toBe(b.world!.enemies[0]!.maxHp);
+    expect(b.world!.kills).toBe(1);
+    a.send({ type: 'save' });
+    await a.until(() => a.messages.some((m) => m.type === 'saved'));
+  } finally {
+    a.close();
+    b.close();
+  }
 });

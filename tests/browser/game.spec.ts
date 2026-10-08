@@ -146,7 +146,18 @@ test('two browser windows join one room and observe shared movement and combat',
     await expect
       .poll(() => b.evaluate(() => !!sessionStorage.getItem('panda-session')))
       .toBe(true);
+    await b.evaluate(() => localStorage.removeItem('panda-character-ape'));
     await b.reload();
+    await expect
+      .poll(() =>
+        b.evaluate(
+          () =>
+            localStorage.getItem('panda-character-ape') ===
+            JSON.parse(sessionStorage.getItem('panda-session') ?? 'null')
+              ?.token,
+        ),
+      )
+      .toBe(true);
     await b
       .getByRole('button', { name: 'Reconnect to last co-op room' })
       .click();
@@ -245,4 +256,107 @@ test('a downed online hero sends revive intent and returns to camp using a potio
     .poll(async () => Number(await page.locator('#hud').getAttribute('data-x')))
     .toBe(430);
   await expect(page.locator('#potions')).not.toHaveText('Potion ×3');
+});
+
+test('legacy solo progression migrates, points can be allocated and survive a reload', async ({
+  page,
+}) => {
+  const { createWorld, createPlayer } = await import('@panda/shared');
+  const world = createWorld();
+  const p = createPlayer('local', 'panda');
+  p.level = 2;
+  p.maxHp = 180;
+  p.hp = 180;
+  p.crystals = 7;
+  const legacy: Record<string, unknown> = { ...world, players: [p] };
+  delete legacy.respawn;
+  delete legacy.instanceId;
+  await page.addInitScript((save) => {
+    if (!localStorage.getItem('panda-save'))
+      localStorage.setItem('panda-save', save);
+  }, JSON.stringify(legacy));
+  await page.goto('/');
+  await page
+    .getByRole('button', { name: 'Continue saved solo adventure' })
+    .click();
+  await page.keyboard.press('KeyI');
+  await expect(page.locator('#modal-content')).toContainText(
+    '3 attribute points',
+  );
+  await page.getByRole('button', { name: '+ vitality', exact: true }).click();
+  await expect(page.locator('#modal-content')).toContainText('HP 192');
+  await expect(page.locator('#modal-content')).toContainText(
+    '2 attribute points',
+  );
+  await expect
+    .poll(() =>
+      page.evaluate(() => !!localStorage.getItem('panda-save-v1-backup')),
+    )
+    .toBe(true);
+  await page.reload();
+  await page
+    .getByRole('button', { name: 'Continue saved solo adventure' })
+    .click();
+  await page.keyboard.press('KeyI');
+  await expect(page.locator('#modal-content')).toContainText(
+    '2 attribute points',
+  );
+  await expect(page.locator('#modal-content')).toContainText('HP 192');
+});
+
+test('forge spends materials, upgrades combat stats and retains the weapon in a new adventure', async ({
+  page,
+}) => {
+  const { createWorld, createPlayer, grant, WORLD } =
+    await import('@panda/shared');
+  const world = createWorld();
+  const p = createPlayer('local', 'panda');
+  p.x = WORLD.smith.x;
+  p.y = WORLD.smith.y;
+  grant(p, 'coin', 100);
+  grant(p, 'leather', 8);
+  grant(p, 'crystal', 5);
+  world.players.push(p);
+  await page.addInitScript(
+    (save) => {
+      if (!localStorage.getItem('panda-save'))
+        localStorage.setItem('panda-save', save);
+    },
+    JSON.stringify({ version: 2, world }),
+  );
+  await page.goto('/');
+  await page
+    .getByRole('button', { name: 'Continue saved solo adventure' })
+    .click();
+  await page.keyboard.press('KeyE');
+  await expect(
+    page.getByRole('button', { name: 'Upgrade weapon' }),
+  ).toBeEnabled();
+  await page.getByRole('button', { name: 'Upgrade weapon' }).click();
+  await expect(page.locator('#modal-content')).toContainText(
+    'Oakguard sword +1',
+  );
+  await expect(page.locator('#modal-content')).toContainText('Damage 29');
+  await page.getByRole('button', { name: 'Upgrade weapon' }).click();
+  await expect(page.locator('#modal-content')).toContainText(
+    'Oakguard sword +2',
+  );
+  await page.getByRole('button', { name: 'Upgrade weapon' }).click();
+  await expect(page.locator('#rpg-status')).toHaveText(
+    'Not enough materials or coins.',
+  );
+  await page.waitForTimeout(250);
+  await expect(page.locator('#rpg-status')).toHaveText(
+    'Not enough materials or coins.',
+  );
+  await page.screenshot({ path: 'test-results/rpg-forge.png' });
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Return to title' }).click();
+  await page.getByRole('button', { name: 'Begin adventure' }).click();
+  await page.keyboard.press('KeyI');
+  await expect(page.locator('#modal-content')).toContainText(
+    'Oakguard sword +2',
+  );
+  await expect(page.locator('#modal-content')).toContainText('Damage 33');
 });

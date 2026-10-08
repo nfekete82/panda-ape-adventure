@@ -96,12 +96,23 @@ try {
     const restored = ra.world!.players.find((p) => p.id === player.id)!;
     assert.equal(restored.hero, player.hero);
     assert.equal(restored.hp, player.hp);
+    assert.equal(restored.level, player.level);
+    assert.equal(restored.xp, player.xp);
+    assert.deepEqual(restored.attributes, player.attributes);
+    assert.deepEqual(restored.weapon, player.weapon);
+    assert.deepEqual(restored.inventory, player.inventory);
+    assert.deepEqual(restored.receipts, player.receipts);
     assert.ok(Math.abs(restored.x - player.x) < 1);
     assert.ok(Math.abs(restored.y - player.y) < 1);
   }
   assert.deepEqual(
-    ra.world!.enemies.map((e) => [e.id, e.hp]),
-    before.enemies.map((e) => [e.id, e.hp]),
+    ra.world!.enemies.map((e) => [
+      e.id,
+      e.hp,
+      e.generation,
+      e.respawnRemaining,
+    ]),
+    before.enemies.map((e) => [e.id, e.hp, e.generation, e.respawnRemaining]),
   );
   console.log(
     'PASS: Compose restart restored both sessions, positions, heroes, health and shared enemies.',
