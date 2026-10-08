@@ -292,7 +292,11 @@ export function createWorld(respawn = RESPAWN): World {
       generation: 0,
     })),
     projectiles: [],
-    loot: [{ id: 'starter', x: 580, y: 1030, kind: 'potion', quantity: 1 }],
+    loot: [
+      { id: 'starter', x: 580, y: 1030, kind: 'potion', quantity: 1 },
+      // Small exploration reward at the new eastern shrine.
+      { id: 'shrine-crystals', x: 2640, y: 498, kind: 'crystal', quantity: 2 },
+    ],
     effects: [],
     quest: 'available',
     kills: 0,
