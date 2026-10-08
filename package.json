@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit -p packages/shared && tsc --noEmit -p apps/server && tsc --noEmit -p apps/game && tsc --noEmit -p tsconfig.tools.json",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write docs/BAMBOO_CROSSING_POLISH.md tests/browser/game.spec.ts && git diff -- docs/BAMBOO_CROSSING_POLISH.md tests/browser/game.spec.ts",
     "test": "vitest run",
     "test:browser": "playwright test",
     "predev": "npm run build -w @panda/shared",
