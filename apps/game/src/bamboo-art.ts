@@ -194,7 +194,7 @@ export function paintBambooCrossing(c: CanvasRenderingContext2D) {
     block(c, '#536a5b', x - 2, y + 3, 17, 7);
     block(c, '#98a38c', x, y, 13, 5);
   }
-  for (const [x, y] of [[2510, 600], [2715, 615], [2550, 855], [2710, 1010]]) {
+  for (const [x, y] of [[2510, 600], [2715, 615], [2550, 855], [2710, 1010]] as const) {
     for (let i = 0; i < 7; i++) {
       const px = x + (i % 4) * 10, py = y + Math.floor(i / 4) * 13;
       block(c, '#31593e', px, py + 4, 5, 10);
