@@ -10,7 +10,9 @@ test('camera zoom can be adjusted and survives a browser reload', async ({
     )
     .toBeGreaterThanOrEqual(1.49);
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page.locator('#camera-zoom').fill('1.7');
+  const zoomSlider = page.locator('#camera-zoom');
+  await zoomSlider.focus();
+  for (let i = 0; i < 4; i++) await zoomSlider.press('ArrowRight');
   await expect(page.locator('#zoom-value')).toHaveText('170%');
   await expect
     .poll(async () =>
