@@ -129,7 +129,7 @@ docker compose build
 npm run test:docker
 ```
 
-Integration tests launch an isolated server on port 3002 with temporary saves. Browser tests use port 8080 and either reuse a running local game or launch development services. Run browser tests against the Docker stack to cover the production reverse proxy too. GitHub Actions runs lint, typecheck, formatting, tests, builds, Chromium and image builds for ARM64 and AMD64. Generated screenshots and traces are in `test-results/`, excluded from Git.
+Integration tests launch an isolated server on port 3002 with temporary saves. Browser tests use port 8080 and either reuse a running local game or launch development services. Run browser tests against the Docker stack to cover the production reverse proxy too. GitHub Actions runs lint, typecheck, formatting, tests, builds, Chromium and image builds for ARM64 and AMD64. GPU-less CI runs the Phaser Canvas fallback; movement assertions await actual state rather than assuming a fixed rendering rate. Generated screenshots and traces are in `test-results/`, excluded from Git.
 
 See [docs/VALIDATION.md](docs/VALIDATION.md) for checks actually executed in the development environment.
 

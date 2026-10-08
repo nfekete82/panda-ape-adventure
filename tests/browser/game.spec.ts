@@ -10,13 +10,27 @@ test('solo renders the forest, moves, opens inventory and saves', async ({
   await page.getByRole('button', { name: 'Begin adventure' }).click();
   await expect(page.locator('#hud')).toBeVisible();
   await expect(page.locator('#game canvas')).toBeVisible();
+  if (process.env.CI)
+    expect(
+      await page.evaluate(
+        () =>
+          document
+            .querySelector<HTMLCanvasElement>('#game canvas')!
+            .getContext('2d') !== null,
+      ),
+    ).toBe(true);
   const x = Number(await page.locator('#hud').getAttribute('data-x'));
   await page.keyboard.down('KeyD');
-  await page.waitForTimeout(700);
-  await page.keyboard.up('KeyD');
-  await expect
-    .poll(async () => Number(await page.locator('#hud').getAttribute('data-x')))
-    .toBeGreaterThan(x + 50);
+  try {
+    await expect
+      .poll(
+        async () => Number(await page.locator('#hud').getAttribute('data-x')),
+        { timeout: 10000 },
+      )
+      .toBeGreaterThan(x + 50);
+  } finally {
+    await page.keyboard.up('KeyD');
+  }
   await page.keyboard.press('KeyI');
   await expect(
     page.getByRole('heading', { name: 'Your satchel' }),
@@ -55,9 +69,18 @@ test('two browser windows join one room and observe shared movement and combat',
     const hp = Number(await a.locator('#hud').getAttribute('data-enemy-hp'));
     await a.keyboard.down('KeyD');
     await a.keyboard.down('KeyW');
-    await a.waitForTimeout(850);
-    await a.keyboard.up('KeyD');
-    await a.keyboard.up('KeyW');
+    try {
+      await expect
+        .poll(
+          async () =>
+            Number(await b.locator('#hud').getAttribute('data-remote-x')),
+          { timeout: 10000 },
+        )
+        .toBeGreaterThan(x + 85);
+    } finally {
+      await a.keyboard.up('KeyD');
+      await a.keyboard.up('KeyW');
+    }
     await expect
       .poll(async () => Number(await a.locator('#hud').getAttribute('data-x')))
       .toBeGreaterThan(x + 70);
@@ -76,8 +99,17 @@ test('two browser windows join one room and observe shared movement and combat',
     );
     const bx = Number(await b.locator('#hud').getAttribute('data-x'));
     await b.keyboard.down('KeyD');
-    await b.waitForTimeout(400);
-    await b.keyboard.up('KeyD');
+    try {
+      await expect
+        .poll(
+          async () =>
+            Number(await a.locator('#hud').getAttribute('data-remote-x')),
+          { timeout: 10000 },
+        )
+        .toBeGreaterThan(bx + 45);
+    } finally {
+      await b.keyboard.up('KeyD');
+    }
     await expect
       .poll(async () =>
         Number(await a.locator('#hud').getAttribute('data-remote-x')),
@@ -169,4 +201,46 @@ test('transport loss restores the same session and returning to title cancels pe
   await page.waitForTimeout(1800);
   await expect(page.locator('#menu')).toBeVisible();
   await expect(page.locator('#hud')).toBeHidden();
+});
+
+test('a downed online hero sends revive intent and returns to camp using a potion', async ({
+  page,
+}) => {
+  test.setTimeout(45000);
+  await page.goto('/');
+  await page.locator('[data-hero="ape"]').click();
+  await page.getByRole('button', { name: 'Create co-op room' }).click();
+  await expect(page.locator('#hero-name')).toHaveText('Ape');
+  await expect(page.locator('#hud')).toHaveAttribute('data-players', '1');
+  const start = Number(await page.locator('#hud').getAttribute('data-x'));
+  await page.keyboard.down('KeyD');
+  await page.keyboard.down('KeyW');
+  try {
+    await expect
+      .poll(
+        async () => Number(await page.locator('#hud').getAttribute('data-x')),
+        { timeout: 10000 },
+      )
+      .toBeGreaterThan(start + 90);
+  } finally {
+    await page.keyboard.up('KeyD');
+    await page.keyboard.up('KeyW');
+  }
+  await expect(page.locator('#health-text')).toHaveText('0 / 110', {
+    timeout: 25000,
+  });
+  await page.keyboard.down('KeyR');
+  await page.waitForTimeout(200);
+  await page.keyboard.up('KeyR');
+  await expect
+    .poll(
+      async () =>
+        parseInt((await page.locator('#health-text').textContent()) ?? '0'),
+      { timeout: 5000 },
+    )
+    .toBeGreaterThan(0);
+  await expect
+    .poll(async () => Number(await page.locator('#hud').getAttribute('data-x')))
+    .toBe(430);
+  await expect(page.locator('#potions')).not.toHaveText('Potion ×3');
 });

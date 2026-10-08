@@ -31,4 +31,4 @@ The companion and enemies steer directly and slide against obstacles; there is n
 
 Phaser 4.2.1 is pinned. Implementation was checked against the installed `types/phaser.d.ts` and `src/textures/TextureManager.js`. Canvas spritesheets use `addCanvas` followed by `addSpriteSheet` with that texture; the existing texture key is retained by Phaser. `Phaser.Math.Vector2` replaces removed `Geom.Point` for graphics polygon drawing. Tint uses `setTint`; no removed `setTintFill`, bitmap masks or Phaser 3-only lighting plugins are used.
 
-Official release reference: https://phaser.io/download/release/v4.2.1 . Runtime browser tests exercise these exact APIs in Chromium.
+Official release reference: https://phaser.io/download/release/v4.2.1 . Runtime browser tests exercise these exact APIs in Chromium with WebGL locally and the Canvas fallback on GPU-less CI.

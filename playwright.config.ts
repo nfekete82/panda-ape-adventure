@@ -8,6 +8,7 @@ export default defineConfig({
     baseURL,
     viewport: { width: 1440, height: 900 },
     trace: 'retain-on-failure',
+    launchOptions: { args: process.env.CI ? ['--disable-webgl'] : [] },
   },
   webServer: process.env.PLAYWRIGHT_EXTERNAL_SERVER
     ? undefined

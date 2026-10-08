@@ -620,12 +620,12 @@ class ForestScene extends Phaser.Scene {
       for (const key of ['attack', 'special', 'heal', 'interact'] as const)
         queuedActions[key] ||= input[key];
       const p = world.players.find((p) => p.id === playerId);
-      if (p && p.hp > 0 && socket?.readyState === WebSocket.OPEN) {
+      if (p && socket?.readyState === WebSocket.OPEN) {
         const speed =
             (p.hero === 'ape' ? 205 : 175) *
             (input.guard && p.hero === 'panda' ? 0.45 : 1),
           d = Math.hypot(input.x, input.y);
-        if (d)
+        if (d && p.hp > 0)
           move(
             predicted,
             (input.x / Math.max(1, d)) * speed * dt,
