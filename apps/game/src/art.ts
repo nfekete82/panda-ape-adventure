@@ -95,9 +95,15 @@ export function makeAssets(scene: Phaser.Scene) {
   paintForestWorld(ctx);
   paintBambooCrossing(ctx);
   scene.textures.addCanvas('forest', c);
-  const bamboo = canvas(TREE_FRAME.width, TREE_FRAME.height);
-  paintBambooStand(bamboo.ctx);
-  scene.textures.addCanvas('tree-bamboo', bamboo.c);
+  for (const [key, variant] of [
+    ['tree-bamboo', 'leafy'],
+    ['tree-bamboo-tall', 'tall'],
+    ['tree-bamboo-young', 'young'],
+  ] as const) {
+    const bamboo = canvas(TREE_FRAME.width, TREE_FRAME.height);
+    paintBambooStand(bamboo.ctx, variant);
+    scene.textures.addCanvas(key, bamboo.c);
+  }
   for (const kind of ['broadleaf', 'conifer'] as const) {
     const tree = canvas(TREE_FRAME.width, TREE_FRAME.height);
     paintWoodlandTree(tree.ctx, kind);

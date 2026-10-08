@@ -1,11 +1,16 @@
 import {
   BAMBOO_BRIDGE,
   BAMBOO_GATE_X,
-  BAMBOO_SHRINE,
   BAMBOO_WORLD_WIDTH,
   bambooRiverSpan,
   random,
 } from '@panda/shared';
+import {
+  paintBambooFootbridge,
+  paintEasternGate,
+  paintMossboundShrine,
+  paintRiverbankDetails,
+} from './bamboo-landmarks';
 
 type P = { x: number; y: number };
 const block = (
@@ -105,134 +110,63 @@ function drawRiver(c: CanvasRenderingContext2D) {
     }
   }
 }
-function drawBridge(c: CanvasRenderingContext2D) {
-  const { x, y, w, h } = BAMBOO_BRIDGE;
-  // The walkway is full-width and lies precisely over the authoritative dry gap.
-  block(c, '#17372f', x - 9, y - 10, w + 18, h + 20);
-  block(c, '#574431', x - 6, y - 6, w + 12, h + 12);
-  block(c, '#97764f', x - 2, y + 3, w + 4, h - 6);
-  block(c, '#c4a16d', x + 2, y + 7, w - 4, h - 16);
-  for (let i = 0; i < w / 11; i++) {
-    const px = x + i * 11;
-    block(c, i % 3 === 0 ? '#d3b583' : '#af8c5d', px, y + 7, 8, h - 15);
-    block(c, '#71583b', px + 8, y + 7, 2, h - 15);
-    block(c, '#d9c092', px + 2, y + 12, 3, 2);
-    block(c, '#574631', px + 5, y + h - 20, 2, 2);
-  }
-  for (const edge of [y - 15, y + h + 5]) {
-    block(c, '#3d4434', x - 12, edge + 4, w + 24, 8);
-    block(c, '#a77e52', x - 10, edge, w + 20, 7);
-    block(c, '#d4af77', x - 10, edge, w + 20, 3);
-    for (const dx of [8, 74, 140, 202]) {
-      block(c, '#4d4834', x + dx - 3, edge - 20, 13, 28);
-      block(c, '#aa8355', x + dx, edge - 22, 7, 27);
-      block(c, '#e5bd85', x + dx, edge - 22, 7, 3);
-    }
-  }
-}
-function drawRuin(c: CanvasRenderingContext2D) {
-  const { x, y } = BAMBOO_SHRINE;
-  // Semi-circular stone court beneath broken pillars: mysterious, non-blocking.
-  c.fillStyle = '#536a53';
-  c.beginPath();
-  c.ellipse(x, y + 37, 134, 87, -0.05, 0, Math.PI * 2);
-  c.fill();
-  c.fillStyle = '#849077';
-  c.beginPath();
-  c.ellipse(x, y + 39, 117, 69, -0.05, 0, Math.PI * 2);
-  c.fill();
-  c.fillStyle = '#a6aa89';
-  c.beginPath();
-  c.ellipse(x, y + 42, 101, 52, -0.05, 0, Math.PI * 2);
-  c.fill();
-  const rng = random(379);
-  for (let i = 0; i < 62; i++) {
-    const dx = (rng() - 0.5) * 185,
-      dy = (rng() - 0.5) * 82;
-    block(
-      c,
-      i % 2 ? '#939f86' : '#7a8878',
-      x + dx,
-      y + 20 + dy,
-      9 + rng() * 18,
-      3,
-    );
-  }
-  // Two ancient columns and a fractured lintel make a shrine, not a city gate.
-  for (const px of [x - 104, x + 82]) {
-    block(c, '#29483f', px + 6, y - 106, 34, 123);
-    block(c, '#637e70', px, y - 109, 32, 109);
-    block(c, '#a7ad93', px + 3, y - 109, 11, 102);
-    block(c, '#425e54', px + 22, y - 99, 8, 85);
-    block(c, '#b4af88', px - 5, y - 110, 43, 11);
-    block(c, '#5f7c5a', px + 5, y - 123, 25, 6);
-    block(c, '#a9a68a', px - 9, y, 50, 14);
-  }
-  block(c, '#41594f', x - 81, y - 128, 152, 16);
-  block(c, '#849981', x - 74, y - 133, 145, 10);
-  block(c, '#b5b397', x - 62, y - 132, 127, 3);
-  for (let i = 0; i < 9; i++) {
-    const px = x - 67 + i * 16;
-    block(c, '#577a5b', px, y - 134, 6, 7);
-  }
-  // Quiet emerald altar. A discovery landmark, not an invented quest giver.
-  block(c, '#29483e', x - 30, y + 9, 63, 39);
-  block(c, '#6e826e', x - 27, y + 6, 57, 31);
-  block(c, '#98a48c', x - 22, y + 4, 48, 8);
-  fillPolygon(
-    c,
-    [
-      { x, y: y - 39 },
-      { x: x + 16, y: y - 17 },
-      { x, y: y + 4 },
-      { x: x - 16, y: y - 17 },
-    ],
-    '#336e69',
-  );
-  fillPolygon(
-    c,
-    [
-      { x, y: y - 32 },
-      { x: x + 10, y: y - 16 },
-      { x, y: y - 3 },
-      { x: x - 10, y: y - 16 },
-    ],
-    '#81c3a0',
-  );
-  block(c, '#d1dfb0', x - 4, y - 26, 5, 13);
+/** Original woodland floor underneath remains visible; a broad dithered
+ * palette transition prevents the artificial vertical line at the gate.
+ */
+export function bambooGroundBlend(x: number): number {
+  const t = Math.max(0, Math.min(1, (x - (BAMBOO_GATE_X - 185)) / 385));
+  return t * t * (3 - 2 * t);
 }
 function crossingGround(c: CanvasRenderingContext2D) {
   const rng = random(88661);
-  for (let y = 0; y < 1440; y += 8)
-    for (let x = BAMBOO_GATE_X; x < BAMBOO_WORLD_WIDTH; x += 8) {
+  for (let y = 0; y < 1440; y += 8) {
+    for (let x = BAMBOO_GATE_X - 185; x < BAMBOO_WORLD_WIDTH; x += 8) {
+      const blend = bambooGroundBlend(x);
+      if (blend <= 0) continue;
       const field =
-        Math.sin(x * 0.012 + y * 0.005) + Math.cos(y * 0.015 - x * 0.003);
+        Math.sin(x * 0.009 + Math.sin(y * 0.008) * 1.5) +
+        Math.cos(y * 0.012 - x * 0.004);
+      c.globalAlpha = blend;
       block(
         c,
-        field > 0.5 ? '#40694b' : field < -0.6 ? '#315943' : '#3a6247',
+        field > 0.65 ? '#54774b' : field < -0.6 ? '#385b42' : '#416749',
         x,
         y,
         8,
         8,
       );
-      if (rng() > 0.95) block(c, '#537950', x + 2, y + 3, 3, 2);
+      if (rng() > 0.96) block(c, '#73915a', x + 2, y + 3, 4, 2);
     }
-  // Intentional bamboo leaf litter in groves. Avoid the travel corridor.
-  for (let i = 0; i < 870; i++) {
-    const x = BAMBOO_GATE_X + rng() * (BAMBOO_WORLD_WIDTH - BAMBOO_GATE_X);
+  }
+  c.globalAlpha = 1;
+  // Fewer, larger foliage islands rather than homogeneous leaf speckle.
+  for (let i = 0; i < 380; i++) {
+    const x = 1930 + rng() * (BAMBOO_WORLD_WIDTH - 1930);
     const y = rng() * 1440;
-    if (Math.abs(y - bambooTrailY(x)) < 85 || Math.abs(x - 2285) < 68) continue;
-    block(c, rng() > 0.65 ? '#a1a26b' : '#537a50', x, y, 5 + rng() * 7, 2);
+    const span = bambooRiverSpan(y);
+    if (
+      Math.abs(y - bambooTrailY(x)) < 108 ||
+      (x > span.left - 55 && x < span.right + 55)
+    )
+      continue;
+    const palette = rng() > 0.4 ? '#819967' : '#456b48';
+    block(c, palette, x, y, 8 + rng() * 11, 3);
+    if (i % 8 === 0) {
+      block(c, '#e0d29a', x + 3, y - 3, 4, 3);
+      block(c, '#a2ad7b', x + 9, y - 7, 3, 5);
+    }
   }
 }
 export function paintBambooCrossing(c: CanvasRenderingContext2D) {
   crossingGround(c);
   // The forest trail reaches the ancient gate; the new path continues east.
-  paintTrail(c, 1820, BAMBOO_BRIDGE.x + 12);
+  paintTrail(c, 1580, BAMBOO_BRIDGE.x + 12);
   paintTrail(c, BAMBOO_BRIDGE.x + BAMBOO_BRIDGE.w - 9, 2718);
   drawRiver(c);
-  drawBridge(c);
-  drawRuin(c);
+  paintRiverbankDetails(c);
+  paintBambooFootbridge(c);
+  paintMossboundShrine(c);
+  paintEasternGate(c);
   // Tiny west-bank stepping stones and southeast quiet bamboo garden.
   for (let i = 0; i < 7; i++) {
     const x = 2020 + i * 21,

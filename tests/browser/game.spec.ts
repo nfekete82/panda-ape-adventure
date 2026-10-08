@@ -732,6 +732,15 @@ test('Bamboo Crossing bridge and mossbound shrine remain playable after loading 
       await expect(page.locator('#region-name')).toHaveText('BAMBOO CROSSING');
       await expect(page.locator('#region-label')).toHaveText('Bamboo Crossing');
       await expect(page.locator('#game canvas')).toBeVisible();
+      // The camera lerps from the old menu location, so wait until the new
+      // region is actually on screen before capturing review screenshots.
+      await expect
+        .poll(
+          async () =>
+            Number(await page.locator('#hud').getAttribute('data-camera-x')),
+          { timeout: 10000 },
+        )
+        .toBeGreaterThan(name === 'bridge' ? 2050 : 2190);
       await page.screenshot({
         path: `test-results/bamboo-crossing-${name}.png`,
       });
@@ -750,4 +759,54 @@ test('Bamboo Crossing bridge and mossbound shrine remain playable after loading 
       await context.close();
     }
   }
+});
+
+test('Ancient Gate blends continuously into Bamboo Crossing when explored', async ({
+  page,
+}) => {
+  const { createWorld, createPlayer } = await import('@panda/shared');
+  const saved = createWorld();
+  const hero = createPlayer('local', 'panda');
+  hero.x = 1860;
+  hero.y = 348;
+  saved.players = [hero];
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.addInitScript(
+    (value) => localStorage.setItem('panda-save', value),
+    JSON.stringify(saved),
+  );
+  await page.goto('/');
+  await page
+    .getByRole('button', { name: 'Continue saved solo adventure' })
+    .click();
+  await expect(page.locator('#hud')).toHaveAttribute('data-region', 'forest');
+  await expect
+    .poll(
+      async () =>
+        Number(await page.locator('#hud').getAttribute('data-camera-x')),
+      { timeout: 10000 },
+    )
+    .toBeGreaterThan(1795);
+  await page.screenshot({
+    path: 'test-results/bamboo-crossing-gate-before.png',
+  });
+  await page.keyboard.down('KeyD');
+  try {
+    await expect(page.locator('#hud')).toHaveAttribute('data-region', 'bamboo');
+  } finally {
+    await page.keyboard.up('KeyD');
+  }
+  await expect(page.locator('#region-name')).toHaveText('BAMBOO CROSSING');
+  await expect
+    .poll(
+      async () =>
+        Number(await page.locator('#hud').getAttribute('data-camera-x')),
+      { timeout: 10000 },
+    )
+    .toBeGreaterThan(1880);
+  await page.screenshot({
+    path: 'test-results/bamboo-crossing-gate-after.png',
+  });
+  expect(errors).toEqual([]);
 });

@@ -801,7 +801,7 @@ class ForestScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(2000);
     this.add
-      .text(BAMBOO_SHRINE.x, 250, 'MOSSBOUND SHRINE', {
+      .text(BAMBOO_SHRINE.x, 585, 'MOSSBOUND SHRINE', {
         fontFamily: 'Georgia',
         fontSize: '15px',
         color: '#d8dab0',
@@ -1413,6 +1413,7 @@ function updateHud() {
   // Read-only observability used by browser tests and performance inspection.
   const hud = $('hud');
   hud.dataset.cameraZoom = String(scene.cameras.main.zoom);
+  hud.dataset.cameraX = String(scene.cameras.main.midPoint.x);
   hud.dataset.landscapeStyle = 'woodland-art-direction-1';
   hud.dataset.worldMotes = String(scene.atmosphere.moteCount);
   hud.dataset.worldReflections = String(scene.atmosphere.reflectionCount);

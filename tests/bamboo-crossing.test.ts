@@ -14,7 +14,7 @@ import {
   move,
   createWorld,
 } from '@panda/shared';
-import { bambooTrailY } from '../apps/game/src/bamboo-art';
+import { bambooGroundBlend, bambooTrailY } from '../apps/game/src/bamboo-art';
 import { treePresentation } from '../apps/game/src/world-atmosphere';
 
 describe('Bamboo Crossing world extension', () => {
@@ -64,7 +64,11 @@ describe('Bamboo Crossing world extension', () => {
       expect(
         obstacles.some((t) => t.kind === 'tree' && t.x === o.x && t.y === o.y),
       ).toBe(true);
-      expect(treePresentation(o.x, o.y).texture).toBe('tree-bamboo');
+      expect([
+        'tree-bamboo',
+        'tree-bamboo-tall',
+        'tree-bamboo-young',
+      ]).toContain(treePresentation(o.x, o.y).texture);
     }
   });
 
@@ -77,5 +81,47 @@ describe('Bamboo Crossing world extension', () => {
       kind: 'crystal',
       quantity: 2,
     });
+  });
+  it('blends the two biomes smoothly rather than drawing a hard vertical seam', () => {
+    expect(bambooGroundBlend(1725)).toBe(0);
+    expect(bambooGroundBlend(2110)).toBe(1);
+    const samples = Array.from({ length: 40 }, (_, i) =>
+      bambooGroundBlend(1730 + i * 9),
+    );
+    for (let i = 1; i < samples.length; i++) {
+      expect(samples[i]!).toBeGreaterThanOrEqual(samples[i - 1]!);
+      expect(samples[i]! - samples[i - 1]!).toBeLessThan(0.05);
+    }
+  });
+
+  it('curves the river visibly while keeping the bridge exactly where it was', () => {
+    const upper = bambooRiverSpan(100);
+    const below = bambooRiverSpan(940);
+    const bridge = bambooRiverSpan(463);
+    expect(bridge.left).toBe(2219);
+    expect(bridge.right).toBe(2351);
+    expect(Math.abs(upper.left - below.left)).toBeGreaterThan(15);
+    const widths = [100, 230, 460, 700, 940, 1200].map((y) => {
+      const span = bambooRiverSpan(y);
+      return span.right - span.left;
+    });
+    expect(Math.max(...widths) - Math.min(...widths)).toBeGreaterThan(18);
+    expect(collides((upper.left + upper.right) / 2, 100, 10)).toBe(true);
+    expect(collides(2280, 460, 14)).toBe(false);
+  });
+
+  it('uses several deterministic bamboo silhouettes without modifying their footprints', () => {
+    const textures = new Set(
+      bambooObstacles.map((o) => treePresentation(o.x, o.y).texture),
+    );
+    expect(textures).toEqual(
+      new Set(['tree-bamboo', 'tree-bamboo-tall', 'tree-bamboo-young']),
+    );
+    for (const [index, o] of bambooObstacles.entries()) {
+      expect(o.w).toBe(34);
+      expect(o.h).toBe(34);
+      expect(treePresentation(o.x, o.y)).toEqual(treePresentation(o.x, o.y));
+      expect(index).toBeGreaterThanOrEqual(0);
+    }
   });
 });
