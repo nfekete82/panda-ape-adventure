@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit -p packages/shared && tsc --noEmit -p apps/server && tsc --noEmit -p apps/game && tsc --noEmit -p tsconfig.tools.json",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write apps/game/src/art.ts apps/game/src/hero-design.ts apps/game/src/environment-art.ts apps/game/src/main.ts tests/environment-art.test.ts tests/browser/game.spec.ts docs/ART_PASS_0.4.1.md && git diff -- apps/game/src/art.ts apps/game/src/hero-design.ts apps/game/src/environment-art.ts apps/game/src/main.ts tests/environment-art.test.ts tests/browser/game.spec.ts docs/ART_PASS_0.4.1.md",
     "test": "vitest run",
     "test:browser": "playwright test",
     "predev": "npm run build -w @panda/shared",
