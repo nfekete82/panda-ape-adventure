@@ -127,7 +127,10 @@ if (settings) {
       typeof saved.volume === 'number'
         ? Math.max(0, Math.min(1, saved.volume))
         : 0.25;
-    if (typeof saved.cameraZoom === 'number' && Number.isFinite(saved.cameraZoom))
+    if (
+      typeof saved.cameraZoom === 'number' &&
+      Number.isFinite(saved.cameraZoom)
+    )
       cameraZoom = Math.max(1.1, Math.min(1.9, saved.cameraZoom));
   } catch {
     /* Use defaults. */
@@ -938,9 +941,12 @@ class ForestScene extends Phaser.Scene {
         0,
         dt,
       );
-      sprite.setScale(e.kind === 'guardian' ? 1.8 : e.kind === 'slime' ? 1.15 : 1.23);
+      sprite.setScale(
+        e.kind === 'guardian' ? 1.8 : e.kind === 'slime' ? 1.15 : 1.23,
+      );
       sprite.setTint(e.hurt > 0 ? 0xffd8b4 : 0xffffff);
-      if (e.kind === 'slime') sprite.scaleY = 1.15 + Math.sin(time * 0.003) * 0.05;
+      if (e.kind === 'slime')
+        sprite.scaleY = 1.15 + Math.sin(time * 0.003) * 0.05;
       const width = e.kind === 'guardian' ? 94 : 46;
       this.graphics.fillStyle(0x183029, 0.8);
       this.graphics.fillRect(
@@ -1126,7 +1132,8 @@ function updateHud() {
   const nearSmith = distance(p, WORLD.smith) <= 90;
   $('interact-hint').hidden = !(nearRowan || nearSmith);
   $('interact-hint').textContent =
-    nearSmith && (!nearRowan || distance(p, WORLD.smith) < distance(p, WORLD.npc))
+    nearSmith &&
+    (!nearRowan || distance(p, WORLD.smith) < distance(p, WORLD.npc))
       ? 'E · Talk to Bramble / Improve weapon'
       : 'E · Talk to Rowan';
   if (
