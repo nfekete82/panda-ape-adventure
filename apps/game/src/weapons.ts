@@ -26,6 +26,7 @@ export function weaponPose(
   cooldown: number,
   normalCooldown: number,
   time: number,
+  sustainedSpecial?: boolean,
 ): WeaponPose {
   const magnitude = Math.hypot(facing.x, facing.y) || 1;
   const fx = facing.x / magnitude;
@@ -34,7 +35,9 @@ export function weaponPose(
   const active =
     cooldown > 0 && (action === 'attack' || action === 'special');
   const special =
-    active && (action === 'special' || cooldown > normalCooldown + 0.08);
+    active &&
+    (sustainedSpecial ??
+      (action === 'special' || cooldown > normalCooldown + 0.08));
   const duration = special ? 1.1 : Math.max(0.1, normalCooldown);
   const progress = active ? clamp01(1 - cooldown / duration) : 0;
   // Wind-up, strike and recovery are visible without altering combat timings.
