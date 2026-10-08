@@ -767,7 +767,8 @@ class ForestScene extends Phaser.Scene {
       .sprite(WORLD.smith.x, WORLD.smith.y, 'bramble')
       .setDepth(WORLD.smith.y);
     this.add
-      .text(WORLD.smith.x, WORLD.smith.y - 40, 'BRAMBLE · FORGE', {
+      // Identify the smith without stretching a floating label across the roof/NPCs.
+      .text(WORLD.smith.x, WORLD.smith.y - 48, 'BRAMBLE', {
         fontFamily: 'Georgia',
         fontSize: '15px',
         color: '#f3d9a0',
