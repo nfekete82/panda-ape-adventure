@@ -181,3 +181,49 @@ export function paintMossboundShrine(c: Canvas): void {
     }
   }
 }
+
+/** Quiet riverbank life placed deterministically on actual shared banks.
+ * No art suggests stepping-stones that would be blocked by collision.
+ */
+export function paintRiverbankDetails(c: Canvas): void {
+  const rng = random(72942);
+  for (let y = 28; y < 1425; y += 30) {
+    if (Math.abs(y - (BAMBOO_BRIDGE.y + BAMBOO_BRIDGE.h / 2)) < 95)
+      continue;
+    const span = bambooRiverSpan(y);
+    for (const x of [span.left - 17, span.right + 9]) {
+      const jitter = (rng() - 0.5) * 14;
+      const stoneX = x + jitter;
+      if (rng() > 0.58) {
+        px(c, '#344f47', stoneX - 4, y + 3, 19, 8);
+        px(c, '#83998a', stoneX - 2, y, 15, 6);
+        px(c, '#b1b4a0', stoneX + 1, y - 1, 6, 3);
+        px(c, '#496e51', stoneX + 10, y + 6, 6, 3);
+      } else {
+        for (let n = 0; n < 3; n++) {
+          const xx = stoneX + n * 5;
+          px(c, '#3b664c', xx, y - 7 - n * 2, 4, 13 + n * 2);
+          px(c, '#a1b67a', xx + 1, y - 11 - n * 2, 2, 9);
+        }
+      }
+    }
+  }
+  // Water plants are deliberately inside the authoritative wet span.
+  for (const y of [105, 255, 635, 795, 1015, 1190, 1360]) {
+    const span = bambooRiverSpan(y);
+    const x = span.left + 29 + rng() * Math.max(15, span.right - span.left - 75);
+    c.fillStyle = '#306c60';
+    c.beginPath();
+    c.ellipse(x + 3, y + 4, 17, 8, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#719875';
+    c.beginPath();
+    c.ellipse(x, y + 2, 13, 6, -0.12, 0, Math.PI * 2);
+    c.fill();
+    px(c, '#a7bf82', x - 6, y, 9, 2);
+    if (y % 3 === 0) {
+      px(c, '#edbfd0', x + 3, y - 7, 9, 6);
+      px(c, '#f6df9a', x + 6, y - 5, 3, 3);
+    }
+  }
+}
