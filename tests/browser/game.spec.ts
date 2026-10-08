@@ -859,24 +859,35 @@ test('Mossbound Shrine begins its Jade Warden quest and grants a one-time blessi
     reward.players = [hero];
     reward.shrine = 'return';
     reward.enemies.find((e) => e.id === SHRINE_WARDEN_ID)!.hp = 0;
-    await page.evaluate(
+    // Stop the first game's automatic save before loading a separate
+    // persisted world into a fresh page.
+    await page.close();
+    const blessingPage = await context.newPage();
+    blessingPage.on('pageerror', (error) => failures.push(error.message));
+    await blessingPage.addInitScript(
       (value) => localStorage.setItem('panda-save', value),
       JSON.stringify(reward),
     );
-    await page.reload();
-    await page
+    await blessingPage.goto('/');
+    await blessingPage
       .getByRole('button', { name: 'Continue saved solo adventure' })
       .click();
-    await page.keyboard.down('KeyE');
-    await expect(page.locator('#hud')).toHaveAttribute(
+    await expect(blessingPage.locator('#hud')).toHaveAttribute(
+      'data-shrine-stage',
+      'return',
+    );
+    await blessingPage.keyboard.down('KeyE');
+    await expect(blessingPage.locator('#hud')).toHaveAttribute(
       'data-shrine-stage',
       'blessed',
     );
-    await page.keyboard.up('KeyE');
-    await expect(page.locator('#quest-title')).toHaveText(
+    await blessingPage.keyboard.up('KeyE');
+    await expect(blessingPage.locator('#quest-title')).toHaveText(
       'Blessing of the grove',
     );
-    await page.screenshot({ path: 'test-results/shrine-grove-blessing.png' });
+    await blessingPage.screenshot({
+      path: 'test-results/shrine-grove-blessing.png',
+    });
     expect(failures).toEqual([]);
   } finally {
     await context.close();
