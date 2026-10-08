@@ -53,11 +53,7 @@ export function weaponPose(
         ? -0.55 + sweep * 1.1
         : 0.06 + Math.sin(time * 0.003) * 0.045);
   const reach =
-    active && hero === 'ape'
-      ? 23 + sweep * 9
-      : hero === 'panda'
-        ? 20
-        : 19;
+    active && hero === 'ape' ? 23 + sweep * 9 : hero === 'panda' ? 20 : 19;
   return {
     dx: fx * reach - fy * 7,
     dy: fy * reach + fx * 7 - 10,
