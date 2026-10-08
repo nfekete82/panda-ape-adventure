@@ -5,9 +5,19 @@ const BASE = '/assets/vendor';
 
 /** Sizes are taken from the imported PNG IHDRs, not inferred from the filenames. */
 export const VENDOR_SPRITES = {
-  slime: { key: 'vendor-slime', path: 'ninja/slime.png', width: 16, height: 16 },
+  slime: {
+    key: 'vendor-slime',
+    path: 'ninja/slime.png',
+    width: 16,
+    height: 16,
+  },
   wolf: { key: 'vendor-beast', path: 'ninja/beast.png', width: 16, height: 16 },
-  wisp: { key: 'vendor-spirit', path: 'ninja/spirit.png', width: 16, height: 16 },
+  wisp: {
+    key: 'vendor-spirit',
+    path: 'ninja/spirit.png',
+    width: 16,
+    height: 16,
+  },
   tree1: {
     key: 'vendor-tree-01',
     path: 'sunnyside/tree-01-strip4.png',
