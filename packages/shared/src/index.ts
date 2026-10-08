@@ -12,6 +12,12 @@ import {
   forestFootprint,
 } from './forest-layout.js';
 export * from './forest-layout.js';
+import {
+  bambooObstacles,
+  bambooRiverColliders,
+  BAMBOO_WORLD_WIDTH,
+} from './bamboo-crossing.js';
+export * from './bamboo-crossing.js';
 export * from './rpg.js';
 export type Hero = 'panda' | 'ape';
 export type EnemyKind = 'slime' | 'wolf' | 'wisp' | 'guardian';
@@ -109,7 +115,7 @@ export interface World {
   message: string;
 }
 export const WORLD = {
-  width: 1920,
+  width: BAMBOO_WORLD_WIDTH,
   height: 1440,
   spawn: { x: 430, y: 1040 },
   npc: { x: 510, y: 990 },
@@ -167,6 +173,8 @@ export const obstacles: Obstacle[] = (() => {
   );
   return [
     ...lakeColliders.map((o): Obstacle => ({ ...o, kind: 'water' })),
+    ...bambooRiverColliders.map((o): Obstacle => ({ ...o, kind: 'water' })),
+    ...bambooObstacles.map((o): Obstacle => ({ ...o, kind: 'tree' })),
     ...result.filter((o) => {
       if (o.kind === 'water') return false;
       if (o.kind === 'ruin') return true;
@@ -288,7 +296,11 @@ export function createWorld(respawn = RESPAWN): World {
       generation: 0,
     })),
     projectiles: [],
-    loot: [{ id: 'starter', x: 580, y: 1030, kind: 'potion', quantity: 1 }],
+    loot: [
+      { id: 'starter', x: 580, y: 1030, kind: 'potion', quantity: 1 },
+      // Small exploration reward at the new eastern shrine.
+      { id: 'shrine-crystals', x: 2640, y: 498, kind: 'crystal', quantity: 2 },
+    ],
     effects: [],
     quest: 'available',
     kills: 0,

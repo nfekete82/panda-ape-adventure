@@ -698,3 +698,56 @@ test('world atmosphere supports reduced motion and saved exploration near both l
     }
   }
 });
+
+test('Bamboo Crossing bridge and mossbound shrine remain playable after loading a save', async ({
+  browser,
+}) => {
+  const { createWorld, createPlayer } = await import('@panda/shared');
+  for (const [x, y, name] of [
+    [2280, 460, 'bridge'],
+    [2640, 430, 'shrine'],
+  ] as const) {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    try {
+      const save = createWorld();
+      const hero = createPlayer('local', 'ape');
+      hero.x = x;
+      hero.y = y;
+      save.players = [hero];
+      await page.addInitScript(
+        (value) => localStorage.setItem('panda-save', value),
+        JSON.stringify(save),
+      );
+      await page.goto('/');
+      await page
+        .getByRole('button', { name: 'Continue saved solo adventure' })
+        .click();
+      await expect(page.locator('#hud')).toHaveAttribute(
+        'data-region',
+        'bamboo',
+      );
+      await expect(page.locator('#region-name')).toHaveText('BAMBOO CROSSING');
+      await expect(page.locator('#region-label')).toHaveText('Bamboo Crossing');
+      await expect(page.locator('#game canvas')).toBeVisible();
+      await page.screenshot({
+        path: `test-results/bamboo-crossing-${name}.png`,
+      });
+      await page.keyboard.down('KeyD');
+      try {
+        await expect
+          .poll(async () =>
+            Number(await page.locator('#hud').getAttribute('data-x')),
+          )
+          .toBeGreaterThan(x + 18);
+      } finally {
+        await page.keyboard.up('KeyD');
+      }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  }
+});

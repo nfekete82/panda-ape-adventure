@@ -19,6 +19,8 @@ import {
   distance,
   obstacles,
   WORLD,
+  BAMBOO_SHRINE,
+  worldRegion,
   type Hero,
   type Player,
   type World,
@@ -799,6 +801,16 @@ class ForestScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(2000);
     this.add
+      .text(BAMBOO_SHRINE.x, 250, 'MOSSBOUND SHRINE', {
+        fontFamily: 'Georgia',
+        fontSize: '15px',
+        color: '#d8dab0',
+        stroke: '#223c34',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(1);
+    this.add
       .text(1830, 210, 'ANCIENT GATE', {
         fontFamily: 'Georgia',
         fontSize: '12px',
@@ -1283,6 +1295,28 @@ class ForestScene extends Phaser.Scene {
 function updateHud() {
   const p = world.players.find((p) => p.id === playerId);
   if (!p) return;
+  const biome = worldRegion(p.x);
+  const regionHud = $('hud');
+  if (regionHud.dataset.region !== biome) {
+    if (regionHud.dataset.region === 'forest' && biome === 'bamboo')
+      notify(
+        'Bamboo Crossing discovered. Follow the bridge to the mossbound shrine.',
+      );
+    regionHud.dataset.region = biome;
+    const bamboo = biome === 'bamboo';
+    $('region-name').textContent = bamboo
+      ? 'BAMBOO CROSSING'
+      : 'EMERALD FOREST';
+    $('region-chapter').textContent = bamboo
+      ? 'CHAPTER I · THE EASTERN GROVES'
+      : 'CHAPTER I · THE AWAKENING';
+    $('region-label').textContent = bamboo
+      ? 'Bamboo Crossing'
+      : 'Emerald Forest';
+    $('region-detail').textContent = bamboo
+      ? 'THE MOSSBOUND SHRINE'
+      : 'THE OLD WOODLANDS';
+  }
   const state = statusPresentation.update(
     p.hero,
     p.hp,
