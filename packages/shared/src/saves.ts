@@ -125,7 +125,8 @@ function isWorld(value: unknown): value is World {
     !shape(rest, sample) ||
     !['available', 'active', 'complete', 'rewarded'].includes(
       String(value.quest),
-    )
+    ) ||
+    !['dormant', 'hunting', 'return', 'blessed'].includes(String(value.shrine))
   )
     return false;
   if (
@@ -173,6 +174,7 @@ export function migrateWorld(
     instanceId:
       typeof value.instanceId === 'string' ? value.instanceId : instanceId,
     respawn: value.respawn ?? createWorld().respawn,
+    shrine: value.shrine ?? 'dormant',
     players: value.players.map((p: unknown) => {
       if (
         !record(p) ||
