@@ -6,7 +6,10 @@ test('Panda and Ape display equipped weapons while attacking', async ({
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
   await page.getByRole('button', { name: 'Begin adventure' }).click();
-  await expect(page.locator('#hud')).toHaveAttribute('data-weapon-visible', 'true');
+  await expect(page.locator('#hud')).toHaveAttribute(
+    'data-weapon-visible',
+    'true',
+  );
   await page.keyboard.down('Space');
   try {
     await expect(page.locator('#hud')).toHaveAttribute(
@@ -23,7 +26,10 @@ test('Panda and Ape display equipped weapons while attacking', async ({
   await page.goto('/');
   await page.locator('[data-hero="ape"]').click();
   await page.getByRole('button', { name: 'Begin adventure' }).click();
-  await expect(page.locator('#hud')).toHaveAttribute('data-weapon-visible', 'true');
+  await expect(page.locator('#hud')).toHaveAttribute(
+    'data-weapon-visible',
+    'true',
+  );
   await page.keyboard.down('Space');
   try {
     await expect(page.locator('#hud')).toHaveAttribute(
