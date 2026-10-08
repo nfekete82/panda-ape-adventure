@@ -30,11 +30,15 @@ describe('authoritative simulation', () => {
     expect(Math.hypot(p.x - x, p.y - y)).toBeCloseTo(8.75);
   });
   it('blocks obstacles and allows sliding', () => {
-    const o = obstacles.find((o) => o.kind === 'water')!;
-    const p = { x: o.x - 15, y: o.y + 25 };
-    move(p, 10, 7);
-    expect(p.x).toBe(o.x - 15);
-    expect(p.y).toBe(o.y + 32);
+    const o = obstacles.find(
+      (o) => o.kind === 'water' && o.y >= 998 && o.y <= 1002,
+    )!;
+    const p = { x: o.x - 20, y: o.y + o.h / 2 };
+    const y = p.y;
+    expect(collides(p.x, p.y)).toBe(false);
+    move(p, 10, -7);
+    expect(p.x).toBe(o.x - 20);
+    expect(p.y).toBe(y - 7);
     expect(collides(-1, 100)).toBe(true);
   });
   it('applies melee, combos, cooldown and shared XP', () => {

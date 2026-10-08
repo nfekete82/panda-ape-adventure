@@ -1,4 +1,13 @@
-import { obstacles, random, WORLD, type Obstacle } from '@panda/shared';
+import {
+  obstacles,
+  random,
+  WORLD,
+  lakes,
+  lakeSpan,
+  sceneryFits,
+  type Obstacle,
+  type ShorePoint,
+} from '@panda/shared';
 
 // A single deterministic 2D backdrop shared by solo and co-op clients.
 // The positions of all obstacles remain authoritative in @panda/shared.
@@ -136,63 +145,44 @@ function clearing(
 }
 function shoreline(
   ctx: CanvasRenderingContext2D,
-  o: Obstacle,
+  points: readonly ShorePoint[],
   rng: () => number,
 ) {
-  // Jagged rounded pond silhouette fully contains the rectangular collision.
-  // Bank colors live outside the collision boundary, preventing invisible bridges.
-  const ring = (pad: number): Point[] => {
-    const result: Point[] = [];
-    const stepsX = Math.ceil(o.w / 20),
-      stepsY = Math.ceil(o.h / 20);
-    const stagger = () => (rng() - 0.5) * 7;
-    for (let i = 0; i <= stepsX; i++)
-      result.push({
-        x: o.x - pad + (i * (o.w + 2 * pad)) / stepsX + stagger(),
-        y: o.y - pad + stagger(),
-      });
-    for (let i = 1; i <= stepsY; i++)
-      result.push({
-        x: o.x + o.w + pad + stagger(),
-        y: o.y - pad + (i * (o.h + 2 * pad)) / stepsY + stagger(),
-      });
-    for (let i = stepsX - 1; i >= 0; i--)
-      result.push({
-        x: o.x - pad + (i * (o.w + 2 * pad)) / stepsX + stagger(),
-        y: o.y + o.h + pad + stagger(),
-      });
-    for (let i = stepsY - 1; i > 0; i--)
-      result.push({
-        x: o.x - pad + stagger(),
-        y: o.y - pad + (i * (o.h + 2 * pad)) / stepsY + stagger(),
-      });
-    return result;
-  };
-  polygon(ctx, ring(48), '#1b3d34');
-  polygon(ctx, ring(41), '#5a704b');
-  polygon(ctx, ring(33), '#9b9460');
-  polygon(ctx, ring(25), '#497b72');
-  polygon(ctx, ring(20), '#285f69');
-  polygon(ctx, ring(13), '#387c86');
-  polygon(ctx, ring(5), '#438591');
-  for (let i = 0; i < 125; i++) {
-    const x = o.x + rng() * o.w,
-      y = o.y + rng() * o.h;
-    ink(ctx, rng() > 0.48 ? '#588f92' : '#2b737f', x, y, 5 + rng() * 23, 2);
+  const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+  const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+  const ring = (pad: number): Point[] =>
+    points.map((p) => {
+      const dx = p.x - cx,
+        dy = p.y - cy;
+      const length = Math.hypot(dx, dy);
+      return { x: p.x + (dx / length) * pad, y: p.y + (dy / length) * pad };
+    });
+  // Continuous authored banks instead of four jittered rectangular edges.
+  polygon(ctx, ring(28), '#234838');
+  polygon(ctx, ring(21), '#60794c');
+  polygon(ctx, ring(13), '#b0a374');
+  polygon(ctx, ring(6), '#57897d');
+  polygon(ctx, [...points], '#387c86');
+  polygon(ctx, ring(-10), '#32717f');
+  polygon(ctx, ring(-26), '#2b6575');
+  const top = Math.min(...points.map((p) => p.y));
+  const bottom = Math.max(...points.map((p) => p.y));
+  for (let i = 0; i < 65; i++) {
+    const y = top + 12 + rng() * (bottom - top - 24);
+    const span = lakeSpan(points, y);
+    if (!span || span.right - span.left < 40) continue;
+    const x = span.left + 12 + rng() * (span.right - span.left - 36);
+    ink(ctx, rng() > 0.48 ? '#588f92' : '#2b737f', x, y, 5 + rng() * 16, 2);
   }
-  // Reeds and white waterflowers grow at the banks only.
-  for (let i = 0; i < 38; i++) {
-    const edge = i % 4;
-    const x =
-      edge < 2 ? o.x + rng() * o.w : edge === 2 ? o.x - 34 : o.x + o.w + 25;
-    const y =
-      edge >= 2 ? o.y + rng() * o.h : edge === 0 ? o.y - 28 : o.y + o.h + 28;
-    ink(ctx, '#284f3d', x, y - 9, 3, 14);
-    ink(ctx, '#91a46a', x + 3, y - 13, 3, 13);
-    if (i % 7 === 0) {
-      ink(ctx, '#dfc8b3', x - 5, y - 11, 12, 4);
-      ink(ctx, '#eecb71', x - 1, y - 12, 4, 3);
+  // Sparse, composed reed clusters leave most of the shoreline unobstructed.
+  const reedBank = ring(16);
+  for (const fraction of [0, 0.13, 0.38, 0.63, 0.84]) {
+    const p = reedBank[Math.floor(fraction * points.length)]!;
+    for (let n = 0; n < 3; n++) {
+      ink(ctx, '#284f3d', p.x + n * 5, p.y - 9, 2, 12);
+      ink(ctx, '#91a46a', p.x + n * 5 + 2, p.y - 12, 2, 12);
     }
+    ink(ctx, '#dfc8b3', p.x - 5, p.y - 3, 6, 3);
   }
 }
 function forge(ctx: CanvasRenderingContext2D) {
@@ -252,26 +242,58 @@ function forge(ctx: CanvasRenderingContext2D) {
   ink(ctx, '#f3cd83', 328, 917, 29, 20);
   ink(ctx, '#9c643d', 339, 918, 5, 19);
   ink(ctx, '#9c643d', 328, 924, 28, 5);
-  // Little smithing forge: warm embers, chimney pipe, anvil and wood stacks.
-  ink(ctx, '#3b3430', 349, 966, 62, 22);
-  ink(ctx, '#875c43', 354, 964, 53, 15);
-  ink(ctx, '#f4b15e', 360, 967, 39, 7);
-  ink(ctx, '#e56e3c', 366, 969, 29, 6);
-  ink(ctx, '#d9bb85', 342, 979, 14, 3);
-  ink(ctx, '#414944', 414, 982, 30, 8);
-  ink(ctx, '#67716d', 416, 973, 26, 8);
-  ink(ctx, '#465955', 424, 987, 10, 8);
-  for (let n = 0; n < 4; n++) {
+  // Workbench and anvil sit beside the house, clear of Bramble's silhouette.
+  ink(ctx, '#3b3430', 225, 1012, 62, 22);
+  ink(ctx, '#875c43', 230, 1010, 53, 15);
+  ink(ctx, '#f4b15e', 236, 1013, 39, 7);
+  ink(ctx, '#e56e3c', 242, 1015, 29, 6);
+  ink(ctx, '#414944', 304, 1022, 30, 8);
+  ink(ctx, '#67716d', 306, 1013, 26, 8);
+  ink(ctx, '#465955', 314, 1027, 10, 8);
+  for (let n = 0; n < 3; n++) {
     ink(ctx, '#5a4730', 217 + n * 7, 963 - n * 3, 27, 9);
     ink(ctx, '#bf9461', 220 + n * 7, 966 - n * 3, 9, 4);
   }
+  // A separate hearth anchors the east side, leaving the central camp open.
+  for (let n = 0; n < 8; n++) {
+    const angle = (n * Math.PI) / 4;
+    ink(
+      ctx,
+      '#7e8976',
+      570 + Math.cos(angle) * 18,
+      1140 + Math.sin(angle) * 10,
+      7,
+      5,
+    );
+  }
+  ink(ctx, '#5d402d', 554, 1142, 34, 5);
+  polygon(
+    ctx,
+    [
+      { x: 561, y: 1143 },
+      { x: 565, y: 1127 },
+      { x: 570, y: 1135 },
+      { x: 577, y: 1120 },
+      { x: 583, y: 1143 },
+    ],
+    '#d78648',
+  );
+  polygon(
+    ctx,
+    [
+      { x: 567, y: 1143 },
+      { x: 573, y: 1131 },
+      { x: 578, y: 1143 },
+    ],
+    '#f4ce78',
+  );
   // Camp furniture, lanterns, plants.
-  ink(ctx, '#524738', 444, 1095, 62, 12);
-  ink(ctx, '#c49a61', 447, 1090, 56, 7);
-  ink(ctx, '#523e32', 473, 1079, 4, 15);
-  ink(ctx, '#e4b766', 475, 1063, 11, 14);
-  ink(ctx, '#f9e1a2', 478, 1066, 5, 7);
-  ink(ctx, '#5e5638', 469, 1076, 21, 4);
+  ink(ctx, '#524738', 444, 1165, 62, 12);
+  ink(ctx, '#c49a61', 447, 1160, 56, 7);
+  ink(ctx, '#523e32', 473, 1149, 4, 15);
+  ink(ctx, '#e4b766', 475, 1133, 11, 14);
+  ink(ctx, '#f9e1a2', 478, 1136, 5, 7);
+  ink(ctx, '#5e5638', 469, 1146, 21, 4);
 }
 function boulders(ctx: CanvasRenderingContext2D, o: Obstacle) {
   ink(ctx, '#1f4033', o.x - 12, o.y + o.h - 2, o.w + 24, 17);
@@ -330,18 +352,17 @@ export function paintForestWorld(
       }
     }
   // Camp and boss clearing are made first, so the path meets them cleanly.
-  clearing(ctx, 450, 1030, 178, 124, rng);
+  clearing(ctx, 430, 1030, 235, 155, rng);
   clearing(ctx, 1580, 340, 188, 145, rng);
   stampRoad(ctx, rng);
-  for (const o of obstacles) {
-    if (o.kind === 'water') shoreline(ctx, o, rng);
-    else if (o.kind === 'rock') boulders(ctx, o);
-  }
+  for (const lake of lakes) shoreline(ctx, lake, rng);
+  for (const o of obstacles) if (o.kind === 'rock') boulders(ctx, o);
   // Much less noise than the original checkerboard-like forest scatter.
-  for (let i = 0; i < 1750; i++) {
+  for (let i = 0; i < 1050; i++) {
     const x = rng() * WORLD.width,
       y = rng() * WORLD.height;
     if (
+      !sceneryFits({ x, y: y - 12, w: 12, h: 24 }) ||
       obstacles.some(
         (o) =>
           x > o.x - 45 &&

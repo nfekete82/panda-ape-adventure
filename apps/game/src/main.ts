@@ -18,6 +18,9 @@ import {
   move,
   distance,
   obstacles,
+  lakes,
+  lakeSpan,
+  sceneryFits,
   WORLD,
   type Hero,
   type Player,
@@ -740,7 +743,10 @@ class ForestScene extends Phaser.Scene {
           Math.floor(o.x + o.y) % 2 === 0
             ? VENDOR_SPRITES.mushroomRed.key
             : VENDOR_SPRITES.mushroomBlue.key;
-        if (this.textures.exists(mushroom))
+        if (
+          this.textures.exists(mushroom) &&
+          sceneryFits({ x: footX + 18, y: footY + 2, w: 28, h: 28 })
+        )
           this.ambient.push(
             this.add
               .sprite(footX + 32, footY + 16, mushroom, 0)
@@ -754,7 +760,7 @@ class ForestScene extends Phaser.Scene {
       .setTint(0xd5af7d)
       .setDepth(WORLD.smith.y);
     this.add
-      .text(WORLD.smith.x, WORLD.smith.y - 48, 'BRAMBLE · FORGE', {
+      .text(WORLD.smith.x, WORLD.smith.y - 40, 'BRAMBLE · FORGE', {
         fontFamily: 'Georgia',
         fontSize: '15px',
         color: '#f3d9a0',
@@ -885,7 +891,7 @@ class ForestScene extends Phaser.Scene {
       .setPosition(sprite.x + pose.dx, sprite.y + pose.dy)
       .setRotation(pose.rotation)
       .setScale(p.hero === 'panda' ? 0.96 : 0.9)
-      .setDepth(p.facing.y < -0.15 ? sprite.y + 1 : sprite.y + 43)
+      .setDepth(sprite.depth + (pose.behindHero ? -1 : 1))
       .setAlpha(p.connected ? 1 : 0.35);
 
     if (!pose.trail) return;
@@ -976,27 +982,32 @@ class ForestScene extends Phaser.Scene {
       }
     }
     for (const tree of this.vegetation) {
-      tree.setAngle(Math.sin(time * 0.0007 + tree.x * 0.01) * 0.3);
-      if (tree.texture.key.startsWith('vendor-tree-'))
-        tree.setFrame(sceneryFrame(time, tree.x));
+      // Stable canopy frame; the vendor loop noticeably stretches the crown.
+      tree.setAngle(Math.sin(time * 0.00035 + tree.x * 0.01) * 0.06);
     }
     for (const plant of this.ambient)
       plant.setFrame(sceneryFrame(time, plant.x, 360));
     this.water.clear();
-    for (const o of obstacles)
-      if (o.kind === 'water') {
-        this.water.lineStyle(2, 0x91beb2, 0.27);
-        for (let n = 0; n < 7; n++) {
-          const x = o.x + 20 + ((time * 0.008 + n * 37) % (o.w - 45)),
-            y = o.y + 22 + (n * (o.h - 38)) / 7;
-          this.water.lineBetween(
-            x,
-            y,
-            x + 17 + Math.sin(time * 0.001 + n) * 7,
-            y,
-          );
-        }
+    this.water.lineStyle(2, 0x91beb2, 0.18);
+    for (const lake of lakes) {
+      const top = Math.min(...lake.map((p) => p.y));
+      const bottom = Math.max(...lake.map((p) => p.y));
+      for (let n = 0; n < 5; n++) {
+        const y = top + 24 + (n * (bottom - top - 48)) / 5;
+        const span = lakeSpan(lake, y);
+        if (!span || span.right - span.left < 65) continue;
+        const x =
+          span.left +
+          18 +
+          ((time * 0.004 + n * 37) % (span.right - span.left - 55));
+        this.water.lineBetween(
+          x,
+          y,
+          x + 14 + Math.sin(time * 0.0006 + n) * 3,
+          y,
+        );
       }
+    }
     this.graphics.clear();
     const alive = new Set<string>();
     for (const p of world.players) {
