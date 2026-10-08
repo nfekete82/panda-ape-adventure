@@ -45,7 +45,12 @@ import {
 } from './vendor-art';
 import { WorldSoundTracker } from './sound-events';
 import { playSoundCue } from './sound-effects';
+import { StatusPresentation, statusPercent } from './hud';
+import { CombatFeedback } from './combat-feedback';
+import { WeaponTrails } from './weapon-trails';
 import './style.css';
+const statusPresentation = new StatusPresentation();
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
 let selected: Hero = 'panda',
@@ -93,10 +98,18 @@ function portrait(id: string, hero: Hero) {
   const draw = ctx.getContext('2d')!;
   draw.clearRect(0, 0, ctx.width, ctx.height);
   draw.imageSmoothingEnabled = false;
-  draw.save();
-  draw.scale(ctx.width / 64, ctx.height / 64);
-  heroArt(draw, hero, 0, 2);
-  draw.restore();
+  if (id === 'hud-portrait') {
+    const source = document.createElement('canvas');
+    source.width = source.height = 64;
+    const sourceContext = source.getContext('2d')!;
+    heroArt(sourceContext, hero, 0, 2);
+    draw.drawImage(source, 12, 6, 40, 44, 0, 0, ctx.width, ctx.height);
+  } else {
+    draw.save();
+    draw.scale(ctx.width / 64, ctx.height / 64);
+    heroArt(draw, hero, 0, 2);
+    draw.restore();
+  }
 }
 portrait('panda-portrait', 'panda');
 portrait('ape-portrait', 'ape');
@@ -719,6 +732,8 @@ class ForestScene extends Phaser.Scene {
   sprites = new Map<string, Phaser.GameObjects.Sprite>();
   weapons = new Map<string, Phaser.GameObjects.Image>();
   weaponTiming = new Map<string, WeaponTiming>();
+  feedback = new CombatFeedback();
+  trails = new WeaponTrails();
   labels = new Map<string, Phaser.GameObjects.Text>();
   shadows = new Map<string, Phaser.GameObjects.Ellipse>();
   graphics!: Phaser.GameObjects.Graphics;
@@ -882,11 +897,17 @@ class ForestScene extends Phaser.Scene {
       weapon.setName(`weapon-${p.id}`);
       this.weapons.set(p.id, weapon);
     }
+    if (p.id === playerId) {
+      $('hud').dataset.weaponTrail = String(pose.trail);
+      $('hud').dataset.weaponProgress = String(pose.progress);
+    }
     if (p.hp <= 0) {
       weapon.setVisible(false);
       this.weaponTiming.delete(p.id);
       return;
     }
+    const texture = p.hero === 'panda' ? 'panda-sword' : 'ape-staff';
+    if (weapon.texture.key !== texture) weapon.setTexture(texture);
     weapon
       .setVisible(true)
       .setPosition(
@@ -898,40 +919,53 @@ class ForestScene extends Phaser.Scene {
       .setDepth(sprite.depth + (pose.behindHero ? -1 : 1))
       .setAlpha(p.connected ? 1 : 0.35);
 
-    if (!pose.trail) return;
     if (p.hero === 'panda') {
-      // A short tapered crescent follows the actual blade around the grip,
-      // outside the face. It fades with strike speed instead of lingering.
-      const tipAngle = pose.rotation - Math.PI / 2;
-      for (let i = 0; i < 9; i++) {
-        const a = tipAngle - i * 0.065;
-        const b = a - 0.065;
-        const radius = 53;
-        this.graphics.lineStyle(
-          Math.max(1, 4 - i * 0.35),
-          i < 3 ? 0xfff1d2 : 0xa4d6d4,
-          pose.trailAlpha * (1 - i / 10) * (p.connected ? 1 : 0.35),
-        );
-        this.graphics.lineBetween(
-          weapon.x + Math.cos(a) * radius,
-          weapon.y + Math.sin(a) * radius,
-          weapon.x + Math.cos(b) * radius,
-          weapon.y + Math.sin(b) * radius,
-        );
-      }
+      this.trails.draw(
+        p.id,
+        this.graphics,
+        weapon.x,
+        weapon.y,
+        pose,
+        time,
+        reducedMotion.matches,
+      );
     } else {
+      if (!pose.trail) return;
       // The staff tip leads the cast. These sparks are entirely visual.
       const tipAngle = pose.rotation - Math.PI / 2;
       const tipX = weapon.x + Math.cos(tipAngle) * 47;
       const tipY = weapon.y + Math.sin(tipAngle) * 47;
-      const pulse = 6 + Math.sin(time * 0.04) * 2;
+      const released =
+        world.projectiles.some(
+          (bolt) => bolt.owner === p.id && bolt.life > 1.3,
+        ) ||
+        world.effects.some(
+          (effect) =>
+            effect.kind === 'magic' &&
+            effect.life > 0.25 &&
+            distance(effect, p) < 5,
+        );
+      const pulse = released ? 6 + Math.sin(time * 0.04) * 2 : 3;
+      for (let i = 0; i < 3; i++) {
+        const orbit = time * 0.006 + (i * Math.PI * 2) / 3;
+        this.graphics.fillStyle(
+          pose.special ? 0xc5b2f0 : 0xa2f6db,
+          reducedMotion.matches ? 0.25 : 0.6,
+        );
+        this.graphics.fillRect(
+          tipX + Math.cos(orbit) * 10,
+          tipY + Math.sin(orbit) * 6,
+          2,
+          2,
+        );
+      }
       this.graphics.fillStyle(0x83dbc8, 0.19);
       this.graphics.fillCircle(tipX, tipY, pulse + 9);
       this.graphics.fillStyle(0xe5ffde, 0.9);
       this.graphics.fillCircle(tipX, tipY, pulse * 0.45);
       this.graphics.lineStyle(2, 0xa2f6db, 0.74);
-      this.graphics.strokeCircle(tipX, tipY, pulse + 4);
-      if (pose.special) {
+      if (released) this.graphics.strokeCircle(tipX, tipY, pulse + 4);
+      if (pose.special && released) {
         this.graphics.lineStyle(3, 0xb7a6ee, 0.68);
         this.graphics.strokeCircle(tipX, tipY, pulse + 13);
       }
@@ -996,6 +1030,15 @@ class ForestScene extends Phaser.Scene {
       if (soundEffects && audio)
         for (const cue of cues) playSoundCue(audio, cue, volume);
     }
+    const confirmedHits = this.feedback.observe(world, time);
+    const localHero = world.players.find((p) => p.id === playerId);
+    if (
+      !reducedMotion.matches &&
+      localHero &&
+      confirmedHits.some((hit) => distance(hit, localHero) < 220)
+    )
+      this.cameras.main.shake(60, 0.0012);
+    const visualTime = this.feedback.clock(time, reducedMotion.matches);
     for (const tree of this.vegetation) {
       // Stable canopy frame; the vendor loop noticeably stretches the crown.
       tree.setAngle(Math.sin(time * 0.00035 + tree.x * 0.01) * 0.06);
@@ -1057,8 +1100,9 @@ class ForestScene extends Phaser.Scene {
         p.hp > 0 ? p.action : 'downed',
         p.cooldown,
         combatStats(p).cooldown,
-        time,
+        visualTime,
         this.weaponTiming.get(p.id),
+        p.combo,
       );
       if (p.hp > 0) this.weaponTiming.set(p.id, animation.timing);
       const pose = animation.pose;
@@ -1161,6 +1205,7 @@ class ForestScene extends Phaser.Scene {
         this.weapons.get(id)?.destroy();
         this.weapons.delete(id);
         this.weaponTiming.delete(id);
+        this.trails.remove(id);
         this.shadows.get(id)?.destroy();
         this.shadows.delete(id);
         this.labels.get(id)?.destroy();
@@ -1223,7 +1268,11 @@ class ForestScene extends Phaser.Scene {
         const radius = 5 + (1 - fade) * 10;
         this.graphics.lineStyle(2, color, fade * 0.65);
         for (let n = 0; n < 4; n++) {
-          const angle = Math.PI / 4 + (n * Math.PI) / 2;
+          const source = world.players.find((p) => distance(p, f) < 160);
+          const direction = source
+            ? Math.atan2(f.y - source.y, f.x - source.x)
+            : 0;
+          const angle = direction + (n - 1.5) * 0.65;
           this.graphics.lineBetween(
             f.x + Math.cos(angle) * radius * 0.45,
             f.y + Math.sin(angle) * radius * 0.45,
@@ -1313,9 +1362,34 @@ class ForestScene extends Phaser.Scene {
 function updateHud() {
   const p = world.players.find((p) => p.id === playerId);
   if (!p) return;
-  $('health-bar').style.width = `${(p.hp / p.maxHp) * 100}%`;
+  const state = statusPresentation.update(
+    p.hero,
+    p.hp,
+    p.mana,
+    performance.now(),
+  );
+  const panel = document.querySelector('.player-panel');
+  panel?.classList.toggle('damaged', state.damaged);
+  panel?.classList.toggle('spent', state.spent);
+  $('hud-portrait').dataset.hero = p.hero;
+  $('health-bar').style.width = `${statusPercent(p.hp, p.maxHp)}%`;
+  $('health-trail').style.width = `${statusPercent(p.hp, p.maxHp)}%`;
+  document
+    .querySelector('.health')
+    ?.setAttribute('aria-valuenow', String(Math.ceil(p.hp)));
+  document
+    .querySelector('.health')
+    ?.setAttribute('aria-valuemax', String(p.maxHp));
   $('health-text').textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
-  $('mana-bar').style.width = `${(p.mana / combatStats(p).maxMana) * 100}%`;
+  const maxMana = combatStats(p).maxMana;
+  $('mana-bar').style.width = `${statusPercent(p.mana, maxMana)}%`;
+  $('mana-text').textContent = `${Math.floor(p.mana)} / ${maxMana}`;
+  document
+    .querySelector('.mana')
+    ?.setAttribute('aria-valuenow', String(Math.floor(p.mana)));
+  document
+    .querySelector('.mana')
+    ?.setAttribute('aria-valuemax', String(maxMana));
   $('xp-bar').style.width = `${(p.xp / xpRequired(p.level)) * 100}%`;
   $('level').textContent = `LV ${p.level}`;
   $('potions').textContent = `Potion ×${p.potions}`;
@@ -1404,6 +1478,7 @@ function updateHud() {
         scene.sprites.get(enemy.id)?.texture.key.startsWith('vendor-'),
     ).length,
   );
+  hud.dataset.weaponTexture = scene.weapons.get(p.id)?.texture.key ?? '';
   hud.dataset.weaponVisible = String(scene.weapons.get(p.id)?.visible ?? false);
   hud.dataset.weaponActive = String(
     p.hp > 0 &&
@@ -1415,6 +1490,11 @@ function updateHud() {
   hud.dataset.y = String(p.y);
   hud.dataset.players = String(world.players.length);
   hud.dataset.tick = String(world.tick);
+  hud.dataset.damageNumbers = String(
+    world.effects.filter(
+      (effect) => effect.kind === 'hit' && effect.text && effect.life > 0.25,
+    ).length,
+  );
   hud.dataset.enemyHp = String(world.enemies.reduce((sum, e) => sum + e.hp, 0));
   const other = world.players.find((q) => q.id !== p.id);
   hud.dataset.remoteX = other ? String(other.x) : '';

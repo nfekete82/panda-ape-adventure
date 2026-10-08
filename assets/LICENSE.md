@@ -45,3 +45,11 @@ of attack crescents/impact sparks are original procedural artwork created in
 `apps/game/src/main.ts`, with textures generated through `art.ts`. They use
 CC0-1.0, as above. No external images, new reference assets or generated bitmap
 assets were introduced. Source code remains under the repository MIT license.
+
+## Premium combat and HUD
+
+The woodland HUD framing, portrait crops from the existing hero generator,
+blade-tip trails and staff particles are original code-generated presentation
+in `apps/game/src/style.css`, `main.ts`, `weapons.ts` and `weapon-trails.ts`.
+Artwork uses CC0-1.0 and code uses MIT. No external reference artwork, textures,
+sounds or runtime downloads were added. Existing vendor licenses are unchanged.

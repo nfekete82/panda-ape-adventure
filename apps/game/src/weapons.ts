@@ -16,6 +16,7 @@ export interface WeaponPose {
   bodyDx: number;
   bodyDy: number;
   trailAlpha: number;
+  variation: number;
 }
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value));
@@ -41,6 +42,7 @@ export function weaponAnimation(
   normalCooldown: number,
   time: number,
   previous?: WeaponTiming,
+  combo = 1,
 ): { timing: WeaponTiming; pose: WeaponPose } {
   const newSwing =
     // Cooldown only rises on a new authoritative action. A large threshold
@@ -72,6 +74,7 @@ export function weaponAnimation(
       normalCooldown,
       time,
       special,
+      combo,
     ),
   };
 }
@@ -88,6 +91,7 @@ export function weaponPose(
   normalCooldown: number,
   time: number,
   sustainedSpecial?: boolean,
+  combo = 1,
 ): WeaponPose {
   const magnitude = Math.hypot(facing.x, facing.y) || 1;
   const fx = facing.x / magnitude;
@@ -106,8 +110,27 @@ export function weaponPose(
   const sweep = ease((progress - 0.22) / 0.34);
   const recovery = ease((progress - 0.56) / 0.44);
   const idle = hero === 'panda' ? -0.18 : 0.06 + Math.sin(time * 0.002) * 0.018;
-  const windup = hero === 'panda' ? -1.15 : -0.5;
-  const followThrough = hero === 'panda' ? 1.3 : 0.72;
+  const variation = (((combo + 2) % 3) + 3) % 3;
+  const windup =
+    hero === 'ape'
+      ? special
+        ? -0.85
+        : -0.5
+      : variation === 1
+        ? 1.05
+        : variation === 2
+          ? -1.65
+          : -1.15;
+  const followThrough =
+    hero === 'ape'
+      ? special
+        ? 0.95
+        : 0.72
+      : variation === 1
+        ? -1.25
+        : variation === 2
+          ? 0.95
+          : 1.3;
   const angle = !active
     ? idle
     : progress < 0.22
@@ -122,14 +145,18 @@ export function weaponPose(
       : progress < 0.56
         ? mix(-1, 1, sweep)
         : 1 - recovery;
-  const reach = 32 + (active ? 4 * sweep * (1 - recovery) : 0);
+  const extension = active ? sweep * (1 - recovery) : 0;
+  const reach = 32 + 4 * extension;
+  // Curved hand travel joins idle at both ends; the blade stays outside the head.
+  const handArc = active ? Math.sin(progress * Math.PI) * body * 3 : 0;
   const rotation = facingAngle + Math.PI / 2 + angle;
   return {
-    dx: fx * reach - fy * 7,
+    dx: fx * reach - fy * (7 + handArc),
     // Keep the grip at hand height on either side, away from the face.
-    dy: fy * reach + Math.abs(fx) * 8 + 7,
+    dy: fy * reach + Math.abs(fx) * 8 + 7 + fx * handArc,
     rotation,
     facingAngle,
+    variation,
     progress,
     sweep,
     active,

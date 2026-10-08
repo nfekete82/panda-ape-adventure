@@ -120,3 +120,30 @@ Local Docker builds and runtime tests cover ARM64. This release's AMD64 build is
 Permanent characters use private browser credentials, not accounts. Solo storage remains browser-local and is not trusted as online progression. Ordinary room movement/health/timers autosave every 15 seconds, so an abrupt process kill can lose the most recent transient state. Rewards and successful progression commands schedule atomic saves immediately; graceful shutdown flushes queued writes. Recent-room reconnect remains 60 seconds while permanent character progress survives room expiration. Backups accumulate and require owner-managed retention.
 
 See [V0.2.0.md](V0.2.0.md) for manual gameplay, migration and backup testing and [SPRITES.md](SPRITES.md) for the art contract.
+
+## Premium combat and HUD — 2026-10-08
+
+- `npm ci` completed with the pinned lockfile unchanged.
+- Local host runtime is Node 25.9.0. The repository build image uses Node
+  24.21.0; typecheck, lint, format check and all 56 unit/integration tests passed
+  inside that image. Its production build also passed.
+- Local typecheck, lint, format check, 56 unit/integration tests and build passed.
+  Tests include real WebSocket multiplayer and persistence regressions.
+- Chromium: all 12 browser tests passed against Vite at 127.0.0.1:8085 and
+  against the production nginx build,
+  including sound settings, co-op combat/reconnect, progression/save migration,
+  forge, hero switching, numeric status, responsive layouts and confirmed damage.
+- Compose production and development configurations passed checks. Both affected
+  production images built, and `npm run test:docker` passed the actual production
+  restart with both saved sessions and room state restored through nginx `/ws`.
+- Reviewed original-art HUD, sword trail, staff cast, confirmed damage, phone and
+  co-op screenshots; committed review captures are linked in
+  [PREMIUM_COMBAT_HUD.md](PREMIUM_COMBAT_HUD.md).
+- Initial sandboxed test attempts could not bind local servers or access Docker;
+  reruns with authorized local access passed. An early Vite attempt collided
+  with another IPv4 service on port 8081; isolated Vite uses 127.0.0.1:8085.
+  No unrelated service was modified. A capture-clock race was corrected by
+  pausing at a slightly future deadline.
+- Phone HUD adapts, but existing touch movement remains unimplemented. Animation
+  uses the current sprites with visual body lean rather than new skeletal art.
+  No cross-device frame-rate guarantee or manual controller test is claimed.
