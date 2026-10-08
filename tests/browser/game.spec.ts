@@ -24,6 +24,36 @@ test('curated forest art loads, animates and keeps the full game playable', asyn
   expect(errors).toEqual([]);
 });
 
+test('sound effects are on by default, independent of music, and can be persisted', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Begin adventure' }).click();
+  await expect(page.locator('#hud')).toHaveAttribute('data-sfx-enabled', 'true');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  const music = page.locator('#music');
+  const effects = page.locator('#sound-effects');
+  await expect(music).not.toBeChecked();
+  await expect(effects).toBeChecked();
+  await effects.uncheck();
+  await expect
+    .poll(() =>
+      page.evaluate(() => JSON.parse(localStorage.getItem('panda-settings') ?? '{}').soundEffects),
+    )
+    .toBe(false);
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.locator('#hud')).toHaveAttribute('data-sfx-enabled', 'false');
+  await page.reload();
+  await page.getByRole('button', { name: 'Begin adventure' }).click();
+  await expect(page.locator('#hud')).toHaveAttribute('data-sfx-enabled', 'false');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await expect(page.locator('#sound-effects')).not.toBeChecked();
+  await page.locator('#sound-effects').check();
+  await expect(page.locator('#music')).not.toBeChecked();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.locator('#hud')).toHaveAttribute('data-sfx-enabled', 'true');
+});
+
 test('Panda and Ape display equipped weapons while attacking', async ({
   page,
 }) => {
