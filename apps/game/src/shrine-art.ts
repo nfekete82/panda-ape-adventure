@@ -17,7 +17,11 @@ export function drawShrineAura(
   const brightness = stage === 'blessed' ? 0.85 : wake ? 0.56 : 0.16;
   graphics.fillStyle(0x56caa1, brightness * (0.11 + pulse * 0.09));
   graphics.fillCircle(x, y, 29 + pulse * 10);
-  graphics.lineStyle(2, stage === 'blessed' ? 0xe3efaa : 0x80d3ad, brightness * 0.52);
+  graphics.lineStyle(
+    2,
+    stage === 'blessed' ? 0xe3efaa : 0x80d3ad,
+    brightness * 0.52,
+  );
   graphics.strokeEllipse(x, y + 43, 91 + pulse * 8, 23 + pulse * 4);
   if (stage === 'dormant') return;
   // Two concentric rune arcs revolve very slowly without covering the altar.
