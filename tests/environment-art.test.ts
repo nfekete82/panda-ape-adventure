@@ -14,7 +14,12 @@ describe('forest illustration geometry', () => {
     for (let i = 1; i < values.length; i++) {
       expect(values[i]!.x).toBeGreaterThan(values[i - 1]!.x);
       expect(values[i]!.y).toBeLessThanOrEqual(values[i - 1]!.y);
-      expect(Math.hypot(values[i]!.x - values[i - 1]!.x, values[i]!.y - values[i - 1]!.y)).toBeLessThan(24);
+      expect(
+        Math.hypot(
+          values[i]!.x - values[i - 1]!.x,
+          values[i]!.y - values[i - 1]!.y,
+        ),
+      ).toBeLessThan(24);
     }
   });
 });
