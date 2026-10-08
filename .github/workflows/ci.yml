@@ -21,11 +21,6 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:browser
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: browser-traces
-          path: test-results/
       - run: docker compose config --quiet
       - run: docker compose -f compose.dev.yaml config --quiet
       - run: docker compose up -d --build --wait
@@ -35,6 +30,11 @@ jobs:
           PLAYWRIGHT_EXTERNAL_SERVER: 1
       - run: docker compose down
         if: always()
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: browser-traces
+          path: test-results/
   containers:
     runs-on: ubuntu-latest
     steps:

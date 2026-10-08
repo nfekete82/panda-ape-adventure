@@ -19,6 +19,7 @@ test('solo renders the forest, moves, opens inventory and saves', async ({
             .getContext('2d') !== null,
       ),
     ).toBe(true);
+  await expect(page.locator('#hud')).toHaveAttribute('data-x', /^\d/);
   const x = Number(await page.locator('#hud').getAttribute('data-x'));
   await page.keyboard.down('KeyD');
   try {
@@ -175,6 +176,7 @@ test('transport loss restores the same session and returning to title cancels pe
   await expect(page.locator('#connection-status')).toHaveText(
     'CO-OP · CONNECTED',
   );
+  await expect(page.locator('#hud')).toHaveAttribute('data-player-id', /.+/);
   const playerId = await page.locator('#hud').getAttribute('data-player-id');
   await page.evaluate(() =>
     (window as unknown as { testSocket: WebSocket }).testSocket.close(),
