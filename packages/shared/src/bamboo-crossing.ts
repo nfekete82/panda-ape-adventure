@@ -25,9 +25,7 @@ export function bambooRiverSpan(y: number): { left: number; right: number } {
     Math.sin(fromBridge / 59) * 11 +
     Math.sin(fromBridge / 310) * 13;
   const halfWidth =
-    66 +
-    Math.sin(fromBridge / 178) * 12 +
-    (1 - Math.cos(fromBridge / 110)) * 5;
+    66 + Math.sin(fromBridge / 178) * 12 + (1 - Math.cos(fromBridge / 110)) * 5;
   return {
     left: Math.round(center - halfWidth),
     right: Math.round(center + halfWidth),
