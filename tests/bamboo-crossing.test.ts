@@ -64,9 +64,11 @@ describe('Bamboo Crossing world extension', () => {
       expect(
         obstacles.some((t) => t.kind === 'tree' && t.x === o.x && t.y === o.y),
       ).toBe(true);
-      expect(['tree-bamboo', 'tree-bamboo-tall', 'tree-bamboo-young']).toContain(
-        treePresentation(o.x, o.y).texture,
-      );
+      expect([
+        'tree-bamboo',
+        'tree-bamboo-tall',
+        'tree-bamboo-young',
+      ]).toContain(treePresentation(o.x, o.y).texture);
     }
   });
 
@@ -83,7 +85,9 @@ describe('Bamboo Crossing world extension', () => {
   it('blends the two biomes smoothly rather than drawing a hard vertical seam', () => {
     expect(bambooGroundBlend(1725)).toBe(0);
     expect(bambooGroundBlend(2110)).toBe(1);
-    const samples = Array.from({ length: 40 }, (_, i) => bambooGroundBlend(1730 + i * 9));
+    const samples = Array.from({ length: 40 }, (_, i) =>
+      bambooGroundBlend(1730 + i * 9),
+    );
     for (let i = 1; i < samples.length; i++) {
       expect(samples[i]!).toBeGreaterThanOrEqual(samples[i - 1]!);
       expect(samples[i]! - samples[i - 1]!).toBeLessThan(0.05);
@@ -97,7 +101,7 @@ describe('Bamboo Crossing world extension', () => {
     expect(bridge.left).toBe(2219);
     expect(bridge.right).toBe(2351);
     expect(Math.abs(upper.left - below.left)).toBeGreaterThan(15);
-    const widths = [100, 230, 460, 700, 940, 1200].map(y => {
+    const widths = [100, 230, 460, 700, 940, 1200].map((y) => {
       const span = bambooRiverSpan(y);
       return span.right - span.left;
     });
@@ -107,8 +111,12 @@ describe('Bamboo Crossing world extension', () => {
   });
 
   it('uses several deterministic bamboo silhouettes without modifying their footprints', () => {
-    const textures = new Set(bambooObstacles.map(o => treePresentation(o.x, o.y).texture));
-    expect(textures).toEqual(new Set(['tree-bamboo', 'tree-bamboo-tall', 'tree-bamboo-young']));
+    const textures = new Set(
+      bambooObstacles.map((o) => treePresentation(o.x, o.y).texture),
+    );
+    expect(textures).toEqual(
+      new Set(['tree-bamboo', 'tree-bamboo-tall', 'tree-bamboo-young']),
+    );
     for (const [index, o] of bambooObstacles.entries()) {
       expect(o.w).toBe(34);
       expect(o.h).toBe(34);
@@ -116,5 +124,4 @@ describe('Bamboo Crossing world extension', () => {
       expect(index).toBeGreaterThanOrEqual(0);
     }
   });
-
 });
