@@ -31,7 +31,6 @@ import { makeWeaponTextures, weaponPose, type WeaponPose } from './weapons';
 import {
   VENDOR_SPRITES,
   preloadVendorArt,
-  createForestGroundTexture,
   enemyFrame,
   sceneryFrame,
   vendorEnemyTexture,
@@ -83,7 +82,7 @@ function portrait(id: string, hero: Hero) {
   draw.clearRect(0, 0, ctx.width, ctx.height);
   draw.imageSmoothingEnabled = false;
   draw.save();
-  draw.scale(ctx.width / 32, ctx.height / 32);
+  draw.scale(ctx.width / 64, ctx.height / 64);
   heroArt(draw, hero, 0, 2);
   draw.restore();
 }
@@ -716,8 +715,6 @@ class ForestScene extends Phaser.Scene {
     makeAssets(this);
     makeWeaponTextures(this);
     this.add.image(0, 0, 'forest').setOrigin(0);
-    if (createForestGroundTexture(this, WORLD.width, WORLD.height))
-      this.add.image(0, 0, 'vendor-ground-accents').setOrigin(0).setDepth(0.5);
     for (const o of obstacles) {
       if (o.kind !== 'tree') continue;
       const footX = o.x + o.w / 2;
@@ -1326,6 +1323,8 @@ function updateHud() {
   // Read-only observability used by browser tests and performance inspection.
   const hud = $('hud');
   hud.dataset.cameraZoom = String(scene.cameras.main.zoom);
+  hud.dataset.landscapeStyle = 'illustrated-forest-v2';
+  hud.dataset.heroStyle = 'concept-64px';
   hud.dataset.vendorArt =
     scene.textures.exists(VENDOR_SPRITES.tree1.key) &&
     scene.textures.exists(VENDOR_SPRITES.slime.key)
