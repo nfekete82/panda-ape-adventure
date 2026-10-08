@@ -35,7 +35,16 @@ export function heroArt(
   rect(ctx, '#16252c', 18, 27, 6, 4);
   rect(ctx, hero === 'panda' ? '#496874' : '#65478b', 9, 17, 14, 12);
   rect(ctx, hero === 'panda' ? '#9eb1b0' : '#9b7bca', 10, 17, 12, 3);
-  rect(ctx, '#d3af65', 10, 26, 12, 2);
+  // Shared red adventurer scarf and leather harness from concept art.
+  rect(ctx, '#75251f', 9, 15, 16, 5);
+  rect(ctx, '#c74330', 8, 14, 17, 4);
+  rect(ctx, '#f06740', 10, 14, 11, 1);
+  rect(ctx, '#a62c25', back ? 21 : 6, 18, 5, 8);
+  rect(ctx, '#704b32', 13, 19, 3, 8);
+  rect(ctx, '#b78248', 14, 22, 3, 3);
+  rect(ctx, '#d3af65', 9, 26, 14, 2);
+  rect(ctx, '#856039', 18, 26, 5, 6);
+  rect(ctx, '#c29852', 19, 27, 3, 2);
   if (hero === 'panda') {
     rect(ctx, '#192c34', 6, 4, 7, 7);
     rect(ctx, '#192c34', 20, 4, 7, 7);
@@ -53,6 +62,13 @@ export function heroArt(
     rect(ctx, '#bbd9d7', 26, 12, 3, 13);
     rect(ctx, '#eff8e5', 27, 10, 2, 9);
     rect(ctx, '#d6b565', 24, 24, 7, 2);
+    // Bamboo staff, wrapped in pale cloth with green leaf tip.
+    rect(ctx, '#284b26', 27, 5, 3, 22);
+    rect(ctx, '#72a842', 28, 4, 3, 20);
+    rect(ctx, '#d9d1ac', 27, 17, 4, 2);
+    rect(ctx, '#d9d1ac', 27, 22, 4, 2);
+    rect(ctx, '#74a13d', 24, 5, 5, 3);
+    rect(ctx, '#a7c857', 27, 3, 4, 4);
   } else {
     rect(ctx, '#734b37', 6, 7, 6, 9);
     rect(ctx, '#734b37', 21, 7, 6, 9);
@@ -72,6 +88,13 @@ export function heroArt(
     rect(ctx, '#58467c', 25, 6, 6, 6);
     rect(ctx, '#a6f1e9', 26, 5, 4, 5);
     rect(ctx, '#f1ffff', 27, 5, 2, 2);
+    // Tail and wooden staff, matching the companion's silhouette.
+    rect(ctx, '#52362b', 2, 23, 4, 3);
+    rect(ctx, '#895536', 1, 18, 3, 6);
+    rect(ctx, '#a67444', 2, 16, 4, 3);
+    rect(ctx, '#76492c', 26, 8, 4, 21);
+    rect(ctx, '#bd8c4f', 27, 7, 2, 20);
+    rect(ctx, '#6e9d44', 24, 7, 5, 3);
   }
   ctx.restore();
 }
@@ -268,6 +291,35 @@ export function makeAssets(scene: Phaser.Scene) {
       rect(ctx, '#929888', o.x + 1, o.y - 12, o.w - 3, 10);
       rect(ctx, '#7a856c', o.x + 4, o.y - 7, 12, 8);
       rect(ctx, '#455749', o.x + 4, o.y + o.h - 3, o.w - 8, 7);
+    }
+  }
+  // Seeded forest-floor detailing: flowers, moss, mushrooms and pebble clusters.
+  // Purely visual decorations do not affect authoritative collision geometry.
+  for (let i = 0; i < 1650; i++) {
+    const x = Math.floor(rng() * c.width / 4) * 4;
+    const y = Math.floor(rng() * c.height / 4) * 4;
+    const blocked = obstacles.some(o => x >= o.x - 6 && x <= o.x + o.w + 6 && y >= o.y - 6 && y <= o.y + o.h + 6);
+    if (blocked) continue;
+    const type = Math.floor(rng() * 5);
+    if (type === 0) {
+      rect(ctx, '#244d35', x + 2, y + 3, 2, 7);
+      rect(ctx, '#e4cc85', x, y, 6, 3);
+      rect(ctx, '#f9e5b0', x + 2, y - 1, 2, 2);
+    } else if (type === 1) {
+      rect(ctx, '#233f33', x, y + 5, 11, 3);
+      rect(ctx, '#7c9c61', x + 1, y, 5, 5);
+      rect(ctx, '#b3be72', x + 6, y + 2, 4, 3);
+    } else if (type === 2) {
+      rect(ctx, '#e0d3ab', x + 3, y + 3, 3, 5);
+      rect(ctx, '#bc694c', x, y, 10, 4);
+      rect(ctx, '#f2d69a', x + 2, y + 1, 2, 1);
+    } else if (type === 3) {
+      rect(ctx, '#79867a', x, y + 2, 9, 4);
+      rect(ctx, '#aab49b', x + 1, y, 5, 2);
+    } else {
+      rect(ctx, '#1f4936', x, y + 5, 12, 2);
+      rect(ctx, '#679054', x + 2, y, 2, 7);
+      rect(ctx, '#8eae66', x + 7, y + 2, 2, 5);
     }
   }
   // Tent, camp fire, sign and a sealed extension gate.
