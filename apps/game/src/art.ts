@@ -296,9 +296,15 @@ export function makeAssets(scene: Phaser.Scene) {
   // Seeded forest-floor detailing: flowers, moss, mushrooms and pebble clusters.
   // Purely visual decorations do not affect authoritative collision geometry.
   for (let i = 0; i < 1650; i++) {
-    const x = Math.floor(rng() * c.width / 4) * 4;
-    const y = Math.floor(rng() * c.height / 4) * 4;
-    const blocked = obstacles.some(o => x >= o.x - 6 && x <= o.x + o.w + 6 && y >= o.y - 6 && y <= o.y + o.h + 6);
+    const x = Math.floor((rng() * c.width) / 4) * 4;
+    const y = Math.floor((rng() * c.height) / 4) * 4;
+    const blocked = obstacles.some(
+      (o) =>
+        x >= o.x - 6 &&
+        x <= o.x + o.w + 6 &&
+        y >= o.y - 6 &&
+        y <= o.y + o.h + 6,
+    );
     if (blocked) continue;
     const type = Math.floor(rng() * 5);
     if (type === 0) {
