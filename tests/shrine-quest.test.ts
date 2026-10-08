@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
-  createWorld, createPlayer, neutralInput, step, damageEnemy, collides,
-  SHRINE_WARDEN_ID, SHRINE_WARDEN_SPAWN, BAMBOO_SHRINE,
-  interactShrine, quantity,
+  createWorld,
+  createPlayer,
+  neutralInput,
+  step,
+  damageEnemy,
+  collides,
+  SHRINE_WARDEN_ID,
+  SHRINE_WARDEN_SPAWN,
+  BAMBOO_SHRINE,
+  interactShrine,
+  quantity,
 } from '@panda/shared';
 import { WorldSoundTracker } from '../apps/game/src/sound-events';
 
@@ -26,7 +34,9 @@ describe('Mossbound Shrine adventure', () => {
     expect(warden.kind).toBe('wisp');
     expect(warden.hp).toBe(0);
     expect(warden.maxHp).toBe(210);
-    expect(collides(SHRINE_WARDEN_SPAWN.x, SHRINE_WARDEN_SPAWN.y, 14)).toBe(false);
+    expect(collides(SHRINE_WARDEN_SPAWN.x, SHRINE_WARDEN_SPAWN.y, 14)).toBe(
+      false,
+    );
     step(world, new Map(), 1 / 60);
     expect(warden.hp).toBe(0);
   });
@@ -44,7 +54,9 @@ describe('Mossbound Shrine adventure', () => {
     expect(interactShrine(world, panda)).toBe(true);
     expect(world.enemies).toHaveLength(count);
     expect(world.shrine).toBe('hunting');
-    expect(world.effects.filter((e) => e.text === 'SHRINE AWAKENED')).toHaveLength(1);
+    expect(
+      world.effects.filter((e) => e.text === 'SHRINE AWAKENED'),
+    ).toHaveLength(1);
   });
 
   it('grants a unique one-time blessing to both heroes only after returning', () => {
@@ -63,7 +75,9 @@ describe('Mossbound Shrine adventure', () => {
       expect(hero.points).toBe(5); // 2 Grove points plus 3 from the normal level-up (100 XP)
       expect(quantity(hero, 'ancient')).toBe(2);
       expect(quantity(hero, 'crystal')).toBe(8);
-      expect(hero.receipts.some((r) => r.endsWith(':shrine-blessing'))).toBe(true);
+      expect(hero.receipts.some((r) => r.endsWith(':shrine-blessing'))).toBe(
+        true,
+      );
     }
     const lootCount = world.loot.length;
     expect(interactShrine(world, panda)).toBe(true);
@@ -95,7 +109,9 @@ describe('Mossbound Shrine adventure', () => {
     const saved = JSON.parse(JSON.stringify(world));
     step(saved, new Map(), 1 / 60);
     expect(saved.shrine).toBe('dormant');
-    expect(saved.enemies.filter((e: { id: string }) => e.id === SHRINE_WARDEN_ID)).toHaveLength(1);
+    expect(
+      saved.enemies.filter((e: { id: string }) => e.id === SHRINE_WARDEN_ID),
+    ).toHaveLength(1);
     expect(saved.quest).toBe(before);
   });
 
@@ -104,7 +120,9 @@ describe('Mossbound Shrine adventure', () => {
     const tracker = new WorldSoundTracker();
     expect(tracker.observe(world, panda.id)).toEqual([]);
     interactShrine(world, panda);
-    expect(tracker.observe(world, panda.id).some((cue) => cue.name === 'shrine')).toBe(true);
+    expect(
+      tracker.observe(world, panda.id).some((cue) => cue.name === 'shrine'),
+    ).toBe(true);
     expect(tracker.observe(world, panda.id)).toEqual([]);
   });
 
