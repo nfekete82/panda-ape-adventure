@@ -1,4 +1,43 @@
 import { test, expect } from '@playwright/test';
+test('Panda and Ape display equipped weapons while attacking', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Begin adventure' }).click();
+  await expect(page.locator('#hud')).toHaveAttribute('data-weapon-visible', 'true');
+  await page.keyboard.down('Space');
+  try {
+    await expect(page.locator('#hud')).toHaveAttribute(
+      'data-weapon-active',
+      'true',
+      { timeout: 8000 },
+    );
+  } finally {
+    await page.keyboard.up('Space');
+  }
+  await page.screenshot({ path: 'test-results/panda-weapon.png' });
+
+  // New browser context starts with a different hero and empty local progress.
+  await page.goto('/');
+  await page.locator('[data-hero="ape"]').click();
+  await page.getByRole('button', { name: 'Begin adventure' }).click();
+  await expect(page.locator('#hud')).toHaveAttribute('data-weapon-visible', 'true');
+  await page.keyboard.down('Space');
+  try {
+    await expect(page.locator('#hud')).toHaveAttribute(
+      'data-weapon-active',
+      'true',
+      { timeout: 8000 },
+    );
+  } finally {
+    await page.keyboard.up('Space');
+  }
+  await page.screenshot({ path: 'test-results/ape-weapon.png' });
+  expect(errors).toEqual([]);
+});
+
 test('camera zoom can be adjusted and survives a browser reload', async ({
   page,
 }) => {
