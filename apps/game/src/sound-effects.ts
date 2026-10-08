@@ -6,7 +6,11 @@ const noiseCache = new WeakMap<AudioContext, AudioBuffer>();
 function noiseBuffer(ctx: AudioContext): AudioBuffer {
   const cached = noiseCache.get(ctx);
   if (cached) return cached;
-  const buffer = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.52), ctx.sampleRate);
+  const buffer = ctx.createBuffer(
+    1,
+    Math.ceil(ctx.sampleRate * 0.52),
+    ctx.sampleRate,
+  );
   const data = buffer.getChannelData(0);
   let seed = 0x12fa31c;
   for (let i = 0; i < data.length; i++) {
@@ -25,7 +29,10 @@ function envelope(
 ): GainNode {
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.linearRampToValueAtTime(Math.max(0.0002, loudness), start + Math.min(0.016, duration * 0.13));
+  gain.gain.linearRampToValueAtTime(
+    Math.max(0.0002, loudness),
+    start + Math.min(0.016, duration * 0.13),
+  );
   gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
   gain.connect(ctx.destination);
   return gain;
@@ -43,7 +50,10 @@ function note(
   const oscillator = ctx.createOscillator();
   oscillator.type = type;
   oscillator.frequency.setValueAtTime(from, start);
-  oscillator.frequency.exponentialRampToValueAtTime(Math.max(30, to), start + duration);
+  oscillator.frequency.exponentialRampToValueAtTime(
+    Math.max(30, to),
+    start + duration,
+  );
   oscillator.connect(envelope(ctx, start, duration, loudness));
   oscillator.start(start);
   oscillator.stop(start + duration + 0.002);
@@ -90,7 +100,15 @@ export function playSoundCue(
   const presets: Record<SoundCueName, () => void> = {
     sword: () => {
       breath(ctx, now, 0.19, 730 * pitch, 2400 * pitch, level * 0.68);
-      note(ctx, now + 0.018, 210 * pitch, 90 * pitch, 0.16, 'triangle', level * 0.22);
+      note(
+        ctx,
+        now + 0.018,
+        210 * pitch,
+        90 * pitch,
+        0.16,
+        'triangle',
+        level * 0.22,
+      );
     },
     arcane: () => {
       note(ctx, now, 360 * pitch, 880 * pitch, 0.2, 'sine', level * 0.36);
@@ -99,16 +117,32 @@ export function playSoundCue(
     },
     pickup: () => {
       note(ctx, now, 650 * pitch, 850 * pitch, 0.11, 'sine', level * 0.48);
-      note(ctx, now + 0.088, 980 * pitch, 1380 * pitch, 0.17, 'sine', level * 0.44);
+      note(
+        ctx,
+        now + 0.088,
+        980 * pitch,
+        1380 * pitch,
+        0.17,
+        'sine',
+        level * 0.44,
+      );
     },
     defeat: () => {
       note(ctx, now, 165 * pitch, 73 * pitch, 0.28, 'sawtooth', level * 0.21);
       breath(ctx, now + 0.015, 0.24, 650, 230, level * 0.46, 'lowpass');
-      note(ctx, now + 0.028, 113 * pitch, 62 * pitch, 0.22, 'triangle', level * 0.33);
+      note(
+        ctx,
+        now + 0.028,
+        113 * pitch,
+        62 * pitch,
+        0.22,
+        'triangle',
+        level * 0.33,
+      );
     },
     hit: () => {
       breath(ctx, now, 0.09, 1550, 400, level * 0.28);
-      note(ctx, now, 140, 75, 0.10, 'triangle', level * 0.18);
+      note(ctx, now, 140, 75, 0.1, 'triangle', level * 0.18);
     },
   };
   presets[cue.name]();
