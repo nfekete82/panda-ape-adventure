@@ -27,12 +27,14 @@ export function treePresentation(x: number, y: number) {
     // Fir groves belong mainly to the cooler northern ridge. Variety follows
     // region and small groups rather than independent species scatter.
     texture:
-      (y < 620 && x > 920) || Math.floor(x / 240 + y / 180) % 5 === 0
-        ? 'tree-conifer'
-        : 'tree',
+      x >= 1930
+        ? 'tree-bamboo'
+        : (y < 620 && x > 920) || Math.floor(x / 240 + y / 180) % 5 === 0
+          ? 'tree-conifer'
+          : 'tree',
     scale: 0.91 + (seed % 4) * 0.03,
     flip: seed % 2 === 0,
-    tint: y < 520 ? 0xe1e9d7 : 0xffffff,
+    tint: x >= 1930 ? 0xf4f7e1 : y < 520 ? 0xe1e9d7 : 0xffffff,
   };
 }
 
