@@ -1296,11 +1296,11 @@ function updateHud() {
   const p = world.players.find((p) => p.id === playerId);
   if (!p) return;
   const biome = worldRegion(p.x);
-  const hud = $('hud');
-  if (hud.dataset.region !== biome) {
-    if (hud.dataset.region === 'forest' && biome === 'bamboo')
+  const regionHud = $('hud');
+  if (regionHud.dataset.region !== biome) {
+    if (regionHud.dataset.region === 'forest' && biome === 'bamboo')
       notify('Bamboo Crossing discovered. Follow the bridge to the mossbound shrine.');
-    hud.dataset.region = biome;
+    regionHud.dataset.region = biome;
     const bamboo = biome === 'bamboo';
     $('region-name').textContent = bamboo ? 'BAMBOO CROSSING' : 'EMERALD FOREST';
     $('region-chapter').textContent = bamboo ? 'CHAPTER I · THE EASTERN GROVES' : 'CHAPTER I · THE AWAKENING';
