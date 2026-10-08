@@ -7,14 +7,21 @@ import {
 
 type Canvas = CanvasRenderingContext2D;
 type Point = { x: number; y: number };
-const px = (c: Canvas, color: string, x: number, y: number, w: number, h: number) => {
+const px = (
+  c: Canvas,
+  color: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) => {
   c.fillStyle = color;
   c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
 };
 const polygon = (c: Canvas, points: Point[], color: string) => {
   c.fillStyle = color;
   c.beginPath();
-  points.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y));
+  points.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
   c.closePath();
   c.fill();
 };
@@ -66,7 +73,10 @@ export function paintBambooFootbridge(c: Canvas): void {
     }
   }
   // Fine railings are elevated by a few pixels, not solid wood barriers.
-  for (const [railY, side] of [[y - 7, -1], [y + h + 4, 1]] as const) {
+  for (const [railY, side] of [
+    [y - 7, -1],
+    [y + h + 4, 1],
+  ] as const) {
     px(c, '#3b4134', x - 10, railY + 4, w + 20, 5);
     px(c, '#98704a', x - 10, railY, w + 20, 6);
     px(c, '#dfbb83', x - 7, railY, w + 14, 2);
@@ -83,7 +93,14 @@ export function paintBambooFootbridge(c: Canvas): void {
   px(c, '#e4bc84', x, y + 9, w, 2);
 }
 
-function outlinedMossStone(c: Canvas, x: number, y: number, w: number, h: number, tall = false) {
+function outlinedMossStone(
+  c: Canvas,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  tall = false,
+) {
   px(c, '#283e37', x - 3, y - 3, w + 6, h + 6);
   px(c, '#60756b', x, y, w, h);
   px(c, '#abb29a', x + 3, y, Math.max(4, w / 3), h - 4);
@@ -121,7 +138,8 @@ export function paintMossboundShrine(c: Canvas): void {
     const dx = (rng() - 0.5) * 220;
     const dy = (rng() - 0.5) * 120;
     if ((dx / 120) ** 2 + (dy / 72) ** 2 > 0.91) continue;
-    const px0 = x + dx, py0 = y + 36 + dy;
+    const px0 = x + dx,
+      py0 = y + 36 + dy;
     px(c, i % 3 === 0 ? '#aeb19a' : '#7f8f7d', px0, py0, 11 + rng() * 21, 4);
     px(c, '#465e50', px0 + 3, py0 + 5, 4, 2);
   }
@@ -150,14 +168,26 @@ export function paintMossboundShrine(c: Canvas): void {
   px(c, '#617d6c', x - 33, y + 5, 68, 36);
   px(c, '#a7af94', x - 29, y + 3, 61, 9);
   px(c, '#d1c8a3', x - 21, y + 5, 15, 2);
-  polygon(c, [
-    { x, y: y - 46 }, { x: x + 22, y: y - 19 },
-    { x, y: y + 10 }, { x: x - 22, y: y - 19 },
-  ], '#275953');
-  polygon(c, [
-    { x, y: y - 38 }, { x: x + 14, y: y - 18 },
-    { x, y: y + 1 }, { x: x - 14, y: y - 18 },
-  ], '#74b6a2');
+  polygon(
+    c,
+    [
+      { x, y: y - 46 },
+      { x: x + 22, y: y - 19 },
+      { x, y: y + 10 },
+      { x: x - 22, y: y - 19 },
+    ],
+    '#275953',
+  );
+  polygon(
+    c,
+    [
+      { x, y: y - 38 },
+      { x: x + 14, y: y - 18 },
+      { x, y: y + 1 },
+      { x: x - 14, y: y - 18 },
+    ],
+    '#74b6a2',
+  );
   px(c, '#d7ead0', x - 6, y - 33, 5, 15);
   // Two small garden lanterns frame the entrance but leave the reward exposed.
   for (const lx of [x - 76, x + 72]) {
@@ -188,8 +218,7 @@ export function paintMossboundShrine(c: Canvas): void {
 export function paintRiverbankDetails(c: Canvas): void {
   const rng = random(72942);
   for (let y = 28; y < 1425; y += 30) {
-    if (Math.abs(y - (BAMBOO_BRIDGE.y + BAMBOO_BRIDGE.h / 2)) < 95)
-      continue;
+    if (Math.abs(y - (BAMBOO_BRIDGE.y + BAMBOO_BRIDGE.h / 2)) < 95) continue;
     const span = bambooRiverSpan(y);
     for (const x of [span.left - 17, span.right + 9]) {
       const jitter = (rng() - 0.5) * 14;
@@ -211,7 +240,8 @@ export function paintRiverbankDetails(c: Canvas): void {
   // Water plants are deliberately inside the authoritative wet span.
   for (const y of [105, 255, 635, 795, 1015, 1190, 1360]) {
     const span = bambooRiverSpan(y);
-    const x = span.left + 29 + rng() * Math.max(15, span.right - span.left - 75);
+    const x =
+      span.left + 29 + rng() * Math.max(15, span.right - span.left - 75);
     c.fillStyle = '#306c60';
     c.beginPath();
     c.ellipse(x + 3, y + 4, 17, 8, 0, 0, Math.PI * 2);
