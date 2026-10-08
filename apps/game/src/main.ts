@@ -1017,7 +1017,12 @@ class ForestScene extends Phaser.Scene {
       );
     }
     this.atmosphere.draw(time, reducedMotion.matches);
-    drawShrineAura(this.shrineGraphics, world.shrine ?? 'dormant', time, reducedMotion.matches);
+    drawShrineAura(
+      this.shrineGraphics,
+      world.shrine ?? 'dormant',
+      time,
+      reducedMotion.matches,
+    );
     this.graphics.clear();
     const alive = new Set<string>();
     for (const p of world.players) {
@@ -1108,7 +1113,13 @@ class ForestScene extends Phaser.Scene {
         dt,
       );
       sprite.setScale(
-        e.kind === 'guardian' ? 1.8 : e.id === SHRINE_WARDEN_ID ? 1.55 : e.kind === 'slime' ? 1.05 : 1.1,
+        e.kind === 'guardian'
+          ? 1.8
+          : e.id === SHRINE_WARDEN_ID
+            ? 1.55
+            : e.kind === 'slime'
+              ? 1.05
+              : 1.1,
       );
       sprite.setTint(e.hurt > 0 ? 0xffd8b4 : 0xffffff);
       if (e.kind === 'slime')
@@ -1134,7 +1145,11 @@ class ForestScene extends Phaser.Scene {
         this.graphics.lineStyle(2, 0x8bdaa9, 0.45);
         this.graphics.strokeEllipse(e.x, e.y + 5, 94, 30);
         this.graphics.fillStyle(0x9ce4ad, 0.3);
-        this.graphics.fillCircle(e.x, e.y - 14, 28 + Math.sin(time * 0.003) * 6);
+        this.graphics.fillCircle(
+          e.x,
+          e.y - 14,
+          28 + Math.sin(time * 0.003) * 6,
+        );
       }
       if (e.kind === 'guardian') {
         this.graphics.lineStyle(1, 0xddcc8a, 0.2);
@@ -1360,31 +1375,38 @@ function updateHud() {
   $('xp-bar').style.width = `${(p.xp / xpRequired(p.level)) * 100}%`;
   $('level').textContent = `LV ${p.level}`;
   $('potions').textContent = `Potion ×${p.potions}`;
-  const shrineStory = biome === 'bamboo' ? shrineQuestMessage(world.shrine ?? 'dormant') : null;
-  $('quest-title').textContent = shrineStory ? shrineStory.title : world.bossDefeated
-    ? 'A forest restored'
-    : world.quest === 'available'
-      ? 'A whisper in the woods'
-      : world.quest === 'rewarded'
-        ? 'The Thorn Guardian'
-        : 'A forest in need';
-  $('quest-body').textContent = shrineStory ? shrineStory.body : world.bossDefeated
-    ? 'The guardian has fallen. Explore the ancient gate to the east.'
-    : world.quest === 'available'
-      ? 'Talk to Rowan at the woodland camp.'
-      : world.quest === 'active'
-        ? `Defeat forest creatures · ${Math.min(world.kills, 5)} / 5`
-        : world.quest === 'complete'
-          ? 'Return to Rowan for your reward.'
-          : 'Find the guardian in the northeast ruins.';
+  const shrineStory =
+    biome === 'bamboo' ? shrineQuestMessage(world.shrine ?? 'dormant') : null;
+  $('quest-title').textContent = shrineStory
+    ? shrineStory.title
+    : world.bossDefeated
+      ? 'A forest restored'
+      : world.quest === 'available'
+        ? 'A whisper in the woods'
+        : world.quest === 'rewarded'
+          ? 'The Thorn Guardian'
+          : 'A forest in need';
+  $('quest-body').textContent = shrineStory
+    ? shrineStory.body
+    : world.bossDefeated
+      ? 'The guardian has fallen. Explore the ancient gate to the east.'
+      : world.quest === 'available'
+        ? 'Talk to Rowan at the woodland camp.'
+        : world.quest === 'active'
+          ? `Defeat forest creatures · ${Math.min(world.kills, 5)} / 5`
+          : world.quest === 'complete'
+            ? 'Return to Rowan for your reward.'
+            : 'Find the guardian in the northeast ruins.';
   const nearRowan = distance(p, WORLD.npc) <= 90;
   const nearSmith = distance(p, WORLD.smith) <= 90;
   const nearShrine = distance(p, BAMBOO_SHRINE) < 104;
   $('interact-hint').hidden = !(nearRowan || nearSmith || nearShrine);
   $('interact-hint').textContent = nearShrine
-    ? world.shrine === 'hunting' ? 'E · Listen to the emerald' : 'E · Commune with the shrine'
+    ? world.shrine === 'hunting'
+      ? 'E · Listen to the emerald'
+      : 'E · Commune with the shrine'
     : nearSmith &&
-    (!nearRowan || distance(p, WORLD.smith) < distance(p, WORLD.npc))
+        (!nearRowan || distance(p, WORLD.smith) < distance(p, WORLD.npc))
       ? 'E · Talk to Bramble / Improve weapon'
       : 'E · Talk to Rowan';
   if (
@@ -1442,7 +1464,10 @@ function updateHud() {
   hud.dataset.worldTrees = String(scene.vegetation.length);
   hud.dataset.worldEnemies = String(
     world.enemies.filter(
-      (enemy) => enemy.hp > 0 && scene.sprites.get(enemy.id)?.texture.key === (enemy.id === SHRINE_WARDEN_ID ? 'shrine-warden' : enemy.kind),
+      (enemy) =>
+        enemy.hp > 0 &&
+        scene.sprites.get(enemy.id)?.texture.key ===
+          (enemy.id === SHRINE_WARDEN_ID ? 'shrine-warden' : enemy.kind),
     ).length,
   );
   hud.dataset.shrineStage = world.shrine ?? 'dormant';
