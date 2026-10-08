@@ -826,14 +826,29 @@ test('Mossbound Shrine begins its Jade Warden quest and grants a one-time blessi
     panda.x = BAMBOO_SHRINE.x;
     panda.y = BAMBOO_SHRINE.y;
     saved.players = [panda];
-    await page.addInitScript((value) => localStorage.setItem('panda-save', value), JSON.stringify(saved));
+    await page.addInitScript(
+      (value) => localStorage.setItem('panda-save', value),
+      JSON.stringify(saved),
+    );
     await page.goto('/');
-    await page.getByRole('button', { name: 'Continue saved solo adventure' }).click();
-    await expect(page.locator('#hud')).toHaveAttribute('data-shrine-stage', 'dormant');
-    await expect(page.locator('#quest-title')).toHaveText('The sleeping emerald');
+    await page
+      .getByRole('button', { name: 'Continue saved solo adventure' })
+      .click();
+    await expect(page.locator('#hud')).toHaveAttribute(
+      'data-shrine-stage',
+      'dormant',
+    );
+    await expect(page.locator('#quest-title')).toHaveText(
+      'The sleeping emerald',
+    );
     await page.keyboard.press('KeyE');
-    await expect(page.locator('#hud')).toHaveAttribute('data-shrine-stage', 'hunting');
-    await expect(page.locator('#quest-title')).toHaveText('Echoes in the bamboo');
+    await expect(page.locator('#hud')).toHaveAttribute(
+      'data-shrine-stage',
+      'hunting',
+    );
+    await expect(page.locator('#quest-title')).toHaveText(
+      'Echoes in the bamboo',
+    );
     await page.screenshot({ path: 'test-results/shrine-warden-awakens.png' });
 
     const reward = createWorld();
@@ -843,16 +858,25 @@ test('Mossbound Shrine begins its Jade Warden quest and grants a one-time blessi
     reward.players = [hero];
     reward.shrine = 'return';
     reward.enemies.find((e) => e.id === SHRINE_WARDEN_ID)!.hp = 0;
-    await page.evaluate((value) => localStorage.setItem('panda-save', value), JSON.stringify(reward));
+    await page.evaluate(
+      (value) => localStorage.setItem('panda-save', value),
+      JSON.stringify(reward),
+    );
     await page.reload();
-    await page.getByRole('button', { name: 'Continue saved solo adventure' }).click();
+    await page
+      .getByRole('button', { name: 'Continue saved solo adventure' })
+      .click();
     await page.keyboard.press('KeyE');
-    await expect(page.locator('#hud')).toHaveAttribute('data-shrine-stage', 'blessed');
-    await expect(page.locator('#quest-title')).toHaveText('Blessing of the grove');
+    await expect(page.locator('#hud')).toHaveAttribute(
+      'data-shrine-stage',
+      'blessed',
+    );
+    await expect(page.locator('#quest-title')).toHaveText(
+      'Blessing of the grove',
+    );
     await page.screenshot({ path: 'test-results/shrine-grove-blessing.png' });
     expect(failures).toEqual([]);
   } finally {
     await context.close();
   }
 });
-
