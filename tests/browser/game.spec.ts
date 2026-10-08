@@ -1,4 +1,32 @@
 import { test, expect } from '@playwright/test';
+test('camera zoom can be adjusted and survives a browser reload', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Begin adventure' }).click();
+  await expect
+    .poll(async () =>
+      Number(await page.locator('#hud').getAttribute('data-camera-zoom')),
+    )
+    .toBeGreaterThanOrEqual(1.49);
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.locator('#camera-zoom').fill('1.7');
+  await expect(page.locator('#zoom-value')).toHaveText('170%');
+  await expect
+    .poll(async () =>
+      Number(await page.locator('#hud').getAttribute('data-camera-zoom')),
+    )
+    .toBeGreaterThanOrEqual(1.69);
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'Begin adventure' }).click();
+  await expect
+    .poll(async () =>
+      Number(await page.locator('#hud').getAttribute('data-camera-zoom')),
+    )
+    .toBeGreaterThanOrEqual(1.69);
+});
+
 test('solo renders the forest, moves, opens inventory and saves', async ({
   page,
 }) => {
