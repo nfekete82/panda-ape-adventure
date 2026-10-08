@@ -536,8 +536,11 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
       const config = w.respawn[e.kind];
       if (
         e.respawnRemaining > 0 ||
-        w.enemies.filter((other) =>
-          other.id !== SHRINE_WARDEN_ID && other.kind === e.kind && other.hp > 0,
+        w.enemies.filter(
+          (other) =>
+            other.id !== SHRINE_WARDEN_ID &&
+            other.kind === e.kind &&
+            other.hp > 0,
         ).length >= config.maximum ||
         collides(e.spawn.x, e.spawn.y) ||
         w.players.some((p) => distance(p, e.spawn) < config.safeDistance) ||
