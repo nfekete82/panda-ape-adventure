@@ -801,7 +801,7 @@ class ForestScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(2000);
     this.add
-      .text(BAMBOO_SHRINE.x, 250, 'MOSSBOUND SHRINE', {
+      .text(BAMBOO_SHRINE.x, 585, 'MOSSBOUND SHRINE', {
         fontFamily: 'Georgia',
         fontSize: '15px',
         color: '#d8dab0',
