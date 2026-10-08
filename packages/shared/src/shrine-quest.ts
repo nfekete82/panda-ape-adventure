@@ -89,7 +89,7 @@ export function interactShrine(w: World, p: Player): boolean {
       if (awardXp(hero, 100)) {
         w.nextId++;
         w.effects.push({
-          id: `e${w.nextId}`, ...hero, kind: 'heal', radius: 45,
+          id: `e${w.nextId}`, x: hero.x, y: hero.y, kind: 'heal', radius: 45,
           text: 'LEVEL UP', life: 0.45,
         });
       }
