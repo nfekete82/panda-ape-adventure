@@ -18,7 +18,6 @@ import {
   move,
   distance,
   obstacles,
-  sceneryFits,
   WORLD,
   type Hero,
   type Player,
@@ -34,13 +33,7 @@ import {
   type WeaponPose,
   type WeaponTiming,
 } from './weapons';
-import {
-  VENDOR_SPRITES,
-  preloadVendorArt,
-  enemyFrame,
-  sceneryFrame,
-  vendorEnemyTexture,
-} from './vendor-art';
+import { VENDOR_SPRITES, preloadVendorArt } from './vendor-art';
 import { WorldSoundTracker } from './sound-events';
 import { playSoundCue } from './sound-effects';
 import { StatusPresentation, statusPercent } from './hud';
@@ -728,7 +721,6 @@ function readInput(): Input {
 }
 class ForestScene extends Phaser.Scene {
   vegetation: Phaser.GameObjects.Sprite[] = [];
-  ambient: Phaser.GameObjects.Sprite[] = [];
   sprites = new Map<string, Phaser.GameObjects.Sprite>();
   weapons = new Map<string, Phaser.GameObjects.Image>();
   weaponTiming = new Map<string, WeaponTiming>();
@@ -758,41 +750,18 @@ class ForestScene extends Phaser.Scene {
       if (o.kind !== 'tree') continue;
       const footX = o.x + o.w / 2;
       const footY = o.y + o.h;
-      const evergreen = Math.floor(o.x + o.y) % 3 === 0;
-      const vendor = evergreen
-        ? VENDOR_SPRITES.tree2.key
-        : VENDOR_SPRITES.tree1.key;
       const variety = treePresentation(o.x, o.y);
-      const imported = this.textures.exists(vendor) && !variety.original;
       this.add
-        .ellipse(footX, o.y + 12, imported ? 67 : 100, 28, 0x112e25, 0.29)
+        .ellipse(footX, o.y + 12, 85 * variety.scale, 26, 0x20352f, 0.28)
         .setDepth(o.y - 2);
       const tree = this.add
-        .sprite(footX, footY, imported ? vendor : 'tree', 0)
+        .sprite(footX, footY, variety.texture, 0)
         .setOrigin(0.5, 0.94)
-        .setScale((imported ? (evergreen ? 3.2 : 3.5) : 1) * variety.scale)
+        .setScale(variety.scale)
         .setFlipX(variety.flip)
         .setTint(variety.tint)
         .setDepth(footY);
       this.vegetation.push(tree);
-
-      // A few four-frame forest details near trees, never on the quest path.
-      if (imported && Math.floor(o.x * 3 + o.y) % 4 === 0) {
-        const mushroom =
-          Math.floor(o.x + o.y) % 2 === 0
-            ? VENDOR_SPRITES.mushroomRed.key
-            : VENDOR_SPRITES.mushroomBlue.key;
-        if (
-          this.textures.exists(mushroom) &&
-          sceneryFits({ x: footX + 18, y: footY + 2, w: 28, h: 28 })
-        )
-          this.ambient.push(
-            this.add
-              .sprite(footX + 32, footY + 16, mushroom, 0)
-              .setScale(1.6)
-              .setDepth(footY + 17),
-          );
-      }
     }
     this.add
       .sprite(WORLD.smith.x, WORLD.smith.y, 'bramble')
@@ -1029,10 +998,6 @@ class ForestScene extends Phaser.Scene {
           : Math.sin(time * 0.00035 + tree.x * 0.01) * 0.06,
       );
     }
-    for (const plant of this.ambient)
-      plant.setFrame(
-        sceneryFrame(reducedMotion.matches ? 0 : time, plant.x, 360),
-      );
     this.atmosphere.draw(time, reducedMotion.matches);
     this.graphics.clear();
     const alive = new Set<string>();
@@ -1115,31 +1080,16 @@ class ForestScene extends Phaser.Scene {
     for (const e of world.enemies) {
       if (e.hp <= 0) continue;
       alive.add(e.id);
-      const texture = vendorEnemyTexture(e.kind, (key) =>
-        this.textures.exists(key),
-      );
-      const imported = texture.startsWith('vendor-');
-      const frame = imported ? enemyFrame(time, e.x) : 0;
       const sprite = this.entity(
         e.id,
         e.x,
         e.y + (e.kind === 'wisp' ? Math.sin(time * 0.004) * 7 : 0),
-        texture,
-        frame,
+        e.kind,
+        0,
         dt,
       );
       sprite.setScale(
-        imported
-          ? e.kind === 'slime'
-            ? 3.4
-            : e.kind === 'wisp'
-              ? 3.6
-              : 3.9
-          : e.kind === 'guardian'
-            ? 1.8
-            : e.kind === 'slime'
-              ? 1.15
-              : 1.23,
+        e.kind === 'guardian' ? 1.8 : e.kind === 'slime' ? 1.05 : 1.1,
       );
       sprite.setTint(e.hurt > 0 ? 0xffd8b4 : 0xffffff);
       if (e.kind === 'slime')
@@ -1428,7 +1378,7 @@ function updateHud() {
   // Read-only observability used by browser tests and performance inspection.
   const hud = $('hud');
   hud.dataset.cameraZoom = String(scene.cameras.main.zoom);
-  hud.dataset.landscapeStyle = 'world-overhaul-1';
+  hud.dataset.landscapeStyle = 'woodland-art-direction-1';
   hud.dataset.worldMotes = String(scene.atmosphere.moteCount);
   hud.dataset.worldReflections = String(scene.atmosphere.reflectionCount);
   hud.dataset.heroStyle = 'concept-64px';
@@ -1438,16 +1388,11 @@ function updateHud() {
     scene.textures.exists(VENDOR_SPRITES.slime.key)
       ? 'ready'
       : 'fallback';
-  hud.dataset.vendorTrees = String(
-    scene.vegetation.filter((tree) =>
-      tree.texture.key.startsWith('vendor-tree-'),
-    ).length,
-  );
-  hud.dataset.vendorEnemies = String(
+  hud.dataset.worldTrees = String(scene.vegetation.length);
+  hud.dataset.worldEnemies = String(
     world.enemies.filter(
       (enemy) =>
-        enemy.hp > 0 &&
-        scene.sprites.get(enemy.id)?.texture.key.startsWith('vendor-'),
+        enemy.hp > 0 && scene.sprites.get(enemy.id)?.texture.key === enemy.kind,
     ).length,
   );
   hud.dataset.weaponTexture = scene.weapons.get(p.id)?.texture.key ?? '';

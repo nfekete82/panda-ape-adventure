@@ -1,3 +1,5 @@
+import { WOODLAND, pixelOval } from './world-style';
+import { regionLight } from './world-composition';
 import {
   obstacles,
   random,
@@ -113,7 +115,7 @@ function stampRoad(ctx: CanvasRenderingContext2D, randomNumber: () => number) {
     ctx.stroke();
   }
   ctx.restore();
-  for (let i = 0; i < 280; i++) {
+  for (let i = 0; i < 150; i++) {
     const t = randomNumber();
     const p = trailPoint(t);
     const next = trailPoint(Math.min(1, t + 0.004));
@@ -129,7 +131,7 @@ function stampRoad(ctx: CanvasRenderingContext2D, randomNumber: () => number) {
       ink(ctx, '#b5b494', x - 8, y + 3, 3, 1);
     }
   }
-  for (let i = 0; i < 820; i++) {
+  for (let i = 0; i < 400; i++) {
     const t = randomNumber();
     const p = trailPoint(t);
     const prev = trailPoint(Math.max(0, t - 0.004));
@@ -138,7 +140,7 @@ function stampRoad(ctx: CanvasRenderingContext2D, randomNumber: () => number) {
     const side = (randomNumber() - 0.5) * 96;
     const x = p.x - Math.sin(a) * side,
       y = p.y + Math.cos(a) * side;
-    const color = randomNumber() > 0.56 ? '#ab9065' : '#e2cc90';
+    const color = randomNumber() > 0.56 ? '#ab9065' : '#cbb784';
     ink(ctx, color, x, y, 2 + randomNumber() * 5, 2 + randomNumber() * 3);
   }
 }
@@ -156,7 +158,7 @@ function clearing(
     return { x: x + Math.cos(a) * rx * r, y: y + Math.sin(a) * ry * r };
   });
   polygon(ctx, edge, '#61804d');
-  for (let k = 0; k < 850; k++) {
+  for (let k = 0; k < 280; k++) {
     const a = seed() * Math.PI * 2,
       r = Math.sqrt(seed());
     const x0 = x + Math.cos(a) * rx * r;
@@ -166,7 +168,7 @@ function clearing(
       r > 0.84 ? '#4f7448' : seed() > 0.5 ? '#879564' : '#708453',
       x0,
       y0,
-      4 + seed() * 10,
+      3 + seed() * 7,
       2 + seed() * 4,
     );
   }
@@ -180,25 +182,26 @@ function shoreline(
   const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
   const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
   const ring = (pad: number): Point[] =>
-    points.map((p) => {
+    points.map((p, i) => {
+      const bank = pad > 0 ? pad * (0.8 + Math.sin(i * 0.43) * 0.16) : pad;
       const dx = p.x - cx,
         dy = p.y - cy;
       const length = Math.hypot(dx, dy);
-      return { x: p.x + (dx / length) * pad, y: p.y + (dy / length) * pad };
+      return { x: p.x + (dx / length) * bank, y: p.y + (dy / length) * bank };
     });
   // Continuous authored banks instead of four jittered rectangular edges.
-  polygon(ctx, ring(25), '#426d45');
-  polygon(ctx, ring(18), '#74925d');
-  polygon(ctx, ring(10), '#b2ad7f');
-  polygon(ctx, ring(4), '#7ab6a3');
-  polygon(ctx, [...points], '#509f9f');
-  polygon(ctx, ring(-8), '#418e98');
-  polygon(ctx, ring(-19), '#377d8e');
-  polygon(ctx, ring(-34), '#306d83');
-  polygon(ctx, ring(-52), '#2c647b');
+  polygon(ctx, ring(29), WOODLAND.leafDark);
+  polygon(ctx, ring(19), '#628454');
+  polygon(ctx, ring(7), '#a2a078');
+  polygon(ctx, ring(3), '#749d86');
+  polygon(ctx, [...points], '#559494');
+  polygon(ctx, ring(-8), '#48868b');
+  polygon(ctx, ring(-19), '#3e7881');
+  polygon(ctx, ring(-34), '#396f7c');
+  polygon(ctx, ring(-52), '#356978');
   const top = Math.min(...points.map((p) => p.y));
   const bottom = Math.max(...points.map((p) => p.y));
-  for (let i = 0; i < 65; i++) {
+  for (let i = 0; i < 36; i++) {
     const y = top + 12 + rng() * (bottom - top - 24);
     const span = lakeSpan(points, y);
     if (!span || span.right - span.left < 40) continue;
@@ -211,8 +214,8 @@ function shoreline(
   points.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
   ctx.closePath();
   ctx.clip();
-  for (let n = 0; n < 20; n++) {
-    const y = top + 20 + n * 3;
+  for (let n = 0; n < 12; n++) {
+    const y = top + 20 + n * 4;
     const span = lakeSpan(points, y);
     if (!span) continue;
     ink(
@@ -240,6 +243,12 @@ function shoreline(
     }
   }
   ctx.restore();
+  for (const fraction of [0.1, 0.34, 0.73]) {
+    const p = ring(20)[Math.floor(fraction * points.length)]!;
+    pixelOval(ctx, WOODLAND.leafDark, p.x, p.y + 1, 15, 5);
+    pixelOval(ctx, WOODLAND.leaf, p.x - 2, p.y - 1, 11, 4);
+    ink(ctx, WOODLAND.leafLight, p.x - 8, p.y - 2, 7, 2);
+  }
   // Sparse, composed reed clusters leave most of the shoreline unobstructed.
   const reedBank = ring(16);
   for (const fraction of [0, 0.13, 0.38, 0.63, 0.84]) {
@@ -252,62 +261,95 @@ function shoreline(
   }
 }
 function forge(ctx: CanvasRenderingContext2D) {
-  // Cozy half-timbered smithy, pitched roof and working forge in the clearing.
-  // Rendered as background scenery to preserve the existing passable map.
-  ink(ctx, '#203e31', 228, 956, 180, 33);
-  ink(ctx, '#4f4331', 250, 899, 137, 68);
-  ink(ctx, '#bd9362', 257, 905, 122, 54);
-  for (let x = 260; x < 380; x += 23) {
-    ink(ctx, '#63432b', x, 905, 6, 59);
-    ink(ctx, '#e6c38d', x + 6, 909, 3, 48);
+  // Taller copper-roofed woodland smithy; footprint and interaction lanes
+  // remain unchanged. The high gable is the hub's warm visual anchor.
+  ink(ctx, WOODLAND.shadow, 228, 956, 186, 33);
+  ink(ctx, WOODLAND.ink, 247, 897, 145, 70);
+  ink(ctx, '#c39e6f', 255, 905, 127, 54);
+  ink(ctx, '#dfc08b', 257, 905, 121, 7);
+  for (let x = 258; x < 386; x += 24) {
+    ink(ctx, WOODLAND.barkDark, x, 905, 6, 58);
+    ink(ctx, WOODLAND.barkLight, x + 6, 910, 2, 44);
   }
-  ink(ctx, '#3a493a', 243, 879, 150, 15);
+  ink(ctx, '#8d7858', 250, 958, 143, 9);
+  for (let i = 0; i < 7; i++) {
+    ink(ctx, '#b4ae8c', 254 + i * 20, 959, 16, 4);
+    ink(ctx, '#5d6350', 270 + i * 20, 960, 2, 6);
+  }
   polygon(
     ctx,
     [
-      { x: 239, y: 895 },
-      { x: 296, y: 825 },
-      { x: 348, y: 827 },
-      { x: 408, y: 900 },
+      { x: 228, y: 896 },
+      { x: 293, y: 803 },
+      { x: 349, y: 807 },
+      { x: 414, y: 896 },
     ],
-    '#253d35',
+    WOODLAND.ink,
   );
   polygon(
     ctx,
     [
-      { x: 248, y: 889 },
-      { x: 297, y: 832 },
-      { x: 347, y: 833 },
-      { x: 396, y: 891 },
+      { x: 238, y: 889 },
+      { x: 296, y: 810 },
+      { x: 347, y: 813 },
+      { x: 404, y: 889 },
     ],
-    '#497056',
+    '#76533d',
   );
   polygon(
     ctx,
     [
-      { x: 251, y: 884 },
-      { x: 299, y: 836 },
-      { x: 344, y: 836 },
-      { x: 391, y: 885 },
+      { x: 245, y: 879 },
+      { x: 297, y: 815 },
+      { x: 345, y: 818 },
+      { x: 397, y: 879 },
     ],
-    '#628369',
+    '#a1794c',
   );
-  for (let row = 0; row < 6; row++) {
-    const py = 844 + row * 8;
-    for (let px = 296 - row * 7; px < 349 + row * 7; px += 19) {
-      ink(ctx, row % 2 ? '#3f6857' : '#517966', px, py, 14, 3);
-      ink(ctx, '#799b7a', px + 2, py - 1, 6, 2);
+  for (let row = 0; row < 8; row++) {
+    const y = 820 + row * 8;
+    for (let x = 293 - row * 6; x < 349 + row * 6; x += 18) {
+      ink(ctx, row % 2 ? '#826345' : '#957047', x, y, 15, 4);
+      ink(ctx, '#c29c63', x + 1, y, 10, 1);
     }
   }
-  ink(ctx, '#42544c', 343, 819, 21, 28);
-  ink(ctx, '#b48e61', 346, 816, 15, 4);
-  ink(ctx, '#7b4e34', 268, 923, 35, 41);
-  ink(ctx, '#3a3028', 274, 928, 23, 36);
-  ink(ctx, '#d0a263', 291, 944, 4, 4);
-  ink(ctx, '#4a3529', 323, 913, 39, 28);
-  ink(ctx, '#f3cd83', 328, 917, 29, 20);
-  ink(ctx, '#9c643d', 339, 918, 5, 19);
-  ink(ctx, '#9c643d', 328, 924, 28, 5);
+  // Patinated chimney stone and a distinct little window beneath the ridge.
+  ink(ctx, WOODLAND.ink, 342, 796, 26, 52);
+  ink(ctx, '#7a8370', 346, 799, 18, 45);
+  for (let n = 0; n < 5; n++) ink(ctx, '#b5b18e', 347, 801 + n * 8, 13, 3);
+  ink(ctx, WOODLAND.barkDark, 340, 790, 29, 7);
+  ink(ctx, '#c0a36e', 342, 790, 25, 2);
+  polygon(
+    ctx,
+    [
+      { x: 282, y: 860 },
+      { x: 308, y: 826 },
+      { x: 335, y: 860 },
+    ],
+    WOODLAND.ink,
+  );
+  polygon(
+    ctx,
+    [
+      { x: 289, y: 854 },
+      { x: 308, y: 833 },
+      { x: 328, y: 854 },
+    ],
+    '#d3b079',
+  );
+  ink(ctx, WOODLAND.barkDark, 299, 843, 18, 18);
+  ink(ctx, WOODLAND.cream, 302, 846, 12, 12);
+  ink(ctx, WOODLAND.bark, 307, 846, 3, 12);
+  ink(ctx, '#ba9761', 240, 889, 165, 4);
+  ink(ctx, '#e4c58a', 243, 889, 157, 1);
+  ink(ctx, WOODLAND.barkDark, 265, 921, 41, 43);
+  ink(ctx, '#46382b', 273, 927, 25, 37);
+  ink(ctx, WOODLAND.bark, 271, 924, 3, 39);
+  ink(ctx, WOODLAND.cream, 291, 944, 3, 3);
+  ink(ctx, WOODLAND.barkDark, 323, 913, 39, 28);
+  ink(ctx, '#efcd89', 328, 917, 29, 20);
+  ink(ctx, WOODLAND.bark, 340, 918, 4, 19);
+  ink(ctx, WOODLAND.bark, 328, 926, 28, 3);
   // Workbench and anvil sit beside the house, clear of Bramble's silhouette.
   ink(ctx, '#3b3430', 225, 1012, 62, 22);
   ink(ctx, '#875c43', 230, 1010, 53, 15);
@@ -398,6 +440,10 @@ export const woodlandBeds = [
   { x: 1430, y: 560, rx: 70, ry: 35, kind: 'flower' },
   { x: 590, y: 620, rx: 78, ry: 39, kind: 'fern' },
   { x: 300, y: 460, rx: 68, ry: 31, kind: 'flower' },
+  { x: 430, y: 235, rx: 94, ry: 35, kind: 'fern' },
+  { x: 850, y: 330, rx: 76, ry: 31, kind: 'flower' },
+  { x: 1240, y: 155, rx: 90, ry: 33, kind: 'fern' },
+  { x: 1680, y: 800, rx: 87, ry: 37, kind: 'fern' },
 ] as const;
 
 export function trailDistance(x: number, y: number): number {
@@ -416,31 +462,25 @@ export function groundDetailFits(x: number, y: number): boolean {
   );
 }
 function fern(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  ink(ctx, '#264c39', x - 11, y + 1, 24, 4);
-  for (let i = 0; i < 4; i++) {
-    const spread = 9 - i * 2;
-    ink(ctx, '#4c8652', x - spread, y - i * 3, spread * 2, 2);
-    ink(ctx, '#8bab64', x - spread, y - i * 3, 3, 1);
+  pixelOval(ctx, WOODLAND.shadow, x, y + 2, 12, 3);
+  for (let n = 0; n < 4; n++) {
+    const spread = 9 - n * 2;
+    ink(ctx, WOODLAND.leaf, x - spread, y - n * 3, spread - 1, 2);
+    ink(ctx, WOODLAND.leafLight, x + 1, y - n * 3 - 2, spread, 2);
   }
-  ink(ctx, '#b0be78', x, y - 12, 2, 12);
+  ink(ctx, WOODLAND.leafLight, x, y - 11, 2, 12);
 }
 function shrub(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  ink(ctx, '#264e39', x - 12, y + 2, 25, 5);
-  for (const [dx, dy, w] of [
-    [-10, -3, 12],
-    [0, -6, 14],
-    [-4, -10, 12],
-  ] as const) {
-    ink(ctx, '#3d7749', x + dx, y + dy, w, 8);
-    ink(ctx, '#659452', x + dx + 2, y + dy, w - 4, 3);
-    ink(ctx, '#8bab61', x + dx + 3, y + dy, 3, 1);
-  }
-  ink(ctx, '#b7b276', x + 4, y - 7, 2, 2);
+  pixelOval(ctx, WOODLAND.shadow, x, y + 3, 15, 4);
+  pixelOval(ctx, WOODLAND.leafDark, x, y - 3, 13, 8);
+  pixelOval(ctx, WOODLAND.leaf, x - 2, y - 6, 11, 6);
+  pixelOval(ctx, WOODLAND.leafLight, x - 5, y - 8, 6, 3);
+  ink(ctx, WOODLAND.leafSun, x - 6, y - 10, 4, 2);
 }
 function undergrowth(ctx: CanvasRenderingContext2D) {
   const rng = random(16082);
   for (const bed of woodlandBeds) {
-    for (let n = 0; n < 44; n++) {
+    for (let n = 0; n < 23; n++) {
       const a = rng() * Math.PI * 2,
         r = Math.sqrt(rng());
       const x = bed.x + Math.cos(a) * bed.rx * r;
@@ -460,8 +500,8 @@ function undergrowth(ctx: CanvasRenderingContext2D) {
     if (o.kind !== 'tree') continue;
     const x = o.x + o.w / 2,
       y = o.y + o.h;
-    for (let n = 0; n < 5; n++) {
-      const px = x + (n - 2) * 14,
+    for (let n = 0; n < 3; n++) {
+      const px = x + (n - 1) * 19,
         py = y + 12 + rng() * 10;
       if (!groundDetailFits(px, py)) continue;
       fern(ctx, px, py);
@@ -472,13 +512,13 @@ function undergrowth(ctx: CanvasRenderingContext2D) {
 
 /** Ground props stay in the reserved hub and clear of NPC feet and labels. */
 export const campProps = [
-  { x: 206, y: 988, w: 25, h: 30, kind: 'barrel' },
+  { x: 201, y: 991, w: 25, h: 30, kind: 'barrel' },
   { x: 238, y: 1046, w: 25, h: 30, kind: 'barrel' },
   { x: 275, y: 1051, w: 26, h: 24, kind: 'crate' },
-  { x: 425, y: 890, w: 45, h: 33, kind: 'tools' },
+  { x: 431, y: 879, w: 42, h: 33, kind: 'tools' },
   { x: 518, y: 886, w: 65, h: 25, kind: 'herbs' },
   { x: 592, y: 1043, w: 30, h: 45, kind: 'sign' },
-  { x: 199, y: 864, w: 36, h: 23, kind: 'fence' },
+  { x: 195, y: 871, w: 30, h: 23, kind: 'fence' },
 ] as const;
 function campDetails(ctx: CanvasRenderingContext2D) {
   // Short, broken flagstones connect the workshop with the warm trail apron.
@@ -490,7 +530,7 @@ function campDetails(ctx: CanvasRenderingContext2D) {
     ink(ctx, '#bcb497', x + 2, y, 10, 2);
   }
   // Brass roof trim, ivy climbing the western beam, glowing window sill.
-  ink(ctx, '#b6a46b', 249, 889, 148, 3);
+  ink(ctx, '#d3b680', 244, 889, 159, 2);
   ink(ctx, '#e5be79', 324, 941, 39, 3);
   for (let i = 0; i < 11; i++) {
     const y = 903 + i * 5,
@@ -535,13 +575,14 @@ function campDetails(ctx: CanvasRenderingContext2D) {
         ink(ctx, '#795535', p.x + 12, p.y, 5, p.h);
         ink(ctx, '#533e2c', p.x, p.y + 3, p.w, 15);
         ink(ctx, '#d0ad72', p.x + 2, p.y + 4, p.w - 4, 11);
-        ink(ctx, '#735939', p.x + 5, p.y + 8, 15, 2);
+        ink(ctx, '#735939', p.x + 5, p.y + 8, 11, 3);
+        ink(ctx, '#735939', p.x + 8, p.y + 11, 4, 3);
         ink(ctx, '#735939', p.x + 17, p.y + 6, 3, 6);
         break;
       case 'fence':
         for (let i = 0; i < 2; i++) {
-          ink(ctx, '#665135', p.x + i * 32, p.y, 6, p.h);
-          ink(ctx, '#c3a46a', p.x + i * 32, p.y, 3, p.h - 3);
+          ink(ctx, '#665135', p.x + i * (p.w - 6), p.y, 6, p.h);
+          ink(ctx, '#c3a46a', p.x + i * (p.w - 6), p.y, 3, p.h - 3);
         }
         ink(ctx, '#96784c', p.x, p.y + 6, p.w, 4);
         ink(ctx, '#bea166', p.x, p.y + 6, p.w, 1);
@@ -554,22 +595,19 @@ function campDetails(ctx: CanvasRenderingContext2D) {
   ink(ctx, '#b4ad89', 544, 1163, 5, 5);
 }
 
-export function paintForestWorld(
-  ctx: CanvasRenderingContext2D,
-  importedTiles?: HTMLImageElement,
-): void {
+export function paintForestWorld(ctx: CanvasRenderingContext2D): void {
   ctx.imageSmoothingEnabled = false;
   const rng = random(93104);
-  ink(ctx, '#305a3d', 0, 0, WORLD.width, WORLD.height);
+  ink(ctx, WOODLAND.shadow, 0, 0, WORLD.width, WORLD.height);
   // Low-frequency meadow colour fields sampled on a 4px pixel grid. The
   // coherent colours cross tile boundaries; tiny accents are a separate pass.
   const grass = [
-    '#305940',
-    '#345e42',
-    '#386447',
-    '#3b6949',
-    '#406e4b',
-    '#47754f',
+    '#304e3d',
+    '#365640',
+    '#3d6044',
+    '#466a48',
+    '#50734b',
+    '#5d7d51',
   ];
   for (let y = 0; y < WORLD.height; y += 4)
     for (let x = 0; x < WORLD.width; x += 4) {
@@ -579,39 +617,38 @@ export function paintForestWorld(
         Math.sin(x * 0.027 + y * 0.018) * 0.22;
       const tone = Math.max(
         0,
-        Math.min(5, Math.floor(2.8 + field * 1.3 + rng() * 0.5)),
+        Math.min(
+          5,
+          Math.floor(
+            2.8 + field * 0.85 + regionLight(x, y) * 1.8 + rng() * 0.3,
+          ),
+        ),
       );
       ink(ctx, grass[tone]!, x, y, 4, 4);
     }
-  for (let i = 0; i < 6000; i++) {
+  for (let i = 0; i < 2400; i++) {
     const x = rng() * WORLD.width,
       y = rng() * WORLD.height;
     ink(
       ctx,
-      rng() > 0.6 ? '#517b50' : '#335f43',
+      rng() > 0.6 ? '#56764d' : '#3d6044',
       x,
       y,
       2 + rng() * 6,
       1 + rng() * 2,
     );
   }
-  // Occasional imported moss only, never visible square terrain tiles.
-  if (importedTiles) {
-    ctx.save();
-    ctx.globalAlpha = 0.12;
-    for (let i = 0; i < 90; i++)
-      ctx.drawImage(
-        importedTiles,
-        16,
-        16,
-        16,
-        16,
-        rng() * WORLD.width,
-        rng() * WORLD.height,
-        16,
-        16,
-      );
-    ctx.restore();
+  // Sparse leaf litter ties trunks to the groves. Contact shadows belong to
+  // the tree sprites, keeping the floor free of repeated circular patches.
+  for (const tree of obstacles) {
+    if (tree.kind !== 'tree') continue;
+    const x = tree.x + tree.w / 2,
+      y = tree.y + tree.h;
+    for (let n = 0; n < 10; n++) {
+      const px = x + (rng() - 0.5) * 68,
+        py = y + (rng() - 0.5) * 22;
+      ink(ctx, n % 3 ? '#63734a' : '#92845b', px, py, 4, 2);
+    }
   }
   // Camp and boss clearing are made first, so the path meets them cleanly.
   clearing(ctx, 430, 1030, 235, 155, rng);
@@ -620,11 +657,12 @@ export function paintForestWorld(
   for (const lake of lakes) shoreline(ctx, lake, rng);
   for (const o of obstacles) if (o.kind === 'rock') boulders(ctx, o);
   // Much less noise than the original checkerboard-like forest scatter.
-  for (let i = 0; i < 1050; i++) {
+  for (let i = 0; i < 360; i++) {
     const x = rng() * WORLD.width,
       y = rng() * WORLD.height;
     if (
       collides(x, y, 18) ||
+      trailDistance(x, y) < 78 ||
       !sceneryFits({ x, y: y - 12, w: 12, h: 24 }) ||
       obstacles.some(
         (o) =>
@@ -648,6 +686,23 @@ export function paintForestWorld(
     }
   }
   undergrowth(ctx);
+  polygon(
+    ctx,
+    [
+      { x: 223, y: 994 },
+      { x: 270, y: 978 },
+      { x: 335, y: 988 },
+      { x: 348, y: 1038 },
+      { x: 303, y: 1093 },
+      { x: 228, y: 1082 },
+    ],
+    '#7b7956',
+  );
+  for (let n = 0; n < 26; n++) {
+    const x = 240 + rng() * 88,
+      y = 997 + rng() * 70;
+    ink(ctx, '#a39b72', x, y, 8, 2);
+  }
   forge(ctx);
   campDetails(ctx);
   // Ancient gate: weathered carved standing stones and an overgrown lintel.

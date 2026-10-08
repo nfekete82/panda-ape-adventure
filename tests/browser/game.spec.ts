@@ -8,20 +8,23 @@ test('curated forest art loads, animates and keeps the full game playable', asyn
   await page.getByRole('button', { name: 'Begin adventure' }).click();
   const hud = page.locator('#hud');
   await expect(hud).toHaveAttribute('data-vendor-art', 'ready');
-  await expect(hud).toHaveAttribute('data-landscape-style', 'world-overhaul-1');
+  await expect(hud).toHaveAttribute(
+    'data-landscape-style',
+    'woodland-art-direction-1',
+  );
   await expect(hud).toHaveAttribute('data-hero-style', 'concept-64px');
   await expect(hud).toHaveAttribute('data-world-motes', '64');
   await expect
     .poll(async () => Number(await hud.getAttribute('data-world-reflections')))
     .toBeGreaterThan(10);
   await expect
-    .poll(async () => Number(await hud.getAttribute('data-vendor-trees')))
+    .poll(async () => Number(await hud.getAttribute('data-world-trees')))
     .toBeGreaterThan(0);
   await expect
-    .poll(async () => Number(await hud.getAttribute('data-vendor-enemies')))
+    .poll(async () => Number(await hud.getAttribute('data-world-enemies')))
     .toBeGreaterThan(0);
   await expect(page.locator('#game canvas')).toBeVisible();
-  await page.screenshot({ path: 'test-results/world-overhaul-camp.png' });
+  await page.screenshot({ path: 'test-results/art-direction-camp.png' });
   expect(errors).toEqual([]);
 });
 
@@ -672,7 +675,7 @@ test('world atmosphere supports reduced motion and saved exploration near both l
         .click();
       await expect(page.locator('#hud')).toHaveAttribute(
         'data-landscape-style',
-        'world-overhaul-1',
+        'woodland-art-direction-1',
       );
       await expect(page.locator('#hud')).toHaveAttribute('data-x', String(x));
       await expect(page.locator('#game canvas')).toBeVisible();
