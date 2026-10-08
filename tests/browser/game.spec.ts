@@ -788,7 +788,9 @@ test('Ancient Gate blends continuously into Bamboo Crossing when explored', asyn
       { timeout: 10000 },
     )
     .toBeGreaterThan(1795);
-  await page.screenshot({ path: 'test-results/bamboo-crossing-gate-before.png' });
+  await page.screenshot({
+    path: 'test-results/bamboo-crossing-gate-before.png',
+  });
   await page.keyboard.down('KeyD');
   try {
     await expect(page.locator('#hud')).toHaveAttribute('data-region', 'bamboo');
@@ -803,6 +805,8 @@ test('Ancient Gate blends continuously into Bamboo Crossing when explored', asyn
       { timeout: 10000 },
     )
     .toBeGreaterThan(1880);
-  await page.screenshot({ path: 'test-results/bamboo-crossing-gate-after.png' });
+  await page.screenshot({
+    path: 'test-results/bamboo-crossing-gate-after.png',
+  });
   expect(errors).toEqual([]);
 });
