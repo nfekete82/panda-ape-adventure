@@ -810,3 +810,49 @@ test('Ancient Gate blends continuously into Bamboo Crossing when explored', asyn
   });
   expect(errors).toEqual([]);
 });
+
+test('Mossbound Shrine begins its Jade Warden quest and grants a one-time blessing', async ({
+  browser,
+}) => {
+  const { createWorld, createPlayer, BAMBOO_SHRINE, SHRINE_WARDEN_ID } =
+    await import('@panda/shared');
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const failures: string[] = [];
+  page.on('pageerror', (error) => failures.push(error.message));
+  try {
+    const saved = createWorld();
+    const panda = createPlayer('local', 'panda');
+    panda.x = BAMBOO_SHRINE.x;
+    panda.y = BAMBOO_SHRINE.y;
+    saved.players = [panda];
+    await page.addInitScript((value) => localStorage.setItem('panda-save', value), JSON.stringify(saved));
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Continue saved solo adventure' }).click();
+    await expect(page.locator('#hud')).toHaveAttribute('data-shrine-stage', 'dormant');
+    await expect(page.locator('#quest-title')).toHaveText('The sleeping emerald');
+    await page.keyboard.press('KeyE');
+    await expect(page.locator('#hud')).toHaveAttribute('data-shrine-stage', 'hunting');
+    await expect(page.locator('#quest-title')).toHaveText('Echoes in the bamboo');
+    await page.screenshot({ path: 'test-results/shrine-warden-awakens.png' });
+
+    const reward = createWorld();
+    const hero = createPlayer('local', 'panda');
+    hero.x = BAMBOO_SHRINE.x;
+    hero.y = BAMBOO_SHRINE.y;
+    reward.players = [hero];
+    reward.shrine = 'return';
+    reward.enemies.find((e) => e.id === SHRINE_WARDEN_ID)!.hp = 0;
+    await page.evaluate((value) => localStorage.setItem('panda-save', value), JSON.stringify(reward));
+    await page.reload();
+    await page.getByRole('button', { name: 'Continue saved solo adventure' }).click();
+    await page.keyboard.press('KeyE');
+    await expect(page.locator('#hud')).toHaveAttribute('data-shrine-stage', 'blessed');
+    await expect(page.locator('#quest-title')).toHaveText('Blessing of the grove');
+    await page.screenshot({ path: 'test-results/shrine-grove-blessing.png' });
+    expect(failures).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
