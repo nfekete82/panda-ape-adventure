@@ -84,24 +84,27 @@ export function playSoundCue(
   const level = Math.max(0, Math.min(1, masterVolume)) * cue.strength;
   if (level <= 0) return;
   const now = ctx.currentTime + 0.006;
+  // A small pitch change avoids the exact same 'sample' on repeated swings.
+  // This randomness is audio-only, never part of the authoritative simulation.
+  const pitch = 0.95 + Math.random() * 0.1;
   const presets: Record<SoundCueName, () => void> = {
     sword: () => {
-      breath(ctx, now, 0.19, 730, 2400, level * 0.68);
-      note(ctx, now + 0.018, 210, 90, 0.16, 'triangle', level * 0.22);
+      breath(ctx, now, 0.19, 730 * pitch, 2400 * pitch, level * 0.68);
+      note(ctx, now + 0.018, 210 * pitch, 90 * pitch, 0.16, 'triangle', level * 0.22);
     },
     arcane: () => {
-      note(ctx, now, 360, 880, 0.2, 'sine', level * 0.36);
+      note(ctx, now, 360 * pitch, 880 * pitch, 0.2, 'sine', level * 0.36);
       note(ctx, now + 0.052, 590, 1220, 0.2, 'triangle', level * 0.19);
       breath(ctx, now, 0.16, 1800, 900, level * 0.14);
     },
     pickup: () => {
-      note(ctx, now, 650, 850, 0.11, 'sine', level * 0.48);
-      note(ctx, now + 0.088, 980, 1380, 0.17, 'sine', level * 0.44);
+      note(ctx, now, 650 * pitch, 850 * pitch, 0.11, 'sine', level * 0.48);
+      note(ctx, now + 0.088, 980 * pitch, 1380 * pitch, 0.17, 'sine', level * 0.44);
     },
     defeat: () => {
-      note(ctx, now, 165, 73, 0.28, 'sawtooth', level * 0.21);
+      note(ctx, now, 165 * pitch, 73 * pitch, 0.28, 'sawtooth', level * 0.21);
       breath(ctx, now + 0.015, 0.24, 650, 230, level * 0.46, 'lowpass');
-      note(ctx, now + 0.028, 113, 62, 0.22, 'triangle', level * 0.33);
+      note(ctx, now + 0.028, 113 * pitch, 62 * pitch, 0.22, 'triangle', level * 0.33);
     },
     hit: () => {
       breath(ctx, now, 0.09, 1550, 400, level * 0.28);
