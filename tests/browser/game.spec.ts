@@ -8,7 +8,10 @@ test('curated forest art loads, animates and keeps the full game playable', asyn
   await page.getByRole('button', { name: 'Begin adventure' }).click();
   const hud = page.locator('#hud');
   await expect(hud).toHaveAttribute('data-vendor-art', 'ready');
-  await expect(hud).toHaveAttribute('data-landscape-style', 'illustrated-forest-v2');
+  await expect(hud).toHaveAttribute(
+    'data-landscape-style',
+    'illustrated-forest-v2',
+  );
   await expect(hud).toHaveAttribute('data-hero-style', 'concept-64px');
   await expect
     .poll(async () => Number(await hud.getAttribute('data-vendor-trees')))
