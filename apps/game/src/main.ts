@@ -1299,13 +1299,23 @@ function updateHud() {
   const regionHud = $('hud');
   if (regionHud.dataset.region !== biome) {
     if (regionHud.dataset.region === 'forest' && biome === 'bamboo')
-      notify('Bamboo Crossing discovered. Follow the bridge to the mossbound shrine.');
+      notify(
+        'Bamboo Crossing discovered. Follow the bridge to the mossbound shrine.',
+      );
     regionHud.dataset.region = biome;
     const bamboo = biome === 'bamboo';
-    $('region-name').textContent = bamboo ? 'BAMBOO CROSSING' : 'EMERALD FOREST';
-    $('region-chapter').textContent = bamboo ? 'CHAPTER I · THE EASTERN GROVES' : 'CHAPTER I · THE AWAKENING';
-    $('region-label').textContent = bamboo ? 'Bamboo Crossing' : 'Emerald Forest';
-    $('region-detail').textContent = bamboo ? 'THE MOSSBOUND SHRINE' : 'THE OLD WOODLANDS';
+    $('region-name').textContent = bamboo
+      ? 'BAMBOO CROSSING'
+      : 'EMERALD FOREST';
+    $('region-chapter').textContent = bamboo
+      ? 'CHAPTER I · THE EASTERN GROVES'
+      : 'CHAPTER I · THE AWAKENING';
+    $('region-label').textContent = bamboo
+      ? 'Bamboo Crossing'
+      : 'Emerald Forest';
+    $('region-detail').textContent = bamboo
+      ? 'THE MOSSBOUND SHRINE'
+      : 'THE OLD WOODLANDS';
   }
   const state = statusPresentation.update(
     p.hero,
