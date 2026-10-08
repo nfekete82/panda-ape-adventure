@@ -1,3 +1,8 @@
+import {
+  FORGE_BOUNDS,
+  hubFurnitureFits,
+  regionLight,
+} from '../apps/game/src/world-composition';
 import { describe, expect, it } from 'vitest';
 import {
   treePresentation,
@@ -108,12 +113,13 @@ describe('world overhaul presentation safety', () => {
           prop.y + prop.h > p.y - 65;
         expect(overlaps).toBe(false);
       }
+      expect(hubFurnitureFits(prop)).toBe(true);
       // Props never cover the forge wall or roof.
       expect(
-        prop.x < 408 &&
-          prop.x + prop.w > 239 &&
-          prop.y < 900 &&
-          prop.y + prop.h > 816,
+        prop.x < FORGE_BOUNDS.x + FORGE_BOUNDS.w &&
+          prop.x + prop.w > FORGE_BOUNDS.x &&
+          prop.y < FORGE_BOUNDS.y + FORGE_BOUNDS.h &&
+          prop.y + prop.h > FORGE_BOUNDS.y,
       ).toBe(false);
     }
   });
@@ -163,4 +169,21 @@ describe('world overhaul presentation safety', () => {
     }
     expect(variants.size).toBeGreaterThan(5);
   });
+});
+
+it('frames the northern ridge with firs and preserves calm open meadow contrast', () => {
+  expect(treePresentation(1200, 300).texture).toBe('tree-conifer');
+  expect(treePresentation(700, 900).texture).toBe('tree');
+  expect(regionLight(1240, 230)).toBeLessThan(-0.7);
+  expect(regionLight(760, 500)).toBeGreaterThan(0.7);
+  expect(regionLight(430, 1040)).toBe(0);
+  expect(
+    hubFurnitureFits({
+      x: WORLD.npc.x - 10,
+      y: WORLD.npc.y - 10,
+      w: 20,
+      h: 20,
+    }),
+  ).toBe(false);
+  expect(hubFurnitureFits(FORGE_BOUNDS)).toBe(false);
 });

@@ -221,3 +221,47 @@ See [V0.2.0.md](V0.2.0.md) for manual gameplay, migration and backup testing and
   controllers, mobile touch input and a measured cross-device performance
   comparison were not executed. No new external assets were introduced;
   original artwork and retained vendor provenance are in `assets/LICENSE.md`.
+
+## Art Direction & World Cohesion Pass — 2026-10-08
+
+- Fetched the latest `origin/feat/world-visual-overhaul-1` and created
+  `feat/world-art-direction-pass`. No merge was performed. Shared/server code,
+  authoritative layout/spawns, networking, saves, progression, combat, HUD
+  markup/CSS, sounds and the pinned lockfile are unchanged.
+- `npm ci`, `npm run typecheck`, `npm run lint`, `npm run format:check`,
+  `npm test` (67 tests across 12 files, including real WebSockets and persistence),
+  and `npm run build` passed. Host runtime is Node 25.9.0; production builds
+  use the existing reference Node 24 image.
+- Production and development Compose configuration checks passed.
+  `docker compose up -d --build --wait` built both production images and
+  reported both services healthy.
+- `npm run test:docker` passed the actual nginx `/ws` two-player save,
+  production stack restart and reconnect/state restoration check.
+- All 14 Chromium browser scenarios passed against the final production nginx
+  build: gameplay, co-op combat, reconnect/revive, solo saves/migration,
+  progression, forge upgrades, HUD, sound, hero weapons/casting and reduced-motion
+  exploration near both lakes. Two additional world scenarios passed with
+  WebGL disabled, exercising the Canvas renderer.
+- New software raster tests execute the actual original tree/enemy painters:
+  integer pixel edges, transparent frame margins, unclipped silhouettes,
+  substantial shared trunk/root grounding, readable eyes and four distinct
+  creature silhouettes. Geometry tests check the enlarged forge envelope,
+  reserved NPC silhouettes/feet, region contrast and fir ridge composition.
+  All previous simulation, collision, shoreline and persistence tests pass.
+- Reviewed final production camp, Ape visibility, forest, lake and ridge
+  captures plus a sprite board made from the actual painters through Vite.
+  See [WORLD_ART_DIRECTION.md](WORLD_ART_DIRECTION.md). Initial canopy drafts
+  had circular shading seams; final silhouettes use continuous crowns. A
+  stricter forge-envelope test found furniture touching that envelope; pieces
+  were moved and the final test passed. Those initial failures are not passes.
+- Decorative density was actively reduced: imported moss squares, animated
+  mushroom scatter, repeated circular floor patches and most uniform floor
+  marks were removed. New palette/composition calculations run only during
+  static asset creation. Ambient object limits and reduced-motion support are
+  retained. No measured universal frame-rate claim is made.
+- Local coverage remains ARM64 and Chromium (WebGL and Canvas). Firefox,
+  Safari, physical controllers and mobile touch input were not executed.
+  The enemy renderers now use the original single-frame keys; slime/wisp/hurt
+  motion remains, but the imported four-frame creature loops are no longer
+  selected. New original art uses CC0-1.0, source uses MIT, and retained vendor
+  assets keep their existing licenses in `assets/LICENSE.md`.

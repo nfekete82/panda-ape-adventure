@@ -74,3 +74,17 @@ registration remains in `art.ts`, including the existing `forest` and 128×160
 runtime downloads were used. The existing Sunnyside trees and moss samples
 retain their separate license above; tinting, mirroring and scale variation do
 not change their provenance.
+
+## Art Direction & World Cohesion Pass
+
+The related broadleaf/fir trees, teal slime, russet woodland wolf, violet wisp,
+bark-and-stone guardian, shared woodland palette, revised ferns/shrubs, regional
+terrain colour fields, narrowed organic banks and copper-roofed smithy are
+original code-generated artwork in `apps/game/src/world-style.ts`,
+`world-composition.ts` and `environment-art.ts`, registered through `art.ts`.
+Artwork uses CC0-1.0 and code uses MIT. No external reference images or bitmap
+assets were introduced. These active trees/enemies are original artwork and are
+not edits or traced versions of vendor sprites. Retained vendor files and their
+registry keep their separate licenses; removing their use from active scenery
+and enemies does not relicense them. The former imported ground samples and
+animated mushroom scatter are no longer used by the active world renderer.

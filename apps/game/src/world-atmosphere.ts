@@ -24,10 +24,15 @@ export const waterHighlights = lakes.flatMap((lake) => {
 export function treePresentation(x: number, y: number) {
   const seed = Math.abs(Math.floor(x * 7 + y * 11));
   return {
-    original: seed % 4 === 0,
-    scale: 0.88 + (seed % 5) * 0.03,
+    // Fir groves belong mainly to the cooler northern ridge. Variety follows
+    // region and small groups rather than independent species scatter.
+    texture:
+      (y < 620 && x > 920) || Math.floor(x / 240 + y / 180) % 5 === 0
+        ? 'tree-conifer'
+        : 'tree',
+    scale: 0.91 + (seed % 4) * 0.03,
     flip: seed % 2 === 0,
-    tint: [0xffffff, 0xe4efd4, 0xd2e7de, 0xf1e8c9][seed % 4]!,
+    tint: y < 520 ? 0xe1e9d7 : 0xffffff,
   };
 }
 
@@ -87,7 +92,7 @@ export class WorldAtmosphere {
       this.air.fillStyle(0xc3cbb6, (1 - age) * 0.15);
       this.air.fillRect(
         Math.round(351 + Math.sin(age * 5 + n) * 6 + age * 15),
-        Math.round(814 - age * 65),
+        Math.round(788 - age * 65),
         5 + Math.round(age * 7),
         4 + Math.round(age * 4),
       );
