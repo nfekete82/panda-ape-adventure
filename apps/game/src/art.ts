@@ -25,6 +25,7 @@ export function heroArt(
   hero: Hero,
   frame: number,
   dir: number,
+  includeWeapon = true,
 ) {
   const bounce = frame === 1 || frame === 3 ? 1 : 0;
   const stride = [0, 2, 0, -2][frame] ?? 0;
@@ -64,17 +65,14 @@ export function heroArt(
     }
     rect(ctx, '#253d48', 6, 20 + (stride > 0 ? 1 : 0), 5, 7);
     rect(ctx, '#d0a65b', 5, 21, 5, 5);
-    rect(ctx, '#263744', 24, 18, 3, 10);
-    rect(ctx, '#bbd9d7', 26, 12, 3, 13);
-    rect(ctx, '#eff8e5', 27, 10, 2, 9);
-    rect(ctx, '#d6b565', 24, 24, 7, 2);
-    // Bamboo staff, wrapped in pale cloth with green leaf tip.
-    rect(ctx, '#284b26', 27, 5, 3, 22);
-    rect(ctx, '#72a842', 28, 4, 3, 20);
-    rect(ctx, '#d9d1ac', 27, 17, 4, 2);
-    rect(ctx, '#d9d1ac', 27, 22, 4, 2);
-    rect(ctx, '#74a13d', 24, 5, 5, 3);
-    rect(ctx, '#a7c857', 27, 3, 4, 4);
+    if (includeWeapon) {
+      rect(ctx, '#284b26', 27, 5, 3, 22);
+      rect(ctx, '#72a842', 28, 4, 3, 20);
+      rect(ctx, '#d9d1ac', 27, 17, 4, 2);
+      rect(ctx, '#d9d1ac', 27, 22, 4, 2);
+      rect(ctx, '#74a13d', 24, 5, 5, 3);
+      rect(ctx, '#a7c857', 27, 3, 4, 4);
+    }
   } else {
     rect(ctx, '#734b37', 6, 7, 6, 9);
     rect(ctx, '#734b37', 21, 7, 6, 9);
@@ -90,17 +88,21 @@ export function heroArt(
     }
     rect(ctx, '#bc8c60', 6, 20 + (stride > 0 ? 1 : 0), 4, 6);
     rect(ctx, '#bc8c60', 23, 20, 4, 6);
-    rect(ctx, '#ad8652', 27, 10, 2, 21);
-    rect(ctx, '#58467c', 25, 6, 6, 6);
-    rect(ctx, '#a6f1e9', 26, 5, 4, 5);
-    rect(ctx, '#f1ffff', 27, 5, 2, 2);
+    if (includeWeapon) {
+      rect(ctx, '#ad8652', 27, 10, 2, 21);
+      rect(ctx, '#58467c', 25, 6, 6, 6);
+      rect(ctx, '#a6f1e9', 26, 5, 4, 5);
+      rect(ctx, '#f1ffff', 27, 5, 2, 2);
+    }
     // Tail and wooden staff, matching the companion's silhouette.
     rect(ctx, '#52362b', 2, 23, 4, 3);
     rect(ctx, '#895536', 1, 18, 3, 6);
     rect(ctx, '#a67444', 2, 16, 4, 3);
-    rect(ctx, '#76492c', 26, 8, 4, 21);
-    rect(ctx, '#bd8c4f', 27, 7, 2, 20);
-    rect(ctx, '#6e9d44', 24, 7, 5, 3);
+    if (includeWeapon) {
+      rect(ctx, '#76492c', 26, 8, 4, 21);
+      rect(ctx, '#bd8c4f', 27, 7, 2, 20);
+      rect(ctx, '#6e9d44', 24, 7, 5, 3);
+    }
   }
   ctx.restore();
 }
@@ -140,7 +142,7 @@ export function makeAssets(scene: Phaser.Scene) {
         ctx.save();
         ctx.translate(frame * 64, dir * 64);
         ctx.scale(2, 2);
-        heroArt(ctx, hero, frame, dir);
+        heroArt(ctx, hero, frame, dir, false);
         ctx.restore();
       }
     if (external) {
