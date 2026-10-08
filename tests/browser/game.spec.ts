@@ -506,3 +506,107 @@ test('forge spends materials, upgrades combat stats and retains the weapon in a 
   );
   await expect(page.locator('#modal-content')).toContainText('Damage 33');
 });
+
+test('bottom character HUD is readable at desktop, ultrawide, tablet and phone sizes', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Begin adventure' }).click();
+  await expect(page.locator('#hud-portrait')).toHaveAttribute(
+    'data-hero',
+    'panda',
+  );
+  await expect(page.locator('#health-text')).toHaveText(/\d+ \/ \d+/);
+  await expect(page.locator('#mana-text')).toHaveText(/\d+ \/ \d+/);
+  for (const [width, height] of [
+    [1920, 1080],
+    [2560, 1440],
+    [3440, 1440],
+    [768, 1024],
+    [390, 844],
+  ]) {
+    if (!width || !height) continue;
+    await page.setViewportSize({ width, height });
+    const panel = await page.locator('.character-hud').boundingBox();
+    expect(panel).not.toBeNull();
+    if (!panel) continue;
+    expect(panel.x).toBeGreaterThanOrEqual(0);
+    expect(panel.x + panel.width).toBeLessThanOrEqual(width);
+    expect(panel.y + panel.height).toBeLessThanOrEqual(height);
+    expect(panel.height).toBeLessThan(175);
+    await expect(page.locator('#inventory-button')).toBeVisible();
+    if (width === 1920 || width === 390)
+      await page.screenshot({ path: `test-results/premium-hud-${width}.png` });
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await page.locator('[data-hero="ape"]').click();
+  await page.getByRole('button', { name: 'Begin adventure' }).click();
+  await expect(page.locator('#hud-portrait')).toHaveAttribute(
+    'data-hero',
+    'ape',
+  );
+  await expect(page.locator('#hud')).toHaveAttribute(
+    'data-weapon-texture',
+    'ape-staff',
+  );
+  const initialMana = await page.locator('#mana-text').textContent();
+  await page.locator('#special-button').click();
+  await expect(page.locator('#mana-text')).not.toHaveText(initialMana ?? '');
+  await expect(page.locator('#hud')).toHaveAttribute(
+    'data-weapon-trail',
+    'true',
+  );
+  await page.screenshot({ path: 'test-results/premium-ape-cast.png' });
+});
+
+test('confirmed solo combat displays damage and a mid-swing blade trail', async ({
+  page,
+}) => {
+  await page.clock.install();
+  const { createWorld, createPlayer } = await import('@panda/shared');
+  const world = createWorld();
+  const hero = createPlayer('local', 'panda');
+  hero.facing = { x: 1, y: 0 };
+  hero.hp = 130;
+  world.players.push(hero);
+  const enemy = world.enemies[0];
+  if (!enemy) throw new Error('Missing encounter enemy');
+  enemy.x = hero.x + 60;
+  enemy.y = hero.y;
+  enemy.hp = enemy.maxHp = 1000;
+  await page.addInitScript(
+    (save) => localStorage.setItem('panda-save', save),
+    JSON.stringify({ version: 2, world }),
+  );
+  await page.goto('/');
+  await page
+    .getByRole('button', { name: 'Continue saved solo adventure' })
+    .click();
+  await expect(page.locator('#health-text')).toHaveText(/130 \/ 160/);
+  await page.keyboard.down('Space');
+  try {
+    await expect(page.locator('#hud')).toHaveAttribute(
+      'data-weapon-trail',
+      'true',
+    );
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 50));
+    await page.clock.runFor(32);
+    await page.screenshot({ path: 'test-results/premium-panda-swing.png' });
+    await page.clock.resume();
+    await expect
+      .poll(async () =>
+        Number(await page.locator('#hud').getAttribute('data-damage-numbers')),
+      )
+      .toBeGreaterThan(0);
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 50));
+    await page.clock.runFor(32);
+    await page.screenshot({
+      path: 'test-results/premium-confirmed-combat.png',
+    });
+    await page.clock.resume();
+    await expect(page.locator('#health-text')).not.toHaveText('130 / 160');
+  } finally {
+    await page.keyboard.up('Space');
+  }
+});

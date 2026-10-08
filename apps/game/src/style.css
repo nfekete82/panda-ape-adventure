@@ -880,3 +880,231 @@ dialog .inventory-row small {
     display: none;
   }
 }
+
+/* Original woodland character HUD: one compact frame for status and actions. */
+.character-hud {
+  position: absolute;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(850px, calc(100% - 32px));
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  gap: 20px;
+  border: 1px solid #b8a16b;
+  border-radius: 4px 14px 4px 14px;
+  background: linear-gradient(
+    110deg,
+    #382e24f2,
+    #13392ff2 22%,
+    #112b25ed 75%,
+    #332b22f2
+  );
+  box-shadow:
+    inset 0 1px #ead7a326,
+    inset 0 -3px #060f0c66,
+    0 8px 28px #0006;
+}
+.character-hud .player-panel {
+  position: static;
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  gap: 12px;
+}
+.character-hud .player-panel > canvas {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  border: 1px solid #a08b5c;
+  border-radius: 3px 12px 3px 12px;
+  background: radial-gradient(ellipse at 50% 60%, #57785b, #172e26 75%);
+  box-shadow: inset 0 0 0 3px #0b201a;
+}
+.character-hud .player-panel > div {
+  min-width: 0;
+}
+.character-hud .player-name {
+  margin-bottom: 5px;
+}
+.character-hud .player-name strong {
+  font-size: 22px;
+}
+.character-hud .player-name > span {
+  font-size: 11px;
+}
+.character-hud .bar {
+  height: 17px;
+  border: 1px solid #071c18;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 3px #0008;
+}
+.character-hud .bar span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transition: width 240ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.character-hud .health #health-trail {
+  background: #d5ac72;
+  transition: width 650ms ease 140ms;
+}
+.character-hud .health #health-bar {
+  background: linear-gradient(0deg, #328258, #88d28b);
+  box-shadow: inset 0 1px #d4f5b877;
+}
+.character-hud .mana span {
+  background: linear-gradient(0deg, #247c9c, #7bdbdb);
+}
+.character-hud .bar b {
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  font-size: 10px;
+  line-height: 15px;
+  font-weight: bold;
+  text-shadow: 0 1px 2px #001b19;
+}
+.character-hud .xp {
+  height: 3px;
+  margin-top: 7px;
+}
+.character-hud .quickbar {
+  position: static;
+  transform: none;
+  padding: 0 0 0 16px;
+  border-left: 1px solid #b8a16b44;
+  gap: 6px;
+}
+.character-hud .quickbar button {
+  min-width: 66px;
+  min-height: 60px;
+  padding: 8px;
+  background: linear-gradient(#46604777, #142b24);
+  border-color: #b8a16b66;
+  border-radius: 3px;
+}
+.character-hud .quickbar button:hover {
+  border-color: #e4ce8c;
+  background-color: #6c784b;
+}
+.character-hud .quickbar button:active {
+  transform: translateY(1px);
+}
+.character-hud .quickbar strong {
+  font-size: 11px;
+}
+.character-hud .quickbar kbd {
+  font-size: 9px;
+  margin-bottom: 8px;
+}
+.character-hud .controls {
+  display: none;
+}
+.player-panel.damaged canvas {
+  filter: sepia(0.45) brightness(1.35);
+}
+.player-panel.damaged .health {
+  box-shadow: 0 0 8px #ec9c6977;
+}
+.player-panel.spent .mana {
+  box-shadow: 0 0 8px #79d8df88;
+}
+.room {
+  top: 96px;
+}
+.region-tag {
+  bottom: 140px;
+  font-size: 18px;
+}
+#notice {
+  bottom: 150px;
+}
+#interact-hint {
+  bottom: 215px;
+}
+@media (max-width: 850px) {
+  .character-hud {
+    gap: 12px;
+    width: calc(100% - 24px);
+    bottom: max(12px, env(safe-area-inset-bottom));
+    padding: 9px;
+  }
+  .character-hud .player-panel > canvas {
+    width: 64px;
+    height: 64px;
+  }
+  .character-hud .quickbar {
+    padding-left: 10px;
+  }
+  .character-hud .quickbar button {
+    min-width: 56px;
+  }
+}
+@media (max-width: 560px) {
+  .character-hud {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .character-hud .player-panel {
+    flex-basis: 100%;
+    gap: 10px;
+  }
+  .character-hud .player-panel > canvas {
+    width: 62px;
+    height: 62px;
+  }
+  .character-hud .quickbar {
+    border: 0;
+    padding: 0;
+    width: 100%;
+    gap: 6px;
+  }
+  .character-hud .quickbar button {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    padding: 5px;
+  }
+  .character-hud .quickbar kbd {
+    margin-bottom: 3px;
+  }
+  .quest {
+    top: 158px;
+    right: 12px;
+    width: 200px;
+    padding: 10px;
+  }
+  .quest p {
+    font-size: 11px;
+  }
+  .quest strong {
+    font-size: 16px;
+  }
+  .room {
+    top: 80px;
+    min-width: 0;
+    max-width: calc(100% - 24px);
+  }
+  #notice {
+    bottom: 174px;
+    font-size: 12px;
+  }
+  #interact-hint {
+    bottom: 232px;
+    font-size: 12px;
+  }
+  footer {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .character-hud .bar span {
+    transition: none;
+  }
+  .character-hud .quickbar button:active {
+    transform: none;
+  }
+}

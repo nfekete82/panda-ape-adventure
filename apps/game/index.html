@@ -73,18 +73,41 @@
         </div>
       </main>
       <div id="hud" hidden>
-        <section class="player-panel panel">
-          <canvas id="hud-portrait" width="64" height="64"></canvas>
-          <div>
-            <div class="player-name">
-              <strong id="hero-name">Panda</strong><span id="level">LV 1</span>
+        <section
+          class="character-hud panel"
+          aria-label="Character status and actions"
+        >
+          <section class="player-panel">
+            <canvas id="hud-portrait" width="64" height="64"></canvas>
+            <div>
+              <div class="player-name">
+                <strong id="hero-name">Panda</strong
+                ><span id="level">LV 1</span>
+              </div>
+              <div class="bar health" role="meter" aria-label="Health">
+                <span id="health-trail"></span>
+                <span id="health-bar"></span><b id="health-text"></b>
+              </div>
+              <div class="bar mana" role="meter" aria-label="Mana">
+                <span id="mana-bar"></span><b id="mana-text"></b>
+              </div>
+              <div class="bar xp"><span id="xp-bar"></span></div>
             </div>
-            <div class="bar health">
-              <span id="health-bar"></span><b id="health-text"></b>
+          </section>
+          <section class="quickbar">
+            <button id="attack-button">
+              <kbd>SPACE</kbd><strong id="attack-name">Sword</strong></button
+            ><button id="special-button">
+              <kbd>Q</kbd><strong id="special-name">Earthbreak</strong></button
+            ><button id="heal-button">
+              <kbd>R</kbd><strong id="potions">Potion ×3</strong></button
+            ><button id="inventory-button">
+              <kbd>I</kbd><strong>Satchel</strong>
+            </button>
+            <div class="controls">
+              WASD / ARROWS <small>MOVE · SHIFT TO GUARD</small>
             </div>
-            <div class="bar mana"><span id="mana-bar"></span></div>
-            <div class="bar xp"><span id="xp-bar"></span></div>
-          </div>
+          </section>
         </section>
         <section id="quest" class="quest panel">
           <div class="eyebrow">FOREST JOURNAL</div>
@@ -99,20 +122,6 @@
         </section>
         <div id="notice" role="status"></div>
         <div id="interact-hint" hidden>E · Talk to Rowan</div>
-        <section class="quickbar panel">
-          <button id="attack-button">
-            <kbd>SPACE</kbd><strong id="attack-name">Sword</strong></button
-          ><button id="special-button">
-            <kbd>Q</kbd><strong id="special-name">Earthbreak</strong></button
-          ><button id="heal-button">
-            <kbd>R</kbd><strong id="potions">Potion ×3</strong></button
-          ><button id="inventory-button">
-            <kbd>I</kbd><strong>Satchel</strong>
-          </button>
-          <div class="controls">
-            WASD / ARROWS <small>MOVE · SHIFT TO GUARD</small>
-          </div>
-        </section>
         <div class="region-tag">
           Emerald Forest <small>THE OLD WOODLANDS</small>
         </div>
