@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createWorld, createPlayer, neutralInput, step, damageEnemy, collides,
   SHRINE_WARDEN_ID, SHRINE_WARDEN_SPAWN, BAMBOO_SHRINE,
-  interactShrine, prepareShrineQuest, quantity,
+  interactShrine, quantity,
 } from '@panda/shared';
 import { WorldSoundTracker } from '../apps/game/src/sound-events';
 
