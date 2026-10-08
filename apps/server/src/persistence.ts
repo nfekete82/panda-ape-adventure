@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import { join } from 'node:path';
+import { migrateWorld } from '@panda/shared';
 import type { Room } from './rooms.js';
 export interface SaveStore {
   save(room: Room): Promise<void>;
@@ -55,10 +56,12 @@ export class JsonSaveStore implements SaveStore {
           savedAt: number;
         };
         if (data.version !== 1 || Date.now() - data.savedAt > 60000) continue;
-        data.world.players.forEach((p) => (p.connected = false));
+        const world = migrateWorld(data.world, data.code);
+        if (!world) continue;
+        world.players.forEach((p) => (p.connected = false));
         rooms.push({
           code: data.code,
-          world: data.world,
+          world,
           sessions: data.sessions,
           inputs: new Map(),
           emptySince: Date.now(),

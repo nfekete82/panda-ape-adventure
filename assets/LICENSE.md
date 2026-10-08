@@ -5,3 +5,5 @@ All character sprites, terrain, trees, enemies, effects and synthesised audio in
 The generator is `apps/game/src/art.ts`; effects are drawn in `ForestScene`, and sound is synthesised with Web Audio in `apps/game/src/main.ts`. All assets are available without Internet access at runtime. System fonts are used locally and are not distributed.
 
 Phaser and other dependencies retain their own licenses, available in their installed package directories. The game does not borrow Secret of Mana characters, artwork, maps, names, music or assets.
+
+Bramble in 0.2.0 reuses the original procedural NPC sprite with a tint; the existing CC0 dedication applies. Future imported hero sprites must declare their own provenance and license in `hero-sheets.json`, with any attribution requirements documented here. User-supplied references are not automatically licensed CC0. No external references are bundled in 0.2.0.

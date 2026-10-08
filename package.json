@@ -1,6 +1,6 @@
 {
   "name": "panda-ape-adventure",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "engines": {
-    "node": ">=22.12"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "dev": "concurrently -k -n server,game 'npm run dev -w @panda/server' 'npm run dev -w @panda/game'",
@@ -23,7 +23,8 @@
     "pretest": "npm run build -w @panda/shared",
     "pretest:browser": "npm run build -w @panda/shared",
     "test:docker": "tsx scripts/verify-docker.ts",
-    "pretest:docker": "npm run build -w @panda/shared"
+    "pretest:docker": "npm run build -w @panda/shared",
+    "sprites:import": "tsx scripts/import-sprites.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

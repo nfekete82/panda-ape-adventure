@@ -1,5 +1,6 @@
 import { randomUUID, randomInt } from 'node:crypto';
 import {
+  RESPAWN,
   createPlayer,
   createWorld,
   neutralInput,
@@ -7,6 +8,7 @@ import {
   type Hero,
   type Input,
   type World,
+  type Player,
 } from '@panda/shared';
 export interface Session {
   token: string;
@@ -22,7 +24,12 @@ export interface Room {
 }
 export class RoomManager {
   rooms = new Map<string, Room>();
-  create(hero: Hero): { room: Room; session: Session } {
+  constructor(private respawn = RESPAWN) {}
+  create(
+    hero: Hero,
+    character?: Player,
+    characterToken?: string,
+  ): { room: Room; session: Session } {
     if (this.rooms.size >= 100)
       throw Error('The server is full. Please try again later.');
     const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -35,32 +42,86 @@ export class RoomManager {
     } while (this.rooms.has(code));
     const room: Room = {
       code,
-      world: createWorld(),
+      world: {
+        ...createWorld(this.respawn),
+        instanceId: randomUUID(),
+        respawn: structuredClone(this.respawn),
+      },
       sessions: [],
       inputs: new Map(),
       emptySince: 0,
     };
+    const session = this.add(room, hero, character, characterToken);
     this.rooms.set(code, room);
-    return { room, session: this.add(room, hero) };
+    return { room, session };
   }
-  join(code: string, hero: Hero): { room: Room; session: Session } {
+  join(
+    code: string,
+    hero: Hero,
+    character?: Player,
+    characterToken?: string,
+  ): { room: Room; session: Session } {
     const room = this.rooms.get(code);
     if (!room) throw Error('Room not found.');
-    return { room, session: this.add(room, hero) };
+    return { room, session: this.add(room, hero, character, characterToken) };
   }
-  private add(room: Room, hero: Hero): Session {
+  private add(
+    room: Room,
+    hero: Hero,
+    character?: Player,
+    characterToken?: string,
+  ): Session {
+    if (
+      character &&
+      [...this.rooms.values()].some((r) =>
+        r.world.players.some((p) => p.id === character.id),
+      )
+    )
+      throw Error('Character is already in a room or reserved seat.');
+    if (character && character.hero !== hero)
+      throw Error('Character belongs to the other hero.');
     if (room.world.players.length >= 2)
       throw Error('This room is full (including reserved reconnect seats).');
     if (room.world.players.some((p) => p.hero === hero))
       throw Error('This hero is already taken. Choose the other hero.');
-    const playerId = randomUUID();
+    const playerId = character?.id ?? randomUUID();
     const session: Session = {
       playerId,
-      token: randomUUID(),
+      token: characterToken ?? randomUUID(),
       expires: Infinity,
     };
     room.sessions.push(session);
-    room.world.players.push(createPlayer(playerId, hero));
+    const player = createPlayer(playerId, hero);
+    if (character) {
+      const {
+        level,
+        xp,
+        points,
+        attributes,
+        weapon,
+        inventory,
+        receipts,
+        commandSeq,
+        potions,
+        crystals,
+        maxHp,
+      } = character;
+      Object.assign(player, {
+        level,
+        xp,
+        points,
+        attributes,
+        weapon,
+        inventory,
+        receipts,
+        commandSeq,
+        potions,
+        crystals,
+        maxHp,
+        hp: maxHp,
+      });
+    }
+    room.world.players.push(player);
     return session;
   }
   resume(

@@ -1,5 +1,15 @@
 import Phaser from 'phaser';
 import {
+  ATTRIBUTES,
+  combatStats,
+  quantity,
+  WEAPONS,
+  upgradeCost,
+  xpRequired,
+  applyRpgAction,
+  migrateWorld,
+  isPlayer,
+  type RpgAction,
   createWorld,
   createPlayer,
   neutralInput,
@@ -15,7 +25,7 @@ import {
   type ServerMessage,
   type ClientMessage,
 } from '@panda/shared';
-import { makeAssets, heroArt } from './art';
+import { makeAssets, heroArt, heroFrame, preloadHeroSheets } from './art';
 import './style.css';
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
@@ -158,21 +168,62 @@ function startSolo(saved = false) {
   world.players.push(createPlayer('local', selected));
   if (saved) {
     try {
-      const data = JSON.parse(
-        safeStorage('panda-save') ?? 'null',
-      ) as World | null;
-      if (
-        data &&
-        data.players?.some((p) => p.id === 'local') &&
-        data.enemies?.length
-      ) {
+      const raw = safeStorage('panda-save');
+      if (raw && !safeStorage('panda-save-v1-backup'))
+        safeStorage('panda-save-v1-backup', raw);
+      const data = migrateWorld(JSON.parse(raw ?? 'null'));
+      if (data && data.players.some((p) => p.id === 'local')) {
         world = data;
         selected = world.players.find((p) => p.id === 'local')!.hero;
-      }
+      } else
+        notify(
+          'Saved adventure is invalid; the original save has been retained.',
+        );
     } catch {
       /* Start a new adventure if corrupt. */
     }
   }
+  if (!saved) {
+    try {
+      const character: unknown = JSON.parse(
+        safeStorage(`panda-solo-${selected}`) ?? 'null',
+      );
+      if (isPlayer(character)) {
+        const p = world.players[0]!;
+        const {
+          level,
+          xp,
+          points,
+          attributes,
+          weapon,
+          inventory,
+          receipts,
+          commandSeq,
+          potions,
+          crystals,
+          maxHp,
+        } = character;
+        Object.assign(p, {
+          level,
+          xp,
+          points,
+          attributes,
+          weapon,
+          inventory,
+          receipts,
+          commandSeq,
+          potions,
+          crystals,
+          maxHp,
+          hp: maxHp,
+        });
+      }
+    } catch {
+      /* Retain corrupt character data for recovery. */
+    }
+    world.instanceId = crypto.randomUUID();
+  }
+  rpgSeq = world.players.find((p) => p.id === playerId)?.commandSeq ?? 0;
   predicted = { ...world.players.find((p) => p.id === 'local')! };
   $('connection-status').textContent = 'SOLO ADVENTURE';
   $('room-label').textContent = '';
@@ -190,6 +241,10 @@ function connect(message: ClientMessage, isReconnect = false) {
   $('menu-error').textContent = '';
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
   socket = new WebSocket(`${scheme}://${location.host}/ws`);
+  if (message.type === 'create' || message.type === 'join') {
+    const characterToken = safeStorage(`panda-character-${selected}`);
+    if (characterToken) message = { ...message, characterToken };
+  }
   const current = socket;
   let welcomed = false;
   const timeout = setTimeout(() => {
@@ -206,6 +261,7 @@ function connect(message: ClientMessage, isReconnect = false) {
       roomCode = m.code;
       token = m.token;
       playerId = m.playerId;
+      safeStorage(`panda-character-${selected}`, token);
       seq = 0;
       pending = [];
       reconnectStart = 0;
@@ -227,7 +283,7 @@ function connect(message: ClientMessage, isReconnect = false) {
         for (const sent of pending) {
           const d = Math.hypot(sent.input.x, sent.input.y);
           const speed =
-            (p.hero === 'ape' ? 205 : 175) *
+            combatStats(p).speed *
             (sent.input.guard && p.hero === 'panda' ? 0.45 : 1);
           if (d > 0)
             move(
@@ -240,7 +296,11 @@ function connect(message: ClientMessage, isReconnect = false) {
       }
     } else if (m.type === 'error') {
       if (mode === 'menu') $('menu-error').textContent = m.message;
-      else notify(m.message);
+      else {
+        notify(m.message);
+        const status = document.getElementById('rpg-status');
+        if (status) status.textContent = m.message;
+      }
       if (!welcomed) {
         quitting = !(
           isReconnect && m.message === 'This session is already connected.'
@@ -319,6 +379,24 @@ for (const button of document.querySelectorAll<HTMLButtonElement>(
   };
 $('solo').onclick = () => startSolo();
 const storedSession = safeSession('panda-session');
+// 0.1 stored only a reconnect credential. Keep it usable for a migrated permanent character.
+try {
+  const old: unknown = JSON.parse(storedSession ?? 'null');
+  if (
+    old &&
+    typeof old === 'object' &&
+    'hero' in old &&
+    (old.hero === 'panda' || old.hero === 'ape') &&
+    'token' in old &&
+    typeof old.token === 'string' &&
+    /^[\da-f-]{36}$/.test(old.token) &&
+    !safeStorage(`panda-character-${old.hero}`)
+  )
+    safeStorage(`panda-character-${old.hero}`, old.token);
+} catch {
+  /* A corrupt old session must not replace a character credential. */
+}
+
 $('restore-session').hidden = !storedSession;
 $('restore-session').onclick = () => {
   try {
@@ -368,7 +446,7 @@ $('invite').onclick = () => {
 };
 function save() {
   if (mode === 'solo') {
-    safeStorage('panda-save', JSON.stringify(world));
+    saveSolo();
     $('continue').hidden = false;
     notify('Solo adventure saved on this browser.');
   } else if (mode === 'online') send({ type: 'save' });
@@ -421,13 +499,69 @@ function settingsModal() {
     };
 }
 $('settings').onclick = settingsModal;
-function inventory() {
-  if (mode === 'menu') return;
+let rpgSeq = 0;
+let satchelSignature = '';
+function saveSolo() {
+  const p = world.players.find((p) => p.id === playerId);
+  if (p) safeStorage(`panda-solo-${p.hero}`, JSON.stringify(p));
+  safeStorage('panda-save', JSON.stringify({ version: 2, world }));
+}
+function rpg(action: RpgAction) {
   const p = world.players.find((p) => p.id === playerId);
   if (!p) return;
-  showModal(
-    `<div class="eyebrow">EVERY LITTLE THING COUNTS</div><h2>Your satchel</h2><div class="inventory-row"><div>Healing potions<small>Restore 70 HP · R to use or revive</small></div><strong>${p.potions}</strong></div><div class="inventory-row"><div>Forest crystals<small>Treasures of the Emerald Forest</small></div><strong>${p.crystals}</strong></div><div class="inventory-row"><div>${p.hero === 'panda' ? 'Oakguard sword & shield' : 'Moonbloom staff'}<small>Level ${p.level} · ${p.xp} / ${p.level * 75} XP</small></div><strong>Equipped</strong></div><p>Pick up supplies by walking over them. Rowan has a reward for helping the forest.</p>`,
-  );
+  rpgSeq = Math.max(rpgSeq, p.commandSeq) + 1;
+  if (mode === 'online') send({ type: 'rpg', seq: rpgSeq, action });
+  else {
+    const error = applyRpgAction(world, p, action, rpgSeq);
+    if (error) {
+      notify(error);
+      $('rpg-status').textContent = error;
+    } else {
+      saveSolo();
+      renderSatchel();
+    }
+  }
+}
+function renderSatchel() {
+  const p = world.players.find((p) => p.id === playerId);
+  if (!p) return;
+  const stats = combatStats(p),
+    cost = upgradeCost(p.weapon.upgrade + 1);
+  satchelSignature = JSON.stringify([
+    p.level,
+    p.xp,
+    p.points,
+    p.attributes,
+    p.weapon,
+    p.inventory,
+    p.potions,
+    world.bossDefeated,
+  ]);
+  $('modal-content').innerHTML =
+    `<h2>Your satchel</h2><p>Level ${p.level} · ${p.xp} / ${xpRequired(p.level)} XP · <strong>${p.points} attribute points</strong></p>
+    <p>HP ${stats.maxHp} · Mana ${stats.maxMana} · Damage ${stats.damage} · Special ${stats.special} · Armor ${stats.armor.toFixed(1)}</p>
+    ${ATTRIBUTES.map((a) => `<div class="inventory-row"><div>${a.charAt(0).toUpperCase() + a.slice(1)}<small>${a === 'vitality' ? '+12 HP, armor' : a === 'strength' ? 'Sword damage, special damage, armor' : a === 'dexterity' ? 'Damage, movement and attack speed' : 'Staff damage, special damage and mana'}</small></div><strong>${p.attributes[a]}</strong><button data-attribute="${a}" ${p.points < 1 ? 'disabled' : ''}>+ ${a}</button></div>`).join('')}
+    <div class="inventory-row"><div>Healing potions</div><strong>${p.potions}</strong></div>
+    ${(['coin', 'leather', 'crystal', 'ancient'] as const).map((kind) => `<div class="inventory-row"><div>${kind}</div><strong>${quantity(p, kind)}</strong></div>`).join('')}
+    <p id="rpg-status" role="status"></p><h3>Bramble's forge</h3><p>${WEAPONS[p.weapon.kind].name} +${p.weapon.upgrade} · Base damage ${WEAPONS[p.weapon.kind].damage} · +${WEAPONS[p.weapon.kind].perUpgrade} damage per upgrade</p>
+    <p>${p.weapon.upgrade < 10 ? `Next upgrade: ${cost.coin} coins, ${cost.leather} leather, ${cost.crystal} crystals, ${cost.ancient} ancient materials` : 'Maximum upgrade reached.'}</p>
+    <button id="upgrade-weapon" ${p.weapon.upgrade >= 10 || distance(p, WORLD.smith) > 90 ? 'disabled' : ''}>Upgrade weapon</button>
+    <p>Visit Bramble at the western camp (E) to upgrade. Collect enemy drops by walking over them.</p>
+    ${world.bossDefeated ? '<button id="reset-encounter">Reset guardian encounter at Rowan</button><p>Bring everyone to camp and collect rare guardian loot first.</p>' : ''}`;
+  for (const a of ATTRIBUTES) {
+    const button = document.querySelector<HTMLButtonElement>(
+      `[data-attribute="${a}"]`,
+    );
+    if (button) button.onclick = () => rpg({ kind: 'attribute', attribute: a });
+  }
+  $('upgrade-weapon').onclick = () => rpg({ kind: 'upgrade' });
+  if (world.bossDefeated)
+    $('reset-encounter').onclick = () => rpg({ kind: 'resetEncounter' });
+}
+function inventory() {
+  if (mode === 'menu') return;
+  showModal('');
+  renderSatchel();
 }
 $('inventory-button').onclick = inventory;
 $('attack-button').onclick = () => pulses.add('Space');
@@ -447,6 +581,13 @@ window.addEventListener('keydown', (e) => {
     if ($<HTMLDialogElement>('modal').open) closeModal();
     else settingsModal();
     return;
+  }
+  if (e.code === 'KeyE' && !e.repeat) {
+    const p = world.players.find((p) => p.id === playerId);
+    if (p && distance(p, WORLD.smith) < 90) {
+      inventory();
+      return;
+    }
   }
   if (e.code === 'KeyI' && !e.repeat) {
     inventory();
@@ -523,6 +664,9 @@ class ForestScene extends Phaser.Scene {
   constructor() {
     super('forest');
   }
+  preload() {
+    preloadHeroSheets(this);
+  }
   create() {
     scene = this; // eslint-disable-line @typescript-eslint/no-this-alias
     makeAssets(this);
@@ -539,6 +683,18 @@ class ForestScene extends Phaser.Scene {
             .setDepth(o.y + o.h),
         );
       }
+    this.add
+      .sprite(WORLD.smith.x, WORLD.smith.y, 'npc')
+      .setTint(0xd5af7d)
+      .setDepth(WORLD.smith.y);
+    this.add
+      .text(WORLD.smith.x, WORLD.smith.y - 48, 'BRAMBLE · FORGE', {
+        fontFamily: 'Georgia',
+        fontSize: '12px',
+        color: '#f3d9a0',
+      })
+      .setOrigin(0.5)
+      .setDepth(WORLD.smith.y + 1);
     this.add.sprite(WORLD.npc.x, WORLD.npc.y, 'npc').setDepth(WORLD.npc.y);
     this.add
       .text(WORLD.npc.x, WORLD.npc.y - 48, 'ROWAN', {
@@ -622,7 +778,7 @@ class ForestScene extends Phaser.Scene {
       const p = world.players.find((p) => p.id === playerId);
       if (p && socket?.readyState === WebSocket.OPEN) {
         const speed =
-            (p.hero === 'ape' ? 205 : 175) *
+            combatStats(p).speed *
             (input.guard && p.hero === 'panda' ? 0.45 : 1),
           d = Math.hypot(input.x, input.y);
         if (d && p.hp > 0)
@@ -684,7 +840,15 @@ class ForestScene extends Phaser.Scene {
           (Math.atan2(facing.y, facing.x) + Math.PI * 2) / (Math.PI / 4),
         ) % 8;
       dir = Math.max(0, dir);
-      const frame = dir * 4 + (moving ? Math.floor(time / 130) % 4 : 0);
+      const state =
+        p.hp <= 0
+          ? 'downed'
+          : p.invulnerable > 0
+            ? 'hit'
+            : moving && p.action === 'idle'
+              ? 'walk'
+              : p.action;
+      const frame = heroFrame(p.hero, state, dir, time);
       const sprite = this.entity(p.id, pos.x, pos.y, p.hero, frame, dt);
       sprite.setAlpha(p.connected ? 1 : 0.35);
       sprite.setAngle(
@@ -764,7 +928,17 @@ class ForestScene extends Phaser.Scene {
       }
     for (const item of world.loot) {
       const y = item.y + Math.sin(time * 0.003 + item.x) * 3;
-      this.graphics.fillStyle(item.kind === 'potion' ? 0xe6b19b : 0xa8d6c0);
+      this.graphics.fillStyle(
+        item.kind === 'potion'
+          ? 0xe6b19b
+          : item.kind === 'coin'
+            ? 0xf1cb65
+            : item.kind === 'leather'
+              ? 0xa87346
+              : item.kind === 'ancient'
+                ? 0xc59bf4
+                : 0xa8d6c0,
+      );
       if (item.kind === 'potion') {
         this.graphics.fillRect(item.x - 6, y - 6, 12, 15);
         this.graphics.fillStyle(0xedd8b7);
@@ -860,8 +1034,8 @@ function updateHud() {
   if (!p) return;
   $('health-bar').style.width = `${(p.hp / p.maxHp) * 100}%`;
   $('health-text').textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
-  $('mana-bar').style.width = `${p.mana}%`;
-  $('xp-bar').style.width = `${(p.xp / (p.level * 75)) * 100}%`;
+  $('mana-bar').style.width = `${(p.mana / combatStats(p).maxMana) * 100}%`;
+  $('xp-bar').style.width = `${(p.xp / xpRequired(p.level)) * 100}%`;
   $('level').textContent = `LV ${p.level}`;
   $('potions').textContent = `Potion ×${p.potions}`;
   $('quest-title').textContent = world.bossDefeated
@@ -880,7 +1054,24 @@ function updateHud() {
         : world.quest === 'complete'
           ? 'Return to Rowan for your reward.'
           : 'Find the guardian in the northeast ruins.';
-  $('interact-hint').hidden = distance(p, WORLD.npc) > 90;
+  $('interact-hint').hidden =
+    Math.min(distance(p, WORLD.npc), distance(p, WORLD.smith)) > 90;
+  if (
+    $<HTMLDialogElement>('modal').open &&
+    document.getElementById('upgrade-weapon') &&
+    satchelSignature !==
+      JSON.stringify([
+        p.level,
+        p.xp,
+        p.points,
+        p.attributes,
+        p.weapon,
+        p.inventory,
+        p.potions,
+        world.bossDefeated,
+      ])
+  )
+    renderSatchel();
   $('partner').textContent =
     mode === 'solo'
       ? world.players.length > 1
@@ -937,9 +1128,8 @@ new Phaser.Game({
 });
 // Design UI is 1920×1080; world pixels stay crisp on smaller displays.
 setInterval(() => {
-  if (mode === 'solo' && !paused)
-    safeStorage('panda-save', JSON.stringify(world));
+  if (mode === 'solo' && !paused) saveSolo();
 }, 15000);
 window.addEventListener('beforeunload', () => {
-  if (mode === 'solo') safeStorage('panda-save', JSON.stringify(world));
+  if (mode === 'solo') saveSolo();
 });

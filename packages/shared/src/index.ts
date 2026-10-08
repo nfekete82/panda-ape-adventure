@@ -1,3 +1,12 @@
+import {
+  initialProgress,
+  combatStats,
+  awardXp,
+  grant,
+  RESPAWN,
+  type Progress,
+} from './rpg.js';
+export * from './rpg.js';
 export type Hero = 'panda' | 'ape';
 export type EnemyKind = 'slime' | 'wolf' | 'wisp' | 'guardian';
 export interface Vec {
@@ -28,7 +37,7 @@ export const neutralInput = (): Input => ({
   interact: false,
   seq: 0,
 });
-export interface Player extends Vec {
+export interface Player extends Vec, Progress {
   id: string;
   hero: Hero;
   hp: number;
@@ -55,6 +64,8 @@ export interface Enemy extends Vec {
   cooldown: number;
   hurt: number;
   phase: number;
+  respawnRemaining: number;
+  generation: number;
 }
 export interface Projectile extends Vec {
   id: string;
@@ -66,7 +77,8 @@ export interface Projectile extends Vec {
 }
 export interface Loot extends Vec {
   id: string;
-  kind: 'potion' | 'crystal';
+  kind: 'potion' | 'coin' | 'leather' | 'crystal' | 'ancient';
+  quantity: number;
 }
 export interface Effect extends Vec {
   id: string;
@@ -77,6 +89,8 @@ export interface Effect extends Vec {
 }
 export interface World {
   tick: number;
+  instanceId: string;
+  respawn: typeof RESPAWN;
   nextId: number;
   players: Player[];
   enemies: Enemy[];
@@ -93,6 +107,7 @@ export const WORLD = {
   height: 1440,
   spawn: { x: 430, y: 1040 },
   npc: { x: 510, y: 990 },
+  smith: { x: 390, y: 990 },
   boss: { x: 1580, y: 340 },
 };
 export interface Obstacle extends Vec {
@@ -173,6 +188,7 @@ const id = (w: World): string => {
 };
 export function createPlayer(playerId: string, hero: Hero): Player {
   return {
+    ...initialProgress(playerId, hero),
     id: playerId,
     hero,
     x: WORLD.spawn.x + (hero === 'ape' ? 60 : 0),
@@ -193,14 +209,14 @@ export function createPlayer(playerId: string, hero: Hero): Player {
     combo: 0,
   };
 }
-export function createWorld(): World {
+export function createWorld(respawn = RESPAWN): World {
   const positions: [EnemyKind, number, number][] = [
     ['slime', 680, 860],
     ['slime', 740, 820],
     ['wolf', 850, 590],
     ['wolf', 1100, 610],
     ['wisp', 1250, 500],
-    ['slime', 1120, 800],
+    ['slime', 1080, 760],
     ['wolf', 1420, 660],
     ['wisp', 1510, 750],
     ['slime', 650, 500],
@@ -209,6 +225,8 @@ export function createWorld(): World {
   ];
   return {
     tick: 0,
+    instanceId: 'solo',
+    respawn: structuredClone(respawn),
     nextId: 0,
     players: [],
     enemies: positions.map(([kind, x, y], i) => ({
@@ -218,13 +236,16 @@ export function createWorld(): World {
       y,
       spawn: { x, y },
       hp:
-        kind === 'guardian'
-          ? 600
-          : kind === 'wolf'
-            ? 75
-            : kind === 'wisp'
-              ? 55
-              : 45,
+        positions.slice(0, i).filter(([other]) => other === kind).length >=
+        respawn[kind].maximum
+          ? 0
+          : kind === 'guardian'
+            ? 600
+            : kind === 'wolf'
+              ? 75
+              : kind === 'wisp'
+                ? 55
+                : 45,
       maxHp:
         kind === 'guardian'
           ? 600
@@ -236,9 +257,11 @@ export function createWorld(): World {
       cooldown: 1,
       hurt: 0,
       phase: 0,
+      respawnRemaining: respawn[kind].seconds,
+      generation: 0,
     })),
     projectiles: [],
-    loot: [{ id: 'starter', x: 580, y: 1030, kind: 'potion' }],
+    loot: [{ id: 'starter', x: 580, y: 1030, kind: 'potion', quantity: 1 }],
     effects: [],
     quest: 'available',
     kills: 0,
@@ -276,22 +299,32 @@ export function damageEnemy(
   if (e.kind !== 'guardian') move(e, u.x * 12, u.y * 12);
   if (e.hp === 0) {
     w.kills++;
-    w.loot.push({
-      id: id(w),
-      x: e.x,
-      y: e.y,
-      kind: w.kills % 3 === 0 ? 'potion' : 'crystal',
-    });
+    e.respawnRemaining = w.respawn[e.kind].seconds;
+    // Drop rolls depend only on the authority's world state, never client input.
+    const roll = random(w.nextId + w.kills * 7919 + e.generation * 104729)();
+    const drops: [Loot['kind'], number][] = [
+      ['coin', e.kind === 'guardian' ? 100 : 12],
+      [
+        e.kind === 'wolf' ? 'leather' : 'crystal',
+        e.kind === 'guardian' ? 8 : 2,
+      ],
+    ];
+    if (e.kind === 'guardian' || roll < 0.12) drops.push(['ancient', 1]);
+    if (w.kills % 3 === 0) drops.push(['potion', 1]);
+    for (const [kind, quantity] of drops)
+      w.loot.push({
+        id: id(w),
+        x: e.x + (kind === 'coin' ? -12 : 12),
+        y: e.y,
+        kind,
+        quantity,
+      });
+    const receipt = `${w.instanceId}:${e.id}:${e.generation}`;
     for (const p of w.players) {
-      p.xp += e.kind === 'guardian' ? 150 : 25;
-      if (p.xp >= p.level * 75) {
-        p.xp -= p.level * 75;
-        p.level++;
-        p.maxHp += 20;
-        p.hp = p.maxHp;
-        p.mana = 100;
+      if (p.receipts.includes(receipt)) continue;
+      p.receipts.push(receipt);
+      if (awardXp(p, e.kind === 'guardian' ? 150 : 25))
         effect(w, p, 'heal', 55, 'LEVEL UP');
-      }
     }
     if (e.kind === 'guardian') {
       w.bossDefeated = true;
@@ -302,7 +335,8 @@ export function damageEnemy(
 }
 function hurtPlayer(w: World, p: Player, amount: number, source: Vec) {
   if (p.hp <= 0 || p.invulnerable > 0) return;
-  const dmg = p.action === 'guard' ? Math.ceil(amount * 0.25) : amount;
+  const reduced = Math.max(1, Math.round(amount - combatStats(p).armor));
+  const dmg = p.action === 'guard' ? Math.ceil(reduced * 0.25) : reduced;
   p.hp = Math.max(0, p.hp - dmg);
   p.invulnerable = 0.65;
   effect(w, p, 'hit', 20, `−${dmg}`);
@@ -317,7 +351,11 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
     const input = inputs.get(p.id) ?? neutralInput();
     p.cooldown = Math.max(0, p.cooldown - dt);
     p.invulnerable = Math.max(0, p.invulnerable - dt);
-    p.mana = Math.min(100, p.mana + dt * 5);
+    const stats = combatStats(p);
+    p.mana = Math.min(
+      stats.maxMana,
+      p.mana + dt * (5 + p.attributes.magic * 0.2),
+    );
     p.lastSeq = input.seq;
     if (p.hp <= 0) {
       if (input.heal && p.potions > 0) {
@@ -339,8 +377,7 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
             : 'idle';
     const d = Math.hypot(input.x, input.y);
     if (d > 0) {
-      const speed =
-        (p.hero === 'ape' ? 205 : 175) * (p.action === 'guard' ? 0.45 : 1);
+      const speed = stats.speed * (p.action === 'guard' ? 0.45 : 1);
       move(
         p,
         (input.x / Math.max(1, d)) * speed * dt,
@@ -363,7 +400,7 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
         w.quest = 'rewarded';
         for (const hero of w.players) {
           hero.potions += 2;
-          hero.crystals += 10;
+          grant(hero, 'crystal', 10);
         }
         w.message =
           'Rowan: You brought hope back. Take these supplies, and face the Thorn Guardian.';
@@ -380,13 +417,13 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
       effect(w, p, 'magic', p.hero === 'panda' ? 125 : 180);
       for (const e of w.enemies)
         if (distance(p, e) < (p.hero === 'panda' ? 125 : 180))
-          damageEnemy(w, e, p.hero === 'panda' ? 48 : 42, p);
+          damageEnemy(w, e, stats.special, p);
       if (p.hero === 'ape')
         for (const ally of w.players)
           if (distance(p, ally) < 180)
             ally.hp = Math.min(ally.maxHp, ally.hp + 25);
     } else if (input.attack && p.cooldown === 0) {
-      p.cooldown = p.hero === 'panda' ? 0.38 : 0.5;
+      p.cooldown = stats.cooldown;
       p.combo = (p.combo + 1) % 3;
       p.action = 'attack';
       if (p.hero === 'panda') {
@@ -402,7 +439,7 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
             distance(p, e) < 85 &&
             diff.x * p.facing.x + diff.y * p.facing.y > -0.15
           )
-            damageEnemy(w, e, 22 + p.level * 3 + (p.combo === 0 ? 10 : 0), p);
+            damageEnemy(w, e, stats.damage + (p.combo === 0 ? 10 : 0), p);
         }
       } else if (p.mana >= 5) {
         p.mana -= 5;
@@ -413,28 +450,48 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
           owner: p.id,
           velocity: { x: p.facing.x * 440, y: p.facing.y * 440 },
           life: 1.5,
-          damage: 24 + p.level * 4,
+          damage: stats.damage,
           hostile: false,
         });
       }
     }
     for (const item of w.loot) {
       if (distance(p, item) < 32) {
-        if (item.kind === 'potion') p.potions++;
-        else p.crystals++;
+        const receipt = `${w.instanceId}:loot:${item.id}`;
+        if (p.receipts.includes(receipt)) {
+          item.x = -999;
+          continue;
+        }
+        p.receipts.push(receipt);
+        if (item.kind === 'potion') p.potions += item.quantity;
+        else grant(p, item.kind, item.quantity);
         item.x = -999;
-        effect(
-          w,
-          p,
-          'heal',
-          12,
-          item.kind === 'potion' ? '+ potion' : '+ crystal',
-        );
+        effect(w, p, 'heal', 12, `+${item.quantity} ${item.kind}`);
       }
     }
   }
   for (const e of w.enemies) {
-    if (e.hp <= 0) continue;
+    if (e.hp <= 0) {
+      if (e.kind === 'guardian') continue;
+      e.respawnRemaining = Math.max(0, e.respawnRemaining - dt);
+      const config = w.respawn[e.kind];
+      if (
+        e.respawnRemaining > 0 ||
+        w.enemies.filter((other) => other.kind === e.kind && other.hp > 0)
+          .length >= config.maximum ||
+        collides(e.spawn.x, e.spawn.y) ||
+        w.players.some((p) => distance(p, e.spawn) < config.safeDistance) ||
+        w.enemies.some((other) => other.hp > 0 && distance(other, e.spawn) < 40)
+      )
+        continue;
+      e.x = e.spawn.x;
+      e.y = e.spawn.y;
+      e.hp = e.maxHp;
+      e.cooldown = 1;
+      e.phase = 0;
+      e.hurt = 0;
+      e.generation++;
+    }
     e.cooldown -= dt;
     e.hurt = Math.max(0, e.hurt - dt);
     const targets = w.players
@@ -545,11 +602,12 @@ export function companionInput(w: World, bot: Player, leader: Player): Input {
   return i;
 }
 export type ClientMessage =
-  | { type: 'create'; hero: Hero }
-  | { type: 'join'; code: string; hero: Hero }
+  | { type: 'create'; hero: Hero; characterToken?: string }
+  | { type: 'join'; code: string; hero: Hero; characterToken?: string }
   | { type: 'resume'; code: string; token: string }
   | { type: 'input'; input: Input }
-  | { type: 'save' };
+  | { type: 'save' }
+  | { type: 'rpg'; seq: number; action: import('./rpg.js').RpgAction };
 export type ServerMessage =
   | { type: 'welcome'; code: string; token: string; playerId: string }
   | { type: 'state'; world: World }
@@ -561,16 +619,69 @@ export function parseMessage(raw: string): ClientMessage | null {
     const v: unknown = JSON.parse(raw);
     if (!v || typeof v !== 'object') return null;
     const o = v as Record<string, unknown>;
+    const allowed: Record<string, readonly string[]> = {
+      save: ['type'],
+      create: ['type', 'hero', 'characterToken'],
+      join: ['type', 'hero', 'code', 'characterToken'],
+      resume: ['type', 'code', 'token'],
+      input: ['type', 'input'],
+      rpg: ['type', 'seq', 'action'],
+    };
+    if (typeof o.type !== 'string') return null;
+    const fields = allowed[o.type];
+    if (!fields || Object.keys(o).some((k) => !fields.includes(k))) return null;
+
+    if (
+      o.type === 'rpg' &&
+      Number.isSafeInteger(o.seq) &&
+      typeof o.seq === 'number' &&
+      o.seq > 0 &&
+      o.action &&
+      typeof o.action === 'object'
+    ) {
+      const a = o.action as Record<string, unknown>;
+      if (
+        Object.keys(a).some(
+          (k) => k !== 'kind' && !(a.kind === 'attribute' && k === 'attribute'),
+        )
+      )
+        return null;
+      if (a.kind === 'upgrade' || a.kind === 'resetEncounter')
+        return { type: 'rpg', seq: o.seq, action: { kind: a.kind } };
+      if (
+        a.kind === 'attribute' &&
+        (a.attribute === 'vitality' ||
+          a.attribute === 'strength' ||
+          a.attribute === 'dexterity' ||
+          a.attribute === 'magic')
+      )
+        return {
+          type: 'rpg',
+          seq: o.seq,
+          action: { kind: 'attribute', attribute: a.attribute },
+        };
+      return null;
+    }
+    if (
+      o.characterToken !== undefined &&
+      (typeof o.characterToken !== 'string' ||
+        !/^[\da-f-]{36}$/.test(o.characterToken))
+    )
+      return null;
+    const credential =
+      typeof o.characterToken === 'string'
+        ? { characterToken: o.characterToken }
+        : {};
     if (o.type === 'save') return { type: 'save' };
     if (o.type === 'create' && (o.hero === 'panda' || o.hero === 'ape'))
-      return { type: 'create', hero: o.hero };
+      return { type: 'create', hero: o.hero, ...credential };
     if (
       o.type === 'join' &&
       typeof o.code === 'string' &&
       /^[A-Z2-9]{5}$/.test(o.code) &&
       (o.hero === 'panda' || o.hero === 'ape')
     )
-      return { type: 'join', code: o.code, hero: o.hero };
+      return { type: 'join', code: o.code, hero: o.hero, ...credential };
     if (
       o.type === 'resume' &&
       typeof o.code === 'string' &&
@@ -581,6 +692,8 @@ export function parseMessage(raw: string): ClientMessage | null {
       return { type: 'resume', code: o.code, token: o.token };
     if (o.type === 'input' && o.input && typeof o.input === 'object') {
       const i = o.input as Record<string, unknown>;
+      if (Object.keys(i).some((k) => !Object.keys(neutralInput()).includes(k)))
+        return null;
       if (
         !['x', 'y', 'aimX', 'aimY'].every(
           (k) =>
@@ -623,3 +736,5 @@ export function parseMessage(raw: string): ClientMessage | null {
     return null;
   }
 }
+
+export { migrateWorld, isPlayer } from './saves.js';

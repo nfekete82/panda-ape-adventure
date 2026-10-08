@@ -685,3 +685,24 @@ dialog label {
 #hud button {
   pointer-events: auto;
 }
+
+.inventory-row {
+  align-items: center;
+  gap: 12px;
+}
+.inventory-row > div {
+  flex: 1;
+}
+dialog .inventory-row button {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 8px;
+  font-size: 12px;
+}
+dialog button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+#rpg-status {
+  color: #f1cb65;
+}
