@@ -19,19 +19,19 @@ If the local branch already exists, use `git switch feat/0.4.0-asset-integration
 
 ## Included PNGs
 
-| File in the playable public asset directory | Source | Candidate purpose |
-| --- | --- | --- |
-| `ninja/slime.png` | Ninja `Actor/Monster/Slime/Slime.png` | Forest slime animation |
-| `ninja/spirit.png` | Ninja `Actor/Monster/Spirit/SpriteSheet.png` | Wisp / spirit animation |
-| `ninja/beast.png` | Ninja `Actor/Monster/Beast/Beast.png` | Forest beast candidate |
-| `ninja/bear.png` | Ninja `Actor/Monster/Bear/SpriteSheet.png` | Additional forest monster candidate |
-| `ninja/panda-reference.png` | Ninja `Actor/Monster/Panda/SpriteSheet.png` | Preview/reference only; *not* automatically the main Panda hero |
-| `sunnyside/world-16.png` | Sunnyside `Tileset/spr_tileset_sunnysideworld_16px.png` | Terrain and trails |
-| `sunnyside/forest-32.png` | Sunnyside `Tileset/spr_tileset_sunnysideworld_forest_32px.png` | Forest environment |
-| `sunnyside/tree-01-strip4.png` | Sunnyside `Elements/Plants/spr_deco_tree_01_strip4.png` | Swaying tree |
-| `sunnyside/tree-02-strip4.png` | Sunnyside `Elements/Plants/spr_deco_tree_02_strip4.png` | Alternative tree |
-| `sunnyside/mushroom-red-strip4.png` | Sunnyside `Elements/Plants/spr_deco_mushroom_red_01_strip4.png` | Ambient decoration |
-| `sunnyside/mushroom-blue-strip4.png` | Sunnyside `Elements/Plants/spr_deco_mushroom_blue_01_strip4.png` | Ambient decoration |
+| File in the playable public asset directory | Source                                                           | Candidate purpose                                               |
+| ------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| `ninja/slime.png`                           | Ninja `Actor/Monster/Slime/Slime.png`                            | Forest slime animation                                          |
+| `ninja/spirit.png`                          | Ninja `Actor/Monster/Spirit/SpriteSheet.png`                     | Wisp / spirit animation                                         |
+| `ninja/beast.png`                           | Ninja `Actor/Monster/Beast/Beast.png`                            | Forest beast candidate                                          |
+| `ninja/bear.png`                            | Ninja `Actor/Monster/Bear/SpriteSheet.png`                       | Additional forest monster candidate                             |
+| `ninja/panda-reference.png`                 | Ninja `Actor/Monster/Panda/SpriteSheet.png`                      | Preview/reference only; _not_ automatically the main Panda hero |
+| `sunnyside/world-16.png`                    | Sunnyside `Tileset/spr_tileset_sunnysideworld_16px.png`          | Terrain and trails                                              |
+| `sunnyside/forest-32.png`                   | Sunnyside `Tileset/spr_tileset_sunnysideworld_forest_32px.png`   | Forest environment                                              |
+| `sunnyside/tree-01-strip4.png`              | Sunnyside `Elements/Plants/spr_deco_tree_01_strip4.png`          | Swaying tree                                                    |
+| `sunnyside/tree-02-strip4.png`              | Sunnyside `Elements/Plants/spr_deco_tree_02_strip4.png`          | Alternative tree                                                |
+| `sunnyside/mushroom-red-strip4.png`         | Sunnyside `Elements/Plants/spr_deco_mushroom_red_01_strip4.png`  | Ambient decoration                                              |
+| `sunnyside/mushroom-blue-strip4.png`        | Sunnyside `Elements/Plants/spr_deco_mushroom_blue_01_strip4.png` | Ambient decoration                                              |
 
 ## After the user pushes images
 
