@@ -16,7 +16,7 @@
     "typecheck": "tsc --noEmit -p packages/shared && tsc --noEmit -p apps/server && tsc --noEmit -p apps/game && tsc --noEmit -p tsconfig.tools.json",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --write apps/game/src/shrine-art.ts apps/game/src/sound-events.ts apps/game/src/sound-effects.ts apps/game/src/main.ts apps/game/src/art.ts packages/shared/src/shrine-quest.ts packages/shared/src/saves.ts packages/shared/src/index.ts tests/shrine-quest.test.ts tests/browser/game.spec.ts docs/MOSSBOUND_SHRINE.md && git diff -- apps/game/src/shrine-art.ts apps/game/src/sound-events.ts apps/game/src/sound-effects.ts apps/game/src/main.ts apps/game/src/art.ts packages/shared/src/shrine-quest.ts packages/shared/src/saves.ts packages/shared/src/index.ts tests/shrine-quest.test.ts tests/browser/game.spec.ts docs/MOSSBOUND_SHRINE.md",
+    "format:check": "prettier --check .",
     "test": "vitest run",
     "test:browser": "playwright test",
     "predev": "npm run build -w @panda/shared",
