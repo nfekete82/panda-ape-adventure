@@ -687,6 +687,7 @@ class ForestScene extends Phaser.Scene {
   vegetation: Phaser.GameObjects.Image[] = [];
   sprites = new Map<string, Phaser.GameObjects.Sprite>();
   weapons = new Map<string, Phaser.GameObjects.Image>();
+  weaponTiming = new Map<string, { cooldown: number; special: boolean }>();
   labels = new Map<string, Phaser.GameObjects.Text>();
   shadows = new Map<string, Phaser.GameObjects.Ellipse>();
   graphics!: Phaser.GameObjects.Graphics;
@@ -826,15 +827,27 @@ class ForestScene extends Phaser.Scene {
     }
     if (p.hp <= 0) {
       weapon.setVisible(false);
+      this.weaponTiming.delete(p.id);
       return;
     }
+    const normalCooldown = combatStats(p).cooldown;
+    const last = this.weaponTiming.get(p.id);
+    // Preserve special-attack timing across subsequent authoritative snapshots:
+    // simulation action returns to "attack" while the 1.1s cast is cooling down.
+    const newSwing =
+      !last || p.cooldown > last.cooldown + 0.06 || last.cooldown <= 0;
+    const special = newSwing
+      ? p.action === 'special' || p.cooldown > normalCooldown + 0.08
+      : last.special;
+    this.weaponTiming.set(p.id, { cooldown: p.cooldown, special });
     const pose: WeaponPose = weaponPose(
       p.hero,
       p.facing,
       p.action,
       p.cooldown,
-      combatStats(p).cooldown,
+      normalCooldown,
       time,
+      special,
     );
     weapon
       .setVisible(true)
@@ -1052,6 +1065,7 @@ class ForestScene extends Phaser.Scene {
         this.sprites.delete(id);
         this.weapons.get(id)?.destroy();
         this.weapons.delete(id);
+        this.weaponTiming.delete(id);
         this.shadows.get(id)?.destroy();
         this.shadows.delete(id);
         this.labels.get(id)?.destroy();
