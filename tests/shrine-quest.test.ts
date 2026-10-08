@@ -76,9 +76,7 @@ describe('Mossbound Shrine adventure', () => {
       expect(hero.points).toBe(5); // 2 Grove points plus 3 from the normal level-up (100 XP)
       expect(quantity(hero, 'ancient')).toBe(2);
       expect(quantity(hero, 'crystal')).toBe(8);
-      expect(hero.receipts.includes(SHRINE_BLESSING_RECEIPT)).toBe(
-        true,
-      );
+      expect(hero.receipts.includes(SHRINE_BLESSING_RECEIPT)).toBe(true);
     }
     const lootCount = world.loot.length;
     expect(interactShrine(world, panda)).toBe(true);
