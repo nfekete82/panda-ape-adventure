@@ -8,6 +8,11 @@ test('curated forest art loads, animates and keeps the full game playable', asyn
   await page.getByRole('button', { name: 'Begin adventure' }).click();
   const hud = page.locator('#hud');
   await expect(hud).toHaveAttribute('data-vendor-art', 'ready');
+  await expect(hud).toHaveAttribute(
+    'data-landscape-style',
+    'illustrated-forest-v2',
+  );
+  await expect(hud).toHaveAttribute('data-hero-style', 'concept-64px');
   await expect
     .poll(async () => Number(await hud.getAttribute('data-vendor-trees')))
     .toBeGreaterThan(0);
@@ -15,7 +20,7 @@ test('curated forest art loads, animates and keeps the full game playable', asyn
     .poll(async () => Number(await hud.getAttribute('data-vendor-enemies')))
     .toBeGreaterThan(0);
   await expect(page.locator('#game canvas')).toBeVisible();
-  await page.screenshot({ path: 'test-results/vendor-art-forest.png' });
+  await page.screenshot({ path: 'test-results/environment-forest-v2.png' });
   expect(errors).toEqual([]);
 });
 
