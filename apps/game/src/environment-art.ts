@@ -634,6 +634,27 @@ export function paintForestWorld(ctx: CanvasRenderingContext2D, mini: HTMLImageE
   clearing(ctx, 430, 1030, 235, 155, rng);
   clearing(ctx, 1580, 340, 188, 145, rng);
   stampRoad(ctx, rng);
+  // Coherent Mini Farm pixel-art road accents, sampled from the supplied atlas.
+  // Keep the authored winding path silhouette, but unify its inner surface.
+  if (mini) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.lineWidth = 54;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (let n = 0; n <= 125; n++) {
+      const p = trailPoint(n / 125);
+      if (n === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.strokeStyle = '#a87544';
+    ctx.stroke();
+    ctx.clip();
+    for (let y = 0; y < WORLD.height; y += 32)
+      for (let x = 0; x < WORLD.width; x += 32)
+        ctx.drawImage(mini, 32, 0, 32, 32, x, y, 32, 32);
+    ctx.restore();
+  }
   for (const lake of lakes) shoreline(ctx, lake, rng);
   for (const o of obstacles) if (o.kind === 'rock') boulders(ctx, o);
   // Much less noise than the original checkerboard-like forest scatter.
