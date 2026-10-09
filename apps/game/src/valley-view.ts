@@ -254,7 +254,7 @@ export class ValleyView {
         const at = { x: trunk.x + trunk.w / 2, y: trunk.y + trunk.h / 2 };
         const actor = this.player();
         const kind = valley.felledTrees?.includes(tree) ? (this.tool === 'sapling' ? 'plantSapling' : 'clearStump') : 'chopTree';
-        if (actor && distance(actor, at) <= 85) this.send({ kind, tree });
+        if (actor && distance(actor, at) <= 85) { this.swingTool('axe', at.x, at.y); this.send({ kind, tree }); }
         else {
           this.pendingTree = tree;
           this.pendingTreeAction = kind;
@@ -275,7 +275,7 @@ export class ValleyView {
         false;
       if (toolMatches) {
         const actor = this.player();
-        if (actor && distance(actor, resource) <= 72) this.send({ kind: 'strike', node });
+        if (actor && distance(actor, resource) <= 72) { this.swingTool(this.tool === 'axe' ? 'axe' : 'pickaxe', resource.x, resource.y); this.send({ kind: 'strike', node }); }
         else {
           this.pendingGather = node;
           this.navigate(resource.x, resource.y);
@@ -302,8 +302,44 @@ export class ValleyView {
     this.previewAt(x, y);
     return true;
   }
+  /** Short client-side tool flourish, independent of authoritative action results. */
+  private swingTool(kind: 'axe' | 'pickaxe', x: number, y: number) {
+    const actor = this.player();
+    if (!actor) return;
+    const side = x >= actor.x ? 1 : -1;
+    const tool = this.scene.add.graphics().setPosition(actor.x + side * 15, actor.y - 16).setDepth(actor.y + 50);
+    tool.lineStyle(4, 0x9d724a, 1);
+    tool.lineBetween(0, 3, 0, -26);
+    tool.fillStyle(kind === 'axe' ? 0xb9c9c5 : 0x8998a6, 1);
+    if (kind === 'axe') tool.fillTriangle(-12, -25, 12, -27, 8, -12);
+    else tool.fillTriangle(-16, -27, 12, -27, 4, -18);
+    tool.setAngle(side * -52);
+    this.scene.tweens.add({
+      targets: tool, angle: side * 58, alpha: 0.2, duration: 220,
+      ease: 'Sine.easeIn', onComplete: () => tool.destroy(),
+    });
+  }
+  private waterSplash(x: number, y: number) {
+    const drops = this.scene.add.graphics().setDepth(y + 45);
+    drops.fillStyle(0x8dc7d7, 0.92);
+    for (const [dx, dy] of [[-9, -15], [-2, -9], [6, -14], [13, -7]] as const)
+      drops.fillEllipse(x + dx, y + dy, 4, 6);
+    this.scene.tweens.add({
+      targets: drops, y: 14, alpha: 0, duration: 460,
+      ease: 'Quad.easeIn', onComplete: () => drops.destroy(),
+    });
+  }
   private farmActionEffect(cell: number, action: 'hoe' | 'plant' | 'water' | 'harvest') {
     const at = cellPoint(cell);
+    if (action === 'water') this.waterSplash(at.x, at.y);
+    if (action === 'hoe') this.swingTool('pickaxe', at.x, at.y);
+    if (action === 'harvest') {
+      const crop = this.objects.get(`crop${cell}`);
+      if (crop) this.scene.tweens.add({
+        targets: crop, angle: 9, duration: 75, yoyo: true, repeat: 2,
+        onComplete: () => crop.setAngle(0),
+      });
+    }
     const symbols = { hoe: '✦', plant: '🌱', water: '💧', harvest: '✿' } as const;
     const visual = this.scene.add.text(at.x, at.y - 16, symbols[action], {
       fontSize: '17px', stroke: '#314c38', strokeThickness: 3,
@@ -365,6 +401,7 @@ export class ValleyView {
       else if (distance(p, { x: tree.x + tree.w / 2, y: tree.y + tree.h / 2 }) <= 85) {
         const selected = this.pendingTree;
         this.pendingTree = null;
+        if (this.pendingTreeAction !== 'plantSapling') this.swingTool('axe', tree.x, tree.y);
         this.send({ kind: this.pendingTreeAction, tree: selected });
       }
     }
@@ -373,6 +410,7 @@ export class ValleyView {
       if (target && distance(p, target) <= 72) {
         const node = this.pendingGather;
         this.pendingGather = null;
+        this.swingTool(target.item === 'wood' ? 'axe' : 'pickaxe', target.x, target.y);
         this.send({ kind: 'strike', node });
       }
     }
