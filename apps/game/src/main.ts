@@ -1,5 +1,6 @@
 import { applyValleyAction, type ValleyAction } from '@panda/shared';
 import { ValleyView } from './valley-view';
+import { weatherForDay } from '@panda/shared';
 import { findClickPath, type Waypoint } from './click-path';
 import Phaser from 'phaser';
 import {
@@ -798,6 +799,7 @@ class ForestScene extends Phaser.Scene {
   shadows = new Map<string, Phaser.GameObjects.Ellipse>();
   graphics!: Phaser.GameObjects.Graphics;
   atmosphere!: WorldAtmosphere;
+  private weatherGraphics!: Phaser.GameObjects.Graphics;
   cameraTarget = { x: WORLD.spawn.x, y: WORLD.spawn.y };
   accumulator = 0;
   hudTime = 0;
@@ -893,6 +895,7 @@ class ForestScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.graphics = this.add.graphics().setDepth(3000);
     this.atmosphere = new WorldAtmosphere(this);
+    this.weatherGraphics = this.add.graphics().setScrollFactor(0).setDepth(2900);
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
     this.cameras.main.startFollow(this.cameraTarget, true, 0.08, 0.08);
     this.cameras.main.setZoom(0.85);
@@ -1005,6 +1008,32 @@ class ForestScene extends Phaser.Scene {
         reducedMotion.matches,
         p.connected ? 1 : 0.35,
       );
+    }
+  }
+  private drawValleyWeather(time: number) {
+    const g = this.weatherGraphics;
+    g.clear();
+    if (mode === 'menu') return;
+    const weather = world.valley.weather ?? weatherForDay(world.valley.day);
+    if (weather === 'sunny') return;
+    const width = this.scale.width, height = this.scale.height;
+    g.fillStyle(0x172d37, weather === 'rain' ? 0.16 : 0.07);
+    g.fillRect(0, 0, width, height);
+    if (weather !== 'rain') return;
+    // Screen-space deterministic streaks: no per-particle timers or network traffic.
+    g.lineStyle(1, 0xb5d5e4, 0.4);
+    const count = reducedMotion.matches ? 0 : Math.min(180, Math.ceil(width * height / 6800));
+    for (let i = 0; i < count; i++) {
+      const x = ((i * 131 + Math.floor(time * 0.18)) % (width + 40)) - 20;
+      const y = ((i * 229 + Math.floor(time * 0.43)) % (height + 30)) - 15;
+      g.lineBetween(x, y, x - 4, y + 12);
+    }
+    // Small ground-level ripples provide visual rain feedback without obscuring tools.
+    g.lineStyle(1, 0xb3cbd4, 0.18);
+    for (let i = 0; i < 8; i++) {
+      const x = (i * 317 + 73) % Math.max(1, width);
+      const y = (i * 197 + 127) % Math.max(1, height);
+      g.strokeEllipse(x, y, 10 + ((Math.floor(time / 180) + i) % 7), 4);
     }
   }
   update(time: number, delta: number) {
@@ -1147,6 +1176,7 @@ class ForestScene extends Phaser.Scene {
       );
     }
     this.atmosphere.draw(time, reducedMotion.matches);
+    this.drawValleyWeather(time);
     this.graphics.clear();
     const alive = new Set<string>();
     for (const p of world.players) {
