@@ -132,6 +132,8 @@ export interface Valley {
   plots: Plot[];
   buildings: Building[];
   nodes: number[];
+  /** Hits this game day; optional to retain compatibility with older saved settlements. */
+  nodeHits?: number[];
 }
 export function createValley(): Valley {
   return {
@@ -159,6 +161,7 @@ export function createValley(): Valley {
     plots: [],
     buildings: [],
     nodes: [0, 0, 0, 0],
+    nodeHits: [0, 0, 0, 0],
   };
 }
 export function cellPoint(cell: number) {
@@ -196,6 +199,7 @@ export function advanceValley(v: Valley, dt: number) {
   while (v.elapsed >= DAY_SECONDS) {
     v.elapsed -= DAY_SECONDS;
     v.day++;
+    v.nodeHits = [0, 0, 0, 0];
     for (const plot of v.plots)
       if (
         plot.state === 'planted' &&
@@ -211,7 +215,7 @@ export type ValleyAction =
   | { kind: 'hoe' | 'water' | 'harvest' | 'remove'; cell: number }
   | { kind: 'plant'; cell: number; crop: Crop }
   | { kind: 'build'; cell: number; recipe: Recipe }
-  | { kind: 'gather'; node: number }
+  | { kind: 'gather' | 'strike'; node: number }
   | { kind: 'buy' | 'sell'; item: ValleyItem; count: number };
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
@@ -232,8 +236,8 @@ export function parseValleyAction(v: unknown): ValleyAction | null {
     integer(v.count, 1, 99)
   )
     return { kind: v.kind, item: v.item, count: v.count };
-  if (v.kind === 'gather' && exact(['kind', 'node']) && integer(v.node, 0, 3))
-    return { kind: 'gather', node: v.node };
+  if ((v.kind === 'gather' || v.kind === 'strike') && exact(['kind', 'node']) && integer(v.node, 0, 3))
+    return { kind: v.kind, node: v.node };
   if (!integer(v.cell, 0, FARM.columns * FARM.rows - 1)) return null;
   if (
     (v.kind === 'hoe' ||
@@ -317,14 +321,28 @@ export function applyValleyAction(
       v.bag[a.item] -= a.count;
       v.gold += price * a.count;
     }
-  } else if (a.kind === 'gather') {
+  } else if (a.kind === 'gather' || a.kind === 'strike') {
     const node = RESOURCE_NODES[a.node];
     if (!node || distance(p, node) > 85)
       return 'Move closer to the resource cache.';
     if ((v.nodes[a.node] ?? 0) >= v.day) return 'This cache renews tomorrow.';
-    if (v.bag[node.item] > 9995) return 'Shared storage is full.';
-    v.bag[node.item] += 4;
-    v.nodes[a.node] = v.day;
+    if (a.kind === 'strike' && node.item !== 'fiber') {
+      v.nodeHits ??= [0, 0, 0, 0];
+      const required = node.item === 'wood' ? 3 : node.item === 'stone' ? 3 : 4;
+      const hits = (v.nodeHits[a.node] ?? 0) + 1;
+      if (hits < required) {
+        v.nodeHits[a.node] = hits;
+      } else {
+        if (v.bag[node.item] > 9995) return 'Shared storage is full.';
+        v.bag[node.item] += 4;
+        v.nodes[a.node] = v.day;
+        v.nodeHits[a.node] = 0;
+      }
+    } else {
+      if (v.bag[node.item] > 9995) return 'Shared storage is full.';
+      v.bag[node.item] += 4;
+      v.nodes[a.node] = v.day;
+    }
   } else if ('cell' in a) {
     if (distance(p, cellPoint(a.cell)) > 90)
       return 'Move closer to that farm tile.';
@@ -437,6 +455,7 @@ export function isValley(value: unknown): value is Valley {
     !value.nodes.every((n) => integer(n, 0, Number(value.day)))
   )
     return false;
+  if (value.nodeHits !== undefined && (!Array.isArray(value.nodeHits) || value.nodeHits.length !== 4 || !value.nodeHits.every((n) => integer(n, 0, 3)))) return false;
   if (
     !Array.isArray(value.plots) ||
     value.plots.length > 32 ||
