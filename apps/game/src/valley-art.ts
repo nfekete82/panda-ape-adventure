@@ -36,16 +36,28 @@ export function paintCrop(c: Canvas, crop: Crop, stage: number) {
     oval(c, P.leafDark, 10, 22, 7, 4);
     oval(c, P.leaf, 22, 20, 7, 4);
   }
+  // Grounded plant cluster and little leaves help seedlings read as garden crops.
+  if (stage === 0) {
+    px(c, '#8a633e', 10, 28, 13, 2);
+    px(c, P.leafSun, 14, 21, 3, 3);
+  }
+  if (stage === 1) {
+    oval(c, P.leafDark, 13, 18, 8, 4);
+    oval(c, P.leafLight, 21, 16, 7, 4);
+  }
   if (stage === 2) {
     if (crop === 'carrot') {
       px(c, P.ink, 10, 21, 12, 9);
       px(c, CROP_COLORS[crop], 12, 21, 8, 8);
       px(c, '#f1c17e', 12, 22, 3, 3);
+      px(c, '#f6d198', 16, 24, 2, 3);
+      px(c, '#578447', 9, 19, 5, 2);
     } else if (crop === 'potato') {
       oval(c, P.ink, 12, 26, 8, 5);
       oval(c, CROP_COLORS[crop], 12, 25, 7, 4);
       px(c, '#e0c693', 9, 23, 4, 2);
       oval(c, CROP_COLORS[crop], 23, 28, 5, 3);
+      px(c, '#e5c49d', 21, 25, 2, 1);
     } else {
       for (const [x, y] of [
         [10, 18],
