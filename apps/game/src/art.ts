@@ -99,12 +99,20 @@ export function makeAssets(scene: Phaser.Scene) {
     const a = canvas(32, 48);
     if (mini && recipe === 'fence') sample(a.ctx, 6, 32, 48);
     else if (mini && recipe === 'shelter') sample(a.ctx, 9, 32, 48);
-    else paintBuilding(a.ctx, recipe);
+    else if (mini && recipe === 'chest') {
+      sample(a.ctx, 7, 32, 48);
+      a.ctx.fillStyle = '#d4b77b';
+      a.ctx.fillRect(13, 28, 6, 5);
+    } else if (mini && recipe === 'workbench') {
+      sample(a.ctx, 10, 32, 48);
+    } else paintBuilding(a.ctx, recipe);
     scene.textures.addCanvas(`valley-building-${recipe}`, a.c);
   }
   for (const node of RESOURCE_NODES) {
     const a = canvas(32, 32);
-    paintCache(a.ctx, node.item);
+    if (mini && node.item === 'wood') sample(a.ctx, 7, 32, 32);
+    else if (mini && node.item === 'fiber') sample(a.ctx, 5, 32, 32);
+    else paintCache(a.ctx, node.item);
     scene.textures.addCanvas(`valley-cache-${node.item}`, a.c);
   }
 
