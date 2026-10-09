@@ -685,6 +685,27 @@ export function paintForestWorld(ctx: CanvasRenderingContext2D): void {
       ink(ctx, '#a5b29c', x + 1, y, 5, 2);
     }
   }
+  // Farm-adjacent meadow accents: deterministic, sparse and away from paths
+  // and the crop grid, so these details never suggest blocking obstacles.
+  for (let n = 0; n < 230; n++) {
+    const x = 190 + rng() * 690;
+    const y = 1070 + rng() * 345;
+    if (x > 355 && x < 745 && y > 1165) continue;
+    if (collides(x, y, 15) || trailDistance(x, y) < 72) continue;
+    const variant = rng();
+    if (variant < 0.4) {
+      ink(ctx, '#426d42', x + 2, y, 2, 8);
+      ink(ctx, '#95aa64', x - 1, y + 4, 3, 4);
+      ink(ctx, '#a9bf78', x + 5, y + 2, 2, 5);
+    } else if (variant < 0.78) {
+      ink(ctx, '#4d7849', x + 3, y + 3, 2, 5);
+      ink(ctx, variant < 0.59 ? '#f4d8a1' : '#e6abb7', x, y, 7, 4);
+      ink(ctx, '#f9ebbd', x + 2, y + 1, 2, 2);
+    } else {
+      ink(ctx, '#997c55', x, y + 3, 9, 3);
+      ink(ctx, '#c2a477', x + 2, y + 2, 4, 2);
+    }
+  }
   undergrowth(ctx);
   polygon(
     ctx,
