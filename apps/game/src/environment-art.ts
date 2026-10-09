@@ -634,21 +634,27 @@ export function paintForestWorld(ctx: CanvasRenderingContext2D, mini: HTMLImageE
   clearing(ctx, 430, 1030, 235, 155, rng);
   clearing(ctx, 1580, 340, 188, 145, rng);
   stampRoad(ctx, rng);
-  // Coherent Mini Farm pixel-art road accents, sampled from the supplied atlas.
-  // Keep the authored winding path silhouette, but unify its inner surface.
+  // Pixel-tiled trail inset follows the existing winding road; no change to collision.
   if (mini) {
+    const leftEdge: Point[] = [];
+    const rightEdge: Point[] = [];
+    for (let n = 0; n <= 125; n++) {
+      const t = n / 125;
+      const p = trailPoint(t);
+      const before = trailPoint(Math.max(0, t - 0.004));
+      const after = trailPoint(Math.min(1, t + 0.004));
+      const angle = Math.atan2(after.y - before.y, after.x - before.x);
+      const nx = -Math.sin(angle), ny = Math.cos(angle);
+      leftEdge.push({ x: p.x + nx * 33, y: p.y + ny * 33 });
+      rightEdge.push({ x: p.x - nx * 33, y: p.y - ny * 33 });
+    }
     ctx.save();
     ctx.beginPath();
-    ctx.lineWidth = 54;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    for (let n = 0; n <= 125; n++) {
-      const p = trailPoint(n / 125);
-      if (n === 0) ctx.moveTo(p.x, p.y);
+    leftEdge.concat(rightEdge.reverse()).forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y);
       else ctx.lineTo(p.x, p.y);
-    }
-    ctx.strokeStyle = '#a87544';
-    ctx.stroke();
+    });
+    ctx.closePath();
     ctx.clip();
     for (let y = 0; y < WORLD.height; y += 32)
       for (let x = 0; x < WORLD.width; x += 32)
