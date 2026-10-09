@@ -74,7 +74,7 @@ let pending: { input: Input; dt: number }[] = [],
 let music = false,
   soundEffects = true,
   volume = 0.25,
-  cameraZoom = 1.9,
+  cameraZoom = 2.35,
   audio: AudioContext | undefined,
   audioTimer: ReturnType<typeof setInterval> | undefined;
 const keys = new Set<string>(),
@@ -170,7 +170,7 @@ if (settings) {
       typeof saved.cameraZoom === 'number' &&
       Number.isFinite(saved.cameraZoom)
     )
-      cameraZoom = Math.max(1.1, Math.min(1.9, saved.cameraZoom));
+      cameraZoom = Math.max(1.1, Math.min(2.8, saved.cameraZoom));
   } catch {
     /* Use defaults. */
   }
@@ -536,7 +536,7 @@ $('modal').addEventListener('cancel', () => {
 });
 function settingsModal() {
   showModal(
-    `<div class="eyebrow">TAKE A BREATH</div><h2>${mode === 'menu' ? 'Settings' : 'Adventure paused'}</h2><p>${mode === 'online' ? 'Your hero stops moving. Your co-op world continues while this menu is open.' : 'The forest will wait for you.'}</p><label>Forest music<input id="music" type="checkbox" ${music ? 'checked' : ''}></label><label>Combat & item sounds<input id="sound-effects" type="checkbox" ${soundEffects ? 'checked' : ''}></label><label>Master volume<input id="volume" type="range" min="0" max="1" step="0.05" value="${volume}"></label><label>Camera zoom <output id="zoom-value">${Math.round(cameraZoom * 100)}%</output><input id="camera-zoom" aria-label="Camera zoom" type="range" min="1.1" max="1.9" step="0.05" value="${cameraZoom}"></label>${mode === 'solo' ? '<label>AI companion<input id="companion-toggle" type="checkbox" ' + (world.players.some((p) => p.id === 'companion') ? 'checked' : '') + '></label>' : ''}<button id="resume-button">${mode === 'menu' ? 'Back' : 'Resume adventure'} →</button>${mode !== 'menu' ? '<button id="save-button">Save progress</button><button id="exit-button">Return to title</button>' : ''}<p>WASD / arrows: move · Space / left click: attack<br>Q: special · R: potion / revive · E: talk<br>Shift: shield (Panda) · I: inventory · Esc: pause<br>F: farming / building · T: market · Esc: leave tool mode<br>Gamepad: left stick, A attack, X special, B potion, Y talk.</p>`,
+    `<div class="eyebrow">TAKE A BREATH</div><h2>${mode === 'menu' ? 'Settings' : 'Adventure paused'}</h2><p>${mode === 'online' ? 'Your hero stops moving. Your co-op world continues while this menu is open.' : 'The forest will wait for you.'}</p><label>Forest music<input id="music" type="checkbox" ${music ? 'checked' : ''}></label><label>Combat & item sounds<input id="sound-effects" type="checkbox" ${soundEffects ? 'checked' : ''}></label><label>Master volume<input id="volume" type="range" min="0" max="1" step="0.05" value="${volume}"></label><label>Camera zoom <output id="zoom-value">${Math.round(cameraZoom * 100)}%</output><input id="camera-zoom" aria-label="Camera zoom" type="range" min="1.1" max="2.8" step="0.05" value="${cameraZoom}"></label>${mode === 'solo' ? '<label>AI companion<input id="companion-toggle" type="checkbox" ' + (world.players.some((p) => p.id === 'companion') ? 'checked' : '') + '></label>' : ''}<button id="resume-button">${mode === 'menu' ? 'Back' : 'Resume adventure'} →</button>${mode !== 'menu' ? '<button id="save-button">Save progress</button><button id="exit-button">Return to title</button>' : ''}<p>WASD / arrows: move · Space / left click: attack<br>Q: special · R: potion / revive · E: talk<br>Shift: shield (Panda) · I: inventory · Esc: pause<br>F: farming / building · T: market · Esc: leave tool mode<br>Gamepad: left stick, A attack, X special, B potion, Y talk.</p>`,
   );
   $<HTMLInputElement>('music').onchange = (e) => {
     music = (e.target as HTMLInputElement).checked;
@@ -916,7 +916,7 @@ class ForestScene extends Phaser.Scene {
       .setDepth(2900);
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
     this.cameras.main.startFollow(this.cameraTarget, true, 0.08, 0.08);
-    this.cameras.main.setZoom(cameraZoom);
+    applyCameraZoom();
     this.scale.on('resize', () => {
       if (mode !== 'menu') applyCameraZoom();
     });
@@ -990,6 +990,11 @@ class ForestScene extends Phaser.Scene {
     // Farming mode: an equipped tool replaces the legacy sword or staff.
     // World position and hitboxes remain untouched; the tool is a visual overlay.
     const held = p.id === playerId ? valleyView?.heldTool : null;
+    // Farming presentation suppresses legacy RPG weapons even while exploring.
+    if (p.id === playerId && !held) {
+      weapon.setVisible(false);
+      return;
+    }
     if (held && p.hp > 0) {
       const texture = `valley-held-${held}`;
       if (weapon.texture.key !== texture) weapon.setTexture(texture);
@@ -1572,6 +1577,9 @@ class ForestScene extends Phaser.Scene {
       const pos = mode === 'online' ? predicted : local;
       this.cameraTarget.x = mode === 'menu' ? 740 : pos.x;
       this.cameraTarget.y = mode === 'menu' ? 850 : pos.y;
+      // Applying on gameplay frames also respects saved zoom changes and resize.
+      if (mode !== 'menu' && Math.abs(this.cameras.main.zoom - Math.max(cameraZoom, this.scale.width / WORLD.width, this.scale.height / WORLD.height)) > 0.001)
+        applyCameraZoom();
     }
     if (mode !== 'menu' && time - this.hudTime > 100) {
       this.hudTime = time;
