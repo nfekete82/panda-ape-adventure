@@ -61,6 +61,16 @@ describe('one-shot game sound events', () => {
     expect(tracker.observe(world, player.id)).toEqual([]);
   });
 
+  it('plays one magical cue for shrine awakening without replaying old snapshots', () => {
+    const { world, player, tracker } = initial();
+    world.effects.push({
+      id: 'shrine-activation', x: player.x, y: player.y,
+      life: 0.45, kind: 'magic', radius: 78, text: 'SHRINE AWAKENED',
+    });
+    expect(tracker.observe(world, player.id).map((cue) => cue.name)).toEqual(['arcane']);
+    expect(tracker.observe(world, player.id)).toEqual([]);
+  });
+
   it('plays a grunt only on a living-to-defeated transition', () => {
     const { world, player, tracker } = initial();
     const enemy = world.enemies[0]!;
