@@ -209,9 +209,9 @@ export class ValleyView {
       const toolMatches =
         (resource.item === 'wood' && this.tool === 'axe') ||
         ((resource.item === 'stone' || resource.item === 'ore') && this.tool === 'pickaxe') ||
-        (resource.item === 'fiber' && this.tool === 'none');
+        false;
       if (toolMatches) this.send({ kind: 'gather', node });
-      else this.feedback(resource.item === 'wood' ? 'Select the axe to chop wood.' : resource.item === 'fiber' ? 'Use your hands to gather fibre.' : 'Select the pickaxe to mine stone and ore.');
+      else this.feedback(resource.item === 'wood' ? 'Select the axe to chop wood.' : resource.item === 'fiber' ? 'Gather fibre from the nearby resource menu.' : 'Select the pickaxe to mine stone and ore.');
       return true;
     }
     const cell = this.cell(x, y);
@@ -324,7 +324,7 @@ export class ValleyView {
       )
         .map((key) => `${RECIPES[this.recipe].cost[key]} ${ITEMS[key].name}`)
         .join(', ')}. Ape saves 1 wood. Removing furniture gives no refund.</p>
-      <h4>Gather nearby</h4><p>Choose 🪓 for branches, ⛏️ for stones and ore, or ✋ for fibre. Walk up and click the resource. Collected resources replenish the next day.</p><div class="valley-tools">${RESOURCE_NODES.map((node, i) => `<button data-node="${i}" ${!nearby[i + 1] || w.valley.nodes[i] === w.valley.day ? 'disabled' : ''}>${node.name} +4</button>`).join('')}</div>
+      <h4>Gather nearby</h4><p>Choose 🪓 for branches, ⛏️ for stones and ore, and gather fibre from the nearby resource menu. Walk up and click a wood or stone deposit. Collected resources replenish the next day.</p><div class="valley-tools">${RESOURCE_NODES.map((node, i) => `<button data-node="${i}" ${!nearby[i + 1] || w.valley.nodes[i] === w.valley.day ? 'disabled' : ''}>${node.name} +4</button>`).join('')}</div>
       </section><section ${this.tab === 'supplies' ? '' : 'hidden'}><h4>Shared supplies</h4><div class="valley-grid">${ITEM_IDS.filter(
         (key) => w.valley.bag[key] > 0,
       )
