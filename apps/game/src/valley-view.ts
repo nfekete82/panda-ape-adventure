@@ -284,7 +284,7 @@ export class ValleyView {
     if (!p) return;
     if (this.pendingTree !== null) {
       const tree = obstacles[this.pendingTree];
-      if (!tree || w.valley.felledTrees?.includes(this.pendingTree)) this.pendingTree = null;
+      if (!tree || (this.pendingTreeAction === 'chopTree' ? w.valley.felledTrees?.includes(this.pendingTree) : this.pendingTreeAction === 'clearStump' ? !w.valley.felledTrees?.includes(this.pendingTree) || w.valley.clearedStumps?.includes(this.pendingTree) : !w.valley.clearedStumps?.includes(this.pendingTree) || w.valley.saplings?.[String(this.pendingTree)] !== undefined)) this.pendingTree = null;
       else if (distance(p, { x: tree.x + tree.w / 2, y: tree.y + tree.h / 2 }) <= 85) {
         const selected = this.pendingTree;
         this.pendingTree = null;
