@@ -102,6 +102,57 @@ export class ValleyView {
       ground.lineBetween(p.x - 10, p.y - 5, p.x + 9, p.y - 5);
       ground.lineBetween(p.x - 10, p.y + 5, p.x + 9, p.y + 5);
     }
+    // Grouped garden islands. Decorative only: all 32 authoritative cells stay put.
+    // Quiet separators and signs give the beds the composition of a cozy farm.
+    for (const [start, end, label] of [[0, 2, 'A'], [3, 5, 'B'], [6, 7, 'C']] as const) {
+      const x1 = FARM.x + start * FARM.tile - 4;
+      const x2 = FARM.x + (end + 1) * FARM.tile + 4;
+      const y1 = FARM.y - 5;
+      const y2 = FARM.y + FARM.rows * FARM.tile + 5;
+      ground.lineStyle(2, 0xd6ad73, 0.85);
+      ground.strokeRoundedRect(x1, y1, x2 - x1, y2 - y1, 8);
+      const markerX = (x1 + x2) / 2;
+      ground.fillStyle(0x6a472e, 1);
+      ground.fillRoundedRect(markerX - 10, y2 + 6, 20, 17, 3);
+      ground.fillStyle(0xe2bb76, 1);
+      ground.fillRoundedRect(markerX - 8, y2 + 7, 16, 13, 2);
+      scene.add.text(markerX, y2 + 13, label, {
+        fontSize: '11px', fontFamily: 'Georgia', fontStyle: 'bold',
+        color: '#573c2a',
+      }).setOrigin(0.5).setDepth(1351);
+    }
+    // Rustic crates, herb pots and sacks in the outer apron, never on crop cells.
+    const crate = (x: number, y: number) => {
+      ground.fillStyle(0x573e2d, 1);
+      ground.fillRoundedRect(x, y, 21, 18, 2);
+      ground.fillStyle(0xc49b64, 1);
+      ground.fillRect(x + 3, y + 3, 15, 12);
+      ground.lineStyle(2, 0x765337, 1);
+      ground.lineBetween(x + 4, y + 4, x + 17, y + 14);
+      ground.lineBetween(x + 17, y + 4, x + 4, y + 14);
+    };
+    const pot = (x: number, y: number, flower: number) => {
+      ground.fillStyle(0x9b5738, 1);
+      ground.fillRoundedRect(x - 7, y, 14, 12, 3);
+      ground.fillStyle(0xd69563, 1);
+      ground.fillRect(x - 9, y, 18, 4);
+      ground.lineStyle(2, 0x527d4e, 1);
+      ground.lineBetween(x, y, x, y - 15);
+      ground.lineBetween(x, y - 6, x - 6, y - 12);
+      ground.fillStyle(flower, 1);
+      ground.fillCircle(x, y - 17, 4);
+      ground.fillStyle(0xf2d59b, 1);
+      ground.fillCircle(x, y - 17, 1);
+    };
+    crate(left + 8, top + 25);
+    crate(left + width - 31, top + 28);
+    ground.fillStyle(0xc8ae81, 1);
+    ground.fillEllipse(left + 17, top + 73, 17, 21);
+    ground.lineStyle(2, 0x86704e, 1);
+    ground.lineBetween(left + 11, top + 67, left + 23, top + 67);
+    pot(left + 13, top + 116, 0xe9adc0);
+    pot(left + width - 13, top + 115, 0xffd37c);
+    pot(left + width - 18, top + 158, 0xd8b0ed);
     // A welcoming fence with an opening on the south side.
     for (let x = left + 10; x <= left + width - 10; x += 20) {
       for (const y of [top + 3, top + height - 6]) {
