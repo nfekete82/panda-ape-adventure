@@ -90,11 +90,11 @@ function stampRoad(ctx: CanvasRenderingContext2D, randomNumber: () => number) {
     polygon(ctx, left.concat(right.reverse()), color);
   };
   // Moss bank, raised earth edge and a warm beaten footpath.
-  drawBand(67, '#426c43', 13);
-  drawBand(59, '#6b8150', 12);
-  drawBand(52, '#a18e61', 11);
-  drawBand(46, '#b6a070', 8);
-  drawBand(39, '#c4ad7a', 6);
+  drawBand(67, '#459a39', 13);
+  drawBand(59, '#68bf42', 12);
+  drawBand(52, '#d5c178', 11);
+  drawBand(46, '#f0cd8f', 8);
+  drawBand(39, '#ffdda6', 6);
   // Two thin wheel-worn tracks make the road read as terrain, not a beige slab.
   ctx.save();
   ctx.setLineDash([18, 12, 34, 19]);
@@ -194,12 +194,12 @@ function shoreline(
   polygon(ctx, ring(29), WOODLAND.leafDark);
   polygon(ctx, ring(19), '#628454');
   polygon(ctx, ring(7), '#a2a078');
-  polygon(ctx, ring(3), '#749d86');
-  polygon(ctx, [...points], '#559494');
-  polygon(ctx, ring(-8), '#48868b');
-  polygon(ctx, ring(-19), '#3e7881');
-  polygon(ctx, ring(-34), '#396f7c');
-  polygon(ctx, ring(-52), '#356978');
+  polygon(ctx, ring(3), '#20d6c7');
+  polygon(ctx, [...points], '#249fde');
+  polygon(ctx, ring(-8), '#249fde');
+  polygon(ctx, ring(-19), '#285cc4');
+  polygon(ctx, ring(-34), '#285cc4');
+  polygon(ctx, ring(-52), '#234c9b');
   const top = Math.min(...points.map((p) => p.y));
   const bottom = Math.max(...points.map((p) => p.y));
   for (let i = 0; i < 36; i++) {
