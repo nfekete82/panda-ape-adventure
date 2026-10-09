@@ -700,8 +700,11 @@ window.addEventListener('keyup', (e) => keys.delete(e.code));
 window.addEventListener('blur', () => {
   keys.clear();
   pulses.clear();
+  walkTarget = null;
 });
 let mouseDown = false;
+// Click-to-move target is client intent only; the server still validates movement.
+let walkTarget: { x: number; y: number } | null = null;
 window.addEventListener('mouseup', () => {
   mouseDown = false;
 });
@@ -722,6 +725,22 @@ function readInput(): Input {
   i.y =
     Number(keys.has('KeyS') || keys.has('ArrowDown')) -
     Number(keys.has('KeyW') || keys.has('ArrowUp'));
+  if (i.x || i.y) walkTarget = null;
+  if (!i.x && !i.y && walkTarget) {
+    const actor = world.players.find((p) => p.id === playerId);
+    const origin = mode === 'online' ? predicted : actor;
+    if (origin) {
+      const dx = walkTarget.x - origin.x;
+      const dy = walkTarget.y - origin.y;
+      const remaining = Math.hypot(dx, dy);
+      // Stop ahead of the cursor to avoid sub-pixel oscillations.
+      if (remaining < 10) walkTarget = null;
+      else {
+        i.x = dx / remaining;
+        i.y = dy / remaining;
+      }
+    }
+  }
   if (i.x || i.y)
     lastFacing = {
       x: i.x / Math.max(1, Math.hypot(i.x, i.y)),
@@ -744,7 +763,8 @@ function readInput(): Input {
   }
   i.aimX = lastFacing.x;
   i.aimY = lastFacing.y;
-  i.attack ||= keys.has('Space') || pulses.has('Space') || mouseDown;
+  // Farming interaction clicks must never trigger an RPG attack.
+  i.attack ||= false;
   i.special ||= keys.has('KeyQ') || pulses.has('KeyQ');
   i.heal ||= keys.has('KeyR') || pulses.has('KeyR');
   i.guard ||= keys.has('ShiftLeft') || keys.has('ShiftRight');
@@ -867,7 +887,7 @@ class ForestScene extends Phaser.Scene {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (mode !== 'menu' && !paused) {
         if (valleyView?.pointer(pointer.worldX, pointer.worldY)) return;
-        mouseDown = true;
+        walkTarget = { x: pointer.worldX, y: pointer.worldY };
         const p = world.players.find((p) => p.id === playerId);
         if (p) {
           const dx = pointer.worldX - p.x,
