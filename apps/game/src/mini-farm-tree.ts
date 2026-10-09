@@ -49,9 +49,10 @@ export function paintMiniFarmTree(ctx: CanvasRenderingContext2D) {
   ctx.imageSmoothingEnabled = false;
   for (let y = 0; y < RLE.length; y++) {
     let x = 0;
-    for (const match of RLE[y]!.matchAll(/([A-J])(\\d+)/g)) {
-      const count = Number(match[2]);
-      const code = match[1]!;
+    for (const token of RLE[y]!.split(',')) {
+      if (!token) continue;
+      const code = token[0]!;
+      const count = Number(token.slice(1));
       if (code !== 'A') {
         ctx.fillStyle = COLORS[code]!;
         ctx.fillRect(7 + x * 3, 20 + y * 3, count * 3, 3);
