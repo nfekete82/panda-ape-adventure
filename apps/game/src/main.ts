@@ -1,5 +1,6 @@
 import { applyValleyAction, type ValleyAction } from '@panda/shared';
 import { ValleyView } from './valley-view';
+import { findClickPath, type Waypoint } from './click-path';
 import Phaser from 'phaser';
 import {
   ATTRIBUTES,
@@ -704,6 +705,14 @@ window.addEventListener('blur', () => {
 });
 // Click-to-move target is client intent only; the server still validates movement.
 let walkTarget: { x: number; y: number } | null = null;
+let walkPath: Waypoint[] = [];
+function navigateTo(x: number, y: number) {
+  const actor = world.players.find((p) => p.id === playerId);
+  if (!actor) return;
+  walkTarget = { x, y };
+  walkPath = findClickPath(mode === 'online' ? predicted : actor, walkTarget, world);
+  if (!walkPath.length && Math.hypot(actor.x - x, actor.y - y) >= 10) walkTarget = null;
+}
 function readInput(): Input {
   const i = neutralInput();
   if (
@@ -718,16 +727,22 @@ function readInput(): Input {
   i.y =
     Number(keys.has('KeyS') || keys.has('ArrowDown')) -
     Number(keys.has('KeyW') || keys.has('ArrowUp'));
-  if (i.x || i.y) walkTarget = null;
-  if (!i.x && !i.y && walkTarget) {
+  if (i.x || i.y) { walkTarget = null; walkPath = []; }
+  if (!i.x && !i.y && walkTarget && walkPath.length) {
     const actor = world.players.find((p) => p.id === playerId);
     const origin = mode === 'online' ? predicted : actor;
     if (origin) {
-      const dx = walkTarget.x - origin.x;
-      const dy = walkTarget.y - origin.y;
-      const remaining = Math.hypot(dx, dy);
+      let next = walkPath[0]!;
+      let remaining = Math.hypot(next.x - origin.x, next.y - origin.y);
+      if (remaining < 12) {
+        walkPath.shift();
+        next = walkPath[0] ?? next;
+        remaining = Math.hypot(next.x - origin.x, next.y - origin.y);
+      }
+      const dx = next.x - origin.x;
+      const dy = next.y - origin.y;
       // Stop ahead of the cursor to avoid sub-pixel oscillations.
-      if (remaining < 10) walkTarget = null;
+      if (!walkPath.length || (walkPath.length === 1 && remaining < 12)) { walkTarget = null; walkPath = []; }
       else {
         i.x = dx / remaining;
         i.y = dy / remaining;
@@ -761,9 +776,7 @@ function readInput(): Input {
   i.special = false;
   i.heal = false;
   i.guard = false;
-  i.special ||= keys.has('KeyQ') || pulses.has('KeyQ');
-  i.heal ||= keys.has('KeyR') || pulses.has('KeyR');
-  i.guard ||= keys.has('ShiftLeft') || keys.has('ShiftRight');
+  // Combat keybinds deliberately disabled in farming mode.
   i.interact ||= keys.has('KeyE');
   pulses.clear();
   return i;
@@ -799,7 +812,7 @@ class ForestScene extends Phaser.Scene {
       () => world,
       () => world.players.find((p) => p.id === playerId),
       valleyAction,
-      (x, y) => { walkTarget = { x, y }; },
+      navigateTo,
     );
     this.add.image(0, 0, 'forest').setOrigin(0);
     for (const o of obstacles) {
@@ -884,7 +897,7 @@ class ForestScene extends Phaser.Scene {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (mode !== 'menu' && !paused) {
         if (valleyView?.pointer(pointer.worldX, pointer.worldY)) return;
-        walkTarget = { x: pointer.worldX, y: pointer.worldY };
+        navigateTo(pointer.worldX, pointer.worldY);
         const p = world.players.find((p) => p.id === playerId);
         if (p) {
           const dx = pointer.worldX - p.x,
