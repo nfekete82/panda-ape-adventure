@@ -10,6 +10,13 @@ import {
 
 export const FARM = { x: 400, y: 1220, columns: 8, rows: 4, tile: 32 };
 export const DAY_SECONDS = 45;
+/** Stable deterministic forecast, independent of server or browser randomness. */
+export type ValleyWeather = 'sunny' | 'cloudy' | 'rain';
+export function weatherForDay(day: number): ValleyWeather {
+  const roll = (Math.imul(day, 1664525) + 1013904223) >>> 0;
+  const fraction = roll / 4294967296;
+  return fraction < 0.35 ? 'rain' : fraction < 0.65 ? 'cloudy' : 'sunny';
+}
 export const ITEM_IDS = [
   'wood',
   'stone',
@@ -139,6 +146,7 @@ export interface Valley {
   clearedStumps?: number[];
   saplings?: Record<string, number>;
   toolLevels?: { axe: number; pickaxe: number };
+  weather?: ValleyWeather;
 }
 export function createValley(): Valley {
   return {
@@ -172,6 +180,7 @@ export function createValley(): Valley {
     clearedStumps: [],
     saplings: {},
     toolLevels: { axe: 1, pickaxe: 1 },
+    weather: weatherForDay(1),
   };
 }
 export function cellPoint(cell: number) {
@@ -218,6 +227,7 @@ export function advanceValley(v: Valley, dt: number) {
       }
     }
     v.nodeHits = [0, 0, 0, 0];
+    // Previous-day watering grows crops first; rain then wets beds for the new day.
     for (const plot of v.plots)
       if (
         plot.state === 'planted' &&
@@ -227,6 +237,10 @@ export function advanceValley(v: Valley, dt: number) {
         plot.growth++;
         plot.watered = false;
       }
+    v.weather = weatherForDay(v.day);
+    if (v.weather === 'rain') for (const plot of v.plots)
+      if (plot.state === 'planted' && plot.growth < CROPS[plot.crop].days)
+        plot.watered = true;
   }
 }
 export type ValleyAction =
@@ -526,6 +540,7 @@ export function isValley(value: unknown): value is Valley {
   if (value.treeHits !== undefined && (!record(value.treeHits) || Object.keys(value.treeHits).length > obstacles.length || !Object.entries(value.treeHits).every(([key, hit]) => /^\d+$/.test(key) && integer(Number(key), 0, obstacles.length - 1) && obstacles[Number(key)]?.kind === 'tree' && integer(hit, 1, 2) && !(Array.isArray(value.felledTrees) && value.felledTrees.includes(Number(key)))))) return false;
   if (value.clearedStumps !== undefined && (!Array.isArray(value.clearedStumps) || new Set(value.clearedStumps).size !== value.clearedStumps.length || !value.clearedStumps.every((index) => integer(index, 0, obstacles.length - 1) && obstacles[index]?.kind === 'tree' && (Array.isArray(value.felledTrees) && value.felledTrees.includes(index))))) return false;
   if (value.saplings !== undefined && (!record(value.saplings) || !Object.entries(value.saplings).every(([key, day]) => /^\d+$/.test(key) && integer(Number(key), 0, obstacles.length - 1) && (Array.isArray(value.clearedStumps) && value.clearedStumps.includes(Number(key))) && integer(day, value.day as number, (value.day as number) + 3)))) return false;
+  if (value.weather !== undefined && value.weather !== 'sunny' && value.weather !== 'cloudy' && value.weather !== 'rain') return false;
   if (value.toolLevels !== undefined && (!record(value.toolLevels) || Object.keys(value.toolLevels).length !== 2 || !integer(value.toolLevels.axe, 1, 3) || !integer(value.toolLevels.pickaxe, 1, 3))) return false;
   if (value.nodeHits !== undefined && (!Array.isArray(value.nodeHits) || value.nodeHits.length !== 4 || !value.nodeHits.every((n) => integer(n, 0, 3)))) return false;
   if (
