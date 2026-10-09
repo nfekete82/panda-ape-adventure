@@ -1,3 +1,5 @@
+import { applyValleyAction, type ValleyAction } from '@panda/shared';
+import { ValleyView } from './valley-view';
 import Phaser from 'phaser';
 import {
   ATTRIBUTES,
@@ -45,6 +47,7 @@ import { MageEffects, drawMageProjectile, isMageBloom } from './mage-effects';
 import { WorldAtmosphere, treePresentation } from './world-atmosphere';
 import './style.css';
 const statusPresentation = new StatusPresentation();
+let valleyView: ValleyView | undefined;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T =>
   document.getElementById(id) as T;
@@ -349,6 +352,8 @@ function connect(message: ClientMessage, isReconnect = false) {
               predicted,
               (sent.input.x / Math.max(1, d)) * speed * sent.dt,
               (sent.input.y / Math.max(1, d)) * speed * sent.dt,
+              14,
+              world,
             );
         }
         lastSnapshot = performance.now();
@@ -356,6 +361,7 @@ function connect(message: ClientMessage, isReconnect = false) {
     } else if (m.type === 'error') {
       if (mode === 'menu') $('menu-error').textContent = m.message;
       else {
+        valleyView?.feedback(m.message);
         notify(m.message);
         const status = document.getElementById('rpg-status');
         if (status) status.textContent = m.message;
@@ -404,6 +410,7 @@ function connect(message: ClientMessage, isReconnect = false) {
   };
 }
 function exitGame() {
+  valleyView?.toggle(false);
   quitting = true;
   socket?.close();
   mode = 'menu';
@@ -527,7 +534,7 @@ $('modal').addEventListener('cancel', () => {
 });
 function settingsModal() {
   showModal(
-    `<div class="eyebrow">TAKE A BREATH</div><h2>${mode === 'menu' ? 'Settings' : 'Adventure paused'}</h2><p>${mode === 'online' ? 'Your hero stops moving. Your co-op world continues while this menu is open.' : 'The forest will wait for you.'}</p><label>Forest music<input id="music" type="checkbox" ${music ? 'checked' : ''}></label><label>Combat & item sounds<input id="sound-effects" type="checkbox" ${soundEffects ? 'checked' : ''}></label><label>Master volume<input id="volume" type="range" min="0" max="1" step="0.05" value="${volume}"></label><label>Camera zoom <output id="zoom-value">${Math.round(cameraZoom * 100)}%</output><input id="camera-zoom" aria-label="Camera zoom" type="range" min="1.1" max="1.9" step="0.05" value="${cameraZoom}"></label>${mode === 'solo' ? '<label>AI companion<input id="companion-toggle" type="checkbox" ' + (world.players.some((p) => p.id === 'companion') ? 'checked' : '') + '></label>' : ''}<button id="resume-button">${mode === 'menu' ? 'Back' : 'Resume adventure'} →</button>${mode !== 'menu' ? '<button id="save-button">Save progress</button><button id="exit-button">Return to title</button>' : ''}<p>WASD / arrows: move · Space / left click: attack<br>Q: special · R: potion / revive · E: talk<br>Shift: shield (Panda) · I: inventory · Esc: pause<br>Gamepad: left stick, A attack, X special, B potion, Y talk.</p>`,
+    `<div class="eyebrow">TAKE A BREATH</div><h2>${mode === 'menu' ? 'Settings' : 'Adventure paused'}</h2><p>${mode === 'online' ? 'Your hero stops moving. Your co-op world continues while this menu is open.' : 'The forest will wait for you.'}</p><label>Forest music<input id="music" type="checkbox" ${music ? 'checked' : ''}></label><label>Combat & item sounds<input id="sound-effects" type="checkbox" ${soundEffects ? 'checked' : ''}></label><label>Master volume<input id="volume" type="range" min="0" max="1" step="0.05" value="${volume}"></label><label>Camera zoom <output id="zoom-value">${Math.round(cameraZoom * 100)}%</output><input id="camera-zoom" aria-label="Camera zoom" type="range" min="1.1" max="1.9" step="0.05" value="${cameraZoom}"></label>${mode === 'solo' ? '<label>AI companion<input id="companion-toggle" type="checkbox" ' + (world.players.some((p) => p.id === 'companion') ? 'checked' : '') + '></label>' : ''}<button id="resume-button">${mode === 'menu' ? 'Back' : 'Resume adventure'} →</button>${mode !== 'menu' ? '<button id="save-button">Save progress</button><button id="exit-button">Return to title</button>' : ''}<p>WASD / arrows: move · Space / left click: attack<br>Q: special · R: potion / revive · E: talk<br>Shift: shield (Panda) · I: inventory · Esc: pause<br>F: farming / building · T: market · Esc: leave tool mode<br>Gamepad: left stick, A attack, X special, B potion, Y talk.</p>`,
   );
   $<HTMLInputElement>('music').onchange = (e) => {
     music = (e.target as HTMLInputElement).checked;
@@ -574,7 +581,19 @@ let satchelSignature = '';
 function saveSolo() {
   const p = world.players.find((p) => p.id === playerId);
   if (p) safeStorage(`panda-solo-${p.hero}`, JSON.stringify(p));
-  safeStorage('panda-save', JSON.stringify({ version: 2, world }));
+  safeStorage('panda-save', JSON.stringify({ version: 3, world }));
+}
+function valleyAction(action: ValleyAction) {
+  const p = world.players.find((p) => p.id === playerId);
+  if (!p) return;
+  rpgSeq = Math.max(rpgSeq, p.commandSeq) + 1;
+  if (mode === 'online') send({ type: 'valley', seq: rpgSeq, action });
+  else {
+    const error = applyValleyAction(world, p, action, rpgSeq);
+    valleyView?.feedback(error ?? 'Done — our garden is growing.');
+    if (!error) saveSolo();
+    valleyView?.update();
+  }
 }
 function rpg(action: RpgAction) {
   const p = world.players.find((p) => p.id === playerId);
@@ -638,7 +657,19 @@ $('attack-button').onclick = () => pulses.add('Space');
 $('special-button').onclick = () => pulses.add('KeyQ');
 $('heal-button').onclick = () => pulses.add('KeyR');
 window.addEventListener('keydown', (e) => {
-  if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+  if (
+    ['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)
+  )
+    return;
+  if (
+    mode !== 'menu' &&
+    !$<HTMLDialogElement>('modal').open &&
+    !e.repeat &&
+    valleyView?.key(e.code)
+  ) {
+    e.preventDefault();
+    return;
+  }
   if (
     ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(
       e.code,
@@ -747,6 +778,12 @@ class ForestScene extends Phaser.Scene {
     scene = this; // eslint-disable-line @typescript-eslint/no-this-alias
     makeAssets(this);
     makeWeaponTextures(this);
+    valleyView = new ValleyView(
+      this,
+      () => world,
+      () => world.players.find((p) => p.id === playerId),
+      valleyAction,
+    );
     this.add.image(0, 0, 'forest').setOrigin(0);
     for (const o of obstacles) {
       if (o.kind !== 'tree') continue;
@@ -829,6 +866,7 @@ class ForestScene extends Phaser.Scene {
     });
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (mode !== 'menu' && !paused) {
+        if (valleyView?.pointer(pointer.worldX, pointer.worldY)) return;
         mouseDown = true;
         const p = world.players.find((p) => p.id === playerId);
         if (p) {
@@ -964,6 +1002,8 @@ class ForestScene extends Phaser.Scene {
             predicted,
             (input.x / Math.max(1, d)) * speed * dt,
             (input.y / Math.max(1, d)) * speed * dt,
+            14,
+            world,
           );
         if (time - lastSend >= 1000 / 30) {
           for (const key of [
@@ -1377,6 +1417,7 @@ function updateHud() {
       ? 'THE MOSSBOUND SHRINE'
       : 'THE OLD WOODLANDS';
   }
+  valleyView?.update();
   const state = statusPresentation.update(
     p.hero,
     p.hp,
@@ -1493,6 +1534,7 @@ function updateHud() {
   const hud = $('hud');
   hud.dataset.cameraZoom = String(scene.cameras.main.zoom);
   hud.dataset.cameraX = String(scene.cameras.main.midPoint.x);
+  hud.dataset.cameraY = String(scene.cameras.main.midPoint.y);
   hud.dataset.landscapeStyle = 'woodland-art-direction-1';
   hud.dataset.worldMotes = String(scene.atmosphere.moteCount);
   hud.dataset.worldReflections = String(scene.atmosphere.reflectionCount);

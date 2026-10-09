@@ -1,0 +1,126 @@
+import { type Crop, type Recipe, type ValleyItem } from '@panda/shared';
+import { pixel as px, pixelOval as oval, WOODLAND as P } from './world-style';
+type Canvas = CanvasRenderingContext2D;
+export const CROP_COLORS: Record<Crop, string> = {
+  carrot: '#e8a45b',
+  potato: '#c6a476',
+  tomato: '#d77a65',
+  strawberry: '#dc8a9c',
+};
+export function paintPlot(c: Canvas, wet: boolean) {
+  px(c, P.shadow, 0, 4, 32, 27);
+  px(c, wet ? '#5c5741' : '#92714e', 1, 3, 30, 26);
+  for (let row = 0; row < 4; row++) {
+    px(c, wet ? '#434b3d' : '#6f573f', 3, 6 + row * 6, 26, 2);
+    px(c, wet ? '#777d58' : '#b19765', 4, 5 + row * 6, 20, 1);
+  }
+  if (wet) px(c, '#91b4a0', 24, 7, 3, 2);
+}
+export function paintCrop(c: Canvas, crop: Crop, stage: number) {
+  const height = stage === 0 ? 7 : stage === 1 ? 14 : 21;
+  px(c, P.leafDark, 15, 29 - height, 3, height);
+  oval(c, P.leaf, 10, 29 - height + 4, 7, 4);
+  oval(c, P.leafLight, 20, 29 - height + 1, 7, 4);
+  px(c, P.leafSun, 17, 27 - height, 5, 2);
+  if (stage > 0) {
+    oval(c, P.leafDark, 10, 22, 7, 4);
+    oval(c, P.leaf, 22, 20, 7, 4);
+  }
+  if (stage === 2) {
+    if (crop === 'carrot') {
+      px(c, P.ink, 10, 21, 12, 9);
+      px(c, CROP_COLORS[crop], 12, 21, 8, 8);
+      px(c, '#f1c17e', 12, 22, 3, 3);
+    } else if (crop === 'potato') {
+      oval(c, P.ink, 12, 26, 8, 5);
+      oval(c, CROP_COLORS[crop], 12, 25, 7, 4);
+      px(c, '#e0c693', 9, 23, 4, 2);
+      oval(c, CROP_COLORS[crop], 23, 28, 5, 3);
+    } else {
+      for (const [x, y] of [
+        [10, 18],
+        [22, 15],
+        [17, 26],
+      ]) {
+        oval(c, P.ink, x!, y!, 5, 5);
+        oval(c, CROP_COLORS[crop], x!, y! - 1, 4, 4);
+        px(c, P.cream, x! - 1, y! - 3, 2, 2);
+      }
+    }
+  }
+}
+export function paintBuilding(c: Canvas, recipe: Recipe) {
+  const wood = P.bark,
+    edge = P.barkDark,
+    light = P.barkLight;
+  if (recipe === 'gardenBed') {
+    px(c, edge, 0, 22, 32, 24);
+    px(c, wood, 1, 23, 30, 3);
+    px(c, light, 1, 23, 28, 1);
+    px(c, wood, 1, 40, 30, 4);
+    return;
+  }
+  px(c, P.shadow, 1, 42, 30, 5);
+  if (recipe === 'workbench') {
+    px(c, edge, 2, 22, 28, 8);
+    px(c, wood, 3, 22, 26, 5);
+    px(c, light, 3, 22, 24, 2);
+    px(c, edge, 5, 29, 4, 15);
+    px(c, edge, 24, 29, 4, 15);
+    px(c, P.stone, 17, 16, 10, 5);
+    px(c, P.stoneLight, 16, 15, 13, 3);
+    px(c, wood, 8, 13, 3, 10);
+    px(c, P.stoneLight, 5, 12, 9, 4);
+  } else if (recipe === 'chest') {
+    px(c, edge, 3, 22, 26, 21);
+    px(c, wood, 5, 24, 22, 16);
+    px(c, light, 5, 24, 22, 3);
+    px(c, P.ink, 3, 31, 26, 3);
+    px(c, P.cream, 14, 29, 5, 7);
+  } else if (recipe === 'fence') {
+    for (const x of [2, 25]) {
+      px(c, edge, x, 21, 5, 23);
+      px(c, light, x, 21, 2, 21);
+    }
+    px(c, wood, 4, 26, 24, 4);
+    px(c, wood, 4, 35, 24, 4);
+  } else if (recipe === 'lantern') {
+    px(c, edge, 14, 16, 4, 28);
+    px(c, wood, 15, 15, 14, 3);
+    px(c, P.ink, 21, 17, 10, 15);
+    px(c, P.cream, 23, 20, 5, 8);
+    px(c, '#dba867', 24, 21, 2, 5);
+  } else {
+    px(c, edge, 3, 12, 4, 32);
+    px(c, edge, 25, 12, 4, 32);
+    for (let row = 0; row < 9; row++)
+      px(
+        c,
+        row % 2 ? '#967449' : '#b08c56',
+        1 + row,
+        4 + row * 2,
+        30 - row * 2,
+        3,
+      );
+    px(c, light, 3, 24, 26, 2);
+    px(c, wood, 5, 37, 22, 6);
+  }
+}
+export function paintCache(c: Canvas, item: ValleyItem) {
+  oval(c, P.shadow, 16, 25, 15, 5);
+  if (item === 'wood') {
+    for (let n = 0; n < 3; n++) {
+      px(c, P.barkDark, 3 + n * 3, 13 + n * 4, 23, 5);
+      px(c, P.barkLight, 3 + n * 3, 13 + n * 4, 6, 3);
+    }
+  } else if (item === 'fiber') {
+    for (let n = 0; n < 5; n++) {
+      px(c, P.leafDark, 3 + n * 5, 10 + (n % 2) * 4, 4, 17);
+      px(c, P.leafLight, 3 + n * 5, 9 + (n % 2) * 4, 2, 12);
+    }
+  } else {
+    oval(c, P.ink, 16, 20, 13, 8);
+    oval(c, item === 'ore' ? '#967b68' : P.stone, 15, 18, 12, 7);
+    px(c, item === 'ore' ? '#d6b27f' : P.stoneLight, 8, 14, 9, 3);
+  }
+}

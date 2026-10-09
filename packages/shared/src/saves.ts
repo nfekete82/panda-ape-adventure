@@ -1,3 +1,4 @@
+import { createValley, isValley } from './valley.js';
 import { createWorld, createPlayer, type World, type Player } from './index.js';
 import {
   combatStats,
@@ -119,7 +120,8 @@ function isWorld(value: unknown): value is World {
     },
   ];
   sample.effects = [{ id: '', x: 0, y: 0, kind: 'hit', life: 0, radius: 0 }];
-  const rest = { ...value, players: [] };
+  if (!isValley(value.valley)) return false;
+  const rest = { ...value, players: [], valley: sample.valley };
   if (!parseRespawnConfig(value.respawn)) return false;
   if (
     !shape(rest, sample) ||
@@ -159,7 +161,8 @@ export function migrateWorld(
 ): World | null {
   if (!record(value)) return null;
   // Accept versioned solo envelopes and the original versionless world.
-  if (value.version === 2 && record(value.world)) value = value.world;
+  if ((value.version === 2 || value.version === 3) && record(value.world))
+    value = value.world;
   if (
     !record(value) ||
     !Array.isArray(value.players) ||
@@ -178,6 +181,7 @@ export function migrateWorld(
   );
   const migrated = {
     ...value,
+    valley: value.valley === undefined ? createValley() : value.valley,
     instanceId:
       typeof value.instanceId === 'string' ? value.instanceId : instanceId,
     respawn: (() => {

@@ -60,6 +60,14 @@ try {
     () =>
       a.world!.players.find((p) => p.id === a.welcome!.playerId)!.lastSeq === 2,
   );
+  // Establish persistent settlement state through bounded intent via nginx.
+  a.send({
+    type: 'valley',
+    seq: 1,
+    action: { kind: 'buy', item: 'wateringCan', count: 1 },
+  });
+  await a.until(() => a.world?.valley.bag.wateringCan === 1);
+  assert.equal(a.world!.valley.gold, 12);
   const before = structuredClone(a.world!);
   a.send({ type: 'save' });
   await a.until(() => a.saved);
@@ -114,6 +122,10 @@ try {
     ]),
     before.enemies.map((e) => [e.id, e.hp, e.generation, e.respawnRemaining]),
   );
+  assert.deepEqual(ra.world!.valley.bag, before.valley.bag);
+  assert.equal(ra.world!.valley.gold, before.valley.gold);
+  assert.deepEqual(ra.world!.valley.owners, before.valley.owners);
+  assert.equal(ra.world!.valley.settled, true);
   console.log(
     'PASS: Compose restart restored both sessions, positions, heroes, health and shared enemies.',
   );

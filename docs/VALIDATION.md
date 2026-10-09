@@ -265,3 +265,64 @@ See [V0.2.0.md](V0.2.0.md) for manual gameplay, migration and backup testing and
   motion remains, but the imported four-frame creature loops are no longer
   selected. New original art uses CC0-1.0, source uses MIT, and retained vendor
   assets keep their existing licenses in `assets/LICENSE.md`.
+
+## Wild Valley vertical slice — 2026-10-09
+
+- Feature branch: `feat/wild-valley-simulation`, based on the existing
+  `feat/0.6.2-mossbound-shrine-quest` working branch. No merge or history replacement.
+  Existing forest, bamboo, shrine, combat, progression, HUD and audio were kept.
+- `npm ci`, `npm run typecheck`, `npm run lint`, `npm run format:check`,
+  `npm test` and `npm run build` passed. Final Vitest coverage is **88 tests in
+  15 files**, including four real WebSocket integration scenarios. Host Node is
+  25.9.0; production images build and run with the existing Node 24 reference.
+- New simulation coverage exercises the complete four-crop plant/water/day/
+  harvest/sell/build cycle, dry waiting, Panda watering, Ape material discount,
+  occupied/out-of-reach/player-blocked placements, dynamic building collision,
+  exhausted resource caches, replayed commands, shared overspending, item/gold
+  capacity, malformed intent and legacy migrations. A bounded-load check advances
+  all 32 plots through 10,000 dry days and compares subdivided deterministic
+  growth. This is a simulation capacity check, not a cross-device FPS benchmark.
+- Two real WebSocket clients concurrently harvest one crop and build one
+  workbench: only one operation succeeds and costs/yields are applied once.
+  Plant/water state synchronizes; stale sequences and forged negative trades fail.
+  SQLite tests restart the store after concurrent saves and stale a settlement's
+  timestamp: gold, stacks, watered growing crops and furniture survive; expired
+  seats release, while the character credential reopens the same home.
+- Production and development Compose configuration checks passed. Both production
+  images were built with `docker compose up -d --build --wait`, with healthy
+  services. `npm run test:docker` passed the actual nginx `/ws` save/restart/
+  reconnect test, now also checking the purchased watering can, shared gold,
+  established-home flag and ownership alongside characters and enemies.
+- All **18 Chromium scenarios** passed against the final production build. The
+  new solo E2E walks between resources, farm and Rowan, gathers twice across a
+  real day, buys a can, hoes/plants/waters, waits for actual growth, harvests,
+  sells, builds a workbench and reloads the saved world. Crop/preview and compact
+  menu rendering also passed. Existing combat, two-window co-op, reconnect,
+  revive, migration, forge, audio, HUD, bamboo bridge/shrine and region-transition
+  checks passed.
+- Reviewed the production captures below. Fixed pale browser-default button
+  backgrounds, divided the menu into Garden/Supplies/Market tabs, and waited for
+  camera convergence before reviewing all four crop silhouettes. The transparent
+  workbench preview and valid tile highlight are visible in the crop capture.
+  [Planted](screenshots/wild-valley/planted.png),
+  [Workbench](screenshots/wild-valley/workbench.png),
+  [Four crops and preview](screenshots/wild-valley/crops.png),
+  [Compact menu](screenshots/wild-valley/compact.png).
+- Initial runs are not counted as passes: a test used the wrong parser export
+  and was corrected; sandboxed WebSocket startup was blocked, so the suite was
+  rerun with local socket access. One formatting issue was corrected. An early
+  browser run overlapped the deliberate Compose restart, causing connection-reset
+  failures; the final full suite ran after restart and passed uninterrupted.
+- No dependency changes or external art additions. New original assets have
+  CC0-1.0 provenance and stable texture contracts in `assets/LICENSE.md`.
+  Safari, Firefox, physical controllers, touch farming, long-duration economy
+  balancing and mobile-device performance were not tested. The 32-tile limit,
+  shared supplies, furniture-only chest/workbench and settlement capacity/home
+  selection limitations are explicit in `WILD_VALLEY_IMPLEMENTATION.md`.
+- The additional final crop/placement scenario passed with Chromium WebGL
+  disabled (`CI=1`), exercising Phaser's Canvas fallback. The complete farming
+  loop capture rerun exposed a test projection race while the camera was still
+  following movement. The helper now waits for midpoint convergence before
+  projecting world coordinates. This initial failed rerun is not a pass.
+- After fixing that camera helper, the complete farming E2E passed again
+  (50.9 seconds) and its planted/workbench captures were retained in docs.

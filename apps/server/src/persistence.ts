@@ -55,9 +55,14 @@ export class JsonSaveStore implements SaveStore {
           sessions: Room['sessions'];
           savedAt: number;
         };
-        if (data.version !== 1 || Date.now() - data.savedAt > 60000) continue;
+        if (data.version !== 1) continue;
         const world = migrateWorld(data.world, data.code);
         if (!world) continue;
+        if (Date.now() - data.savedAt > 60000) {
+          if (!world.valley.settled) continue;
+          world.players = [];
+          data.sessions = [];
+        }
         world.players.forEach((p) => (p.connected = false));
         rooms.push({
           code: data.code,

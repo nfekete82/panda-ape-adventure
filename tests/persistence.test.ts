@@ -139,3 +139,53 @@ it('permanent character resumes into a fresh world independently of expired room
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+it('settled farms survive stale SQLite snapshots and expired seats; credentials reopen the same home', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'panda-valley-save-'));
+  let store = new SqliteSaveStore(directory);
+  try {
+    const manager = new RoomManager(),
+      { room, session } = manager.create('panda');
+    const p = room.world.players[0]!;
+    room.world.valley.settled = true;
+    room.world.valley.owners = [p.id];
+    room.world.valley.gold = 47;
+    room.world.valley.bag.wood = 8;
+    room.world.valley.plots = [
+      {
+        cell: 0,
+        state: 'planted',
+        crop: 'strawberry',
+        growth: 2,
+        watered: true,
+      },
+    ];
+    room.world.valley.buildings = [{ cell: 5, recipe: 'workbench' }];
+    const expected = structuredClone(room.world.valley);
+    await Promise.all([store.save(room), store.save(room)]);
+    await store.close();
+    const db = new DatabaseSync(join(directory, 'saves.sqlite'));
+    db.prepare('UPDATE rooms SET saved_at=?').run(Date.now() - 120000);
+    db.close();
+    store = new SqliteSaveStore(directory);
+    const restored = (await store.loadAll())[0]!;
+    expect(restored.world.players).toHaveLength(0);
+    expect(restored.sessions).toHaveLength(0);
+    expect(restored.world.valley).toEqual(expected);
+    const reloaded = new RoomManager();
+    reloaded.rooms.set(restored.code, restored);
+    const character = await store.character(session.token);
+    const home = reloaded.create('panda', character!, session.token);
+    expect(home.room.code).toBe(room.code);
+    reloaded.disconnect(home.room, home.session, 0);
+    reloaded.update(0.03, 62000);
+    reloaded.update(0.03, 200000);
+    expect(reloaded.rooms.get(room.code)?.world.valley).toEqual(expected);
+    expect(() => reloaded.resume(room.code, session.token, 200000)).toThrow(
+      'expired',
+    );
+  } finally {
+    await store.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+});

@@ -30,6 +30,16 @@ export class RoomManager {
     character?: Player,
     characterToken?: string,
   ): { room: Room; session: Session } {
+    const home = character
+      ? [...this.rooms.values()].find((r) =>
+          r.world.valley.owners.includes(character.id),
+        )
+      : undefined;
+    if (home)
+      return {
+        room: home,
+        session: this.add(home, hero, character, characterToken),
+      };
     if (this.rooms.size >= 100)
       throw Error('The server is full. Please try again later.');
     const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -162,7 +172,8 @@ export class RoomManager {
         step(room.world, room.inputs, dt);
       } else {
         room.emptySince ||= now;
-        if (now - room.emptySince > 120000) this.rooms.delete(code);
+        if (now - room.emptySince > 120000 && !room.world.valley.settled)
+          this.rooms.delete(code);
       }
     }
   }

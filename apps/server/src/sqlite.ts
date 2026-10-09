@@ -231,8 +231,8 @@ export class SqliteSaveStore implements SaveStore {
     await this.initialize();
     const rooms: Room[] = [];
     for (const row of this.db
-      ?.prepare('SELECT code, snapshot FROM rooms WHERE saved_at >= ?')
-      .all(Date.now() - 60000) ?? []) {
+      ?.prepare('SELECT code, snapshot, saved_at FROM rooms')
+      .all() ?? []) {
       if (typeof row.code !== 'string' || typeof row.snapshot !== 'string')
         continue;
       const data: unknown = JSON.parse(row.snapshot);
@@ -246,11 +246,17 @@ export class SqliteSaveStore implements SaveStore {
         continue;
       const world = migrateWorld(data.world);
       if (!world) continue;
+      const expired =
+        typeof row.saved_at !== 'number' || row.saved_at < Date.now() - 60000;
+      if (expired && !world.valley.settled) continue;
+      if (expired) {
+        world.players = [];
+      }
       world.players.forEach((p) => (p.connected = false));
       rooms.push({
         code: row.code,
         world,
-        sessions: data.sessions,
+        sessions: expired ? [] : data.sessions,
         inputs: new Map(),
         emptySince: Date.now(),
       });

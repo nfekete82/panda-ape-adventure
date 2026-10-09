@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
 import {
+  cellPoint,
   awardXp,
   grant,
   WORLD,
@@ -16,6 +17,8 @@ import {
 import { RoomManager } from '../apps/server/src/rooms';
 import { SqliteSaveStore } from '../apps/server/src/sqlite';
 let server: ChildProcess, saveDir: string;
+let garden: ReturnType<RoomManager['create']>,
+  gardener: ReturnType<RoomManager['join']>;
 let fixture: ReturnType<RoomManager['create']>,
   partner: ReturnType<RoomManager['join']>;
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -76,6 +79,23 @@ beforeAll(async () => {
   fixture.room.world.respawn.slime.seconds = 1;
   const store = new SqliteSaveStore(saveDir);
   await store.save(fixture.room);
+  garden = manager.create('panda');
+  gardener = manager.join(garden.room.code, 'ape');
+  for (const p of garden.room.world.players) {
+    Object.assign(p, cellPoint(0));
+    p.y -= 60;
+  }
+  garden.room.world.valley.bag.wood = 12;
+  garden.room.world.valley.bag.stone = 4;
+  garden.room.world.valley.bag.wateringCan = 1;
+  garden.room.world.valley.plots.push({
+    cell: 1,
+    state: 'planted',
+    crop: 'carrot',
+    growth: 1,
+    watered: false,
+  });
+  await store.save(garden.room);
   await store.close();
   server = spawn(
     process.execPath,
@@ -281,6 +301,77 @@ it('real clients synchronize attribute spending, upgrades, XP, drops and respawn
     expect(b.world!.kills).toBe(1);
     a.send({ type: 'save' });
     await a.until(() => a.messages.some((m) => m.type === 'saved'));
+  } finally {
+    a.close();
+    b.close();
+  }
+});
+
+it('real co-op clients apply concurrent harvest/build exactly once and synchronize soil and water', async () => {
+  const a = new Client(),
+    b = new Client();
+  try {
+    await Promise.all([a.open(), b.open()]);
+    a.send({
+      type: 'resume',
+      code: garden.room.code,
+      token: garden.session.token,
+    });
+    b.send({
+      type: 'resume',
+      code: garden.room.code,
+      token: gardener.session.token,
+    });
+    await a.until(
+      () => !!a.welcome && a.world?.players.every((p) => p.connected) === true,
+    );
+    await b.until(() => !!b.world);
+    for (const c of [a, b])
+      c.send({ type: 'valley', seq: 1, action: { kind: 'harvest', cell: 1 } });
+    await a.until(() => a.world?.valley.bag.carrot === 1);
+    await b.until(() => b.world?.valley.bag.carrot === 1);
+    await a.until(() => a.errors.length + b.errors.length >= 1);
+    for (const c of [a, b])
+      c.send({
+        type: 'valley',
+        seq: 2,
+        action: { kind: 'build', cell: 0, recipe: 'workbench' },
+      });
+    await b.until(() => b.world?.valley.buildings.length === 1);
+    await a.until(() => a.errors.length + b.errors.length >= 2);
+    expect(a.world!.valley.bag.wood).toBeGreaterThanOrEqual(6);
+    expect(a.world!.valley.bag.stone).toBe(2);
+    expect(a.world!.valley.gold).toBe(6);
+    a.send({
+      type: 'valley',
+      seq: 3,
+      action: { kind: 'plant', cell: 1, crop: 'tomato' },
+    });
+    await b.until(() => b.world?.valley.bag.tomatoSeed === 1);
+    a.send({ type: 'valley', seq: 4, action: { kind: 'water', cell: 1 } });
+    await b.until(
+      () =>
+        b.world?.valley.plots.some(
+          (p) => p.state === 'planted' && p.watered,
+        ) === true,
+    );
+    const oldErrors = a.errors.length;
+    a.send({
+      type: 'valley',
+      seq: 4,
+      action: { kind: 'plant', cell: 1, crop: 'tomato' },
+    });
+    await a.until(() => a.errors.length > oldErrors);
+    a.ws.send(
+      JSON.stringify({
+        type: 'valley',
+        seq: 5,
+        action: { kind: 'sell', item: 'carrot', count: -10 },
+      }),
+    );
+    await a.until(() => a.errors.some((e) => e.includes('Invalid')));
+    expect(b.world!.valley.bag.carrot).toBe(1);
+    expect(b.world!.valley.bag.tomatoSeed).toBe(1);
   } finally {
     a.close();
     b.close();

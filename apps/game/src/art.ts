@@ -1,3 +1,5 @@
+import { CROP_IDS, RECIPE_IDS, RESOURCE_NODES } from '@panda/shared';
+import { paintPlot, paintCrop, paintBuilding, paintCache } from './valley-art';
 import sheets from '../../../assets/hero-sheets.json';
 import Phaser from 'phaser';
 import { WORLD } from '@panda/shared';
@@ -50,6 +52,47 @@ export function heroFrame(
   );
 }
 export function makeAssets(scene: Phaser.Scene) {
+  const can = canvas(32, 32);
+  can.ctx.fillStyle = '#304c46';
+  can.ctx.fillRect(8, 10, 16, 18);
+  can.ctx.fillStyle = '#8bb29b';
+  can.ctx.fillRect(10, 12, 12, 13);
+  can.ctx.fillRect(3, 8, 8, 4);
+  can.ctx.fillRect(2, 6, 3, 7);
+  can.ctx.strokeStyle = '#d8d1a2';
+  can.ctx.lineWidth = 3;
+  can.ctx.strokeRect(20, 9, 9, 12);
+  scene.textures.addCanvas('valley-watering-can', can.c);
+  for (const wet of [false, true]) {
+    const a = canvas(32, 32);
+    paintPlot(a.ctx, wet);
+    scene.textures.addCanvas(wet ? 'valley-soil-wet' : 'valley-soil', a.c);
+  }
+  for (const crop of CROP_IDS) {
+    const a = canvas(96, 32);
+    for (let frame = 0; frame < 3; frame++) {
+      a.ctx.save();
+      a.ctx.translate(frame * 32, 0);
+      paintCrop(a.ctx, crop, frame);
+      a.ctx.restore();
+    }
+    const texture = scene.textures.addCanvas(`valley-crop-${crop}`, a.c)!;
+    scene.textures.addSpriteSheet(`valley-crop-${crop}`, texture, {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+  }
+  for (const recipe of RECIPE_IDS) {
+    const a = canvas(32, 48);
+    paintBuilding(a.ctx, recipe);
+    scene.textures.addCanvas(`valley-building-${recipe}`, a.c);
+  }
+  for (const node of RESOURCE_NODES) {
+    const a = canvas(32, 32);
+    paintCache(a.ctx, node.item);
+    scene.textures.addCanvas(`valley-cache-${node.item}`, a.c);
+  }
+
   for (const hero of ['panda', 'ape'] as const) {
     const external = scene.textures.exists(`${hero}-source`);
     const { c, ctx } = canvas(

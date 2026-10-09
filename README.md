@@ -154,3 +154,14 @@ Production frontend and `/ws` must share an origin. Terminate TLS at an outer re
 To add regions, extract the current world descriptor and collision list into map registries; keep map IDs and transitions authoritative. Replace procedural art using the texture keys, 64×64 frames and eight-direction layout in `assets/manifest.json`; rendering is separated from combat. Add enemy definitions to shared simulation, then test behavior without Phaser. A later release can add pathfinding, richer directional combat/cast animations, expanded content. [The sprite-sheet pipeline](docs/SPRITES.md) imports finished local sheets with explicit provenance and licensing; future Panda/Ape reference images can guide replacements without changing combat.
 
 Code: MIT. Original generated art/audio: CC0; see [assets/LICENSE.md](assets/LICENSE.md). The repository is intended to remain **private**.
+
+### Wild Valley prototype
+
+A shared 32-tile farm now sits south of Rowan's camp. Press **F** for farming,
+shared supplies and building; **T** opens the market (trade near Rowan).
+Buy a watering can, hoe a nearby garden tile, plant, water, harvest and sell.
+Game days last 45 seconds; dry plants wait safely. Gather local caches and build
+a workbench with 12 gold, 6 wood and 2 stone. Panda waters a neighbour; Ape saves
+one wood when building. Solo saves and online room snapshots include the farm.
+See [the implementation guide](docs/WILD_VALLEY_IMPLEMENTATION.md) for controls,
+persistence, scope and future extensions.

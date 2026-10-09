@@ -4,6 +4,7 @@ import {
   parseMessage,
   neutralInput,
   applyRpgAction,
+  applyValleyAction,
   parseRespawnConfig,
   RESPAWN,
   type ServerMessage,
@@ -93,19 +94,27 @@ wss.on('connection', (ws) => {
         connection.lastSeq = message.input.seq;
         connection.lastInput = now;
         connection.room.inputs.set(connection.session.playerId, message.input);
-      } else if (message.type === 'rpg') {
+      } else if (message.type === 'rpg' || message.type === 'valley') {
         if (!connection.room || !connection.session)
           throw Error('Join a room first.');
         const player = connection.room.world.players.find(
           (p) => p.id === connection.session?.playerId,
         );
         if (!player) throw Error('Character unavailable.');
-        const error = applyRpgAction(
-          connection.room.world,
-          player,
-          message.action,
-          message.seq,
-        );
+        const error =
+          message.type === 'valley'
+            ? applyValleyAction(
+                connection.room.world,
+                player,
+                message.action,
+                message.seq,
+              )
+            : applyRpgAction(
+                connection.room.world,
+                player,
+                message.action,
+                message.seq,
+              );
         if (error) throw Error(error);
         await store.save(connection.room);
         send(ws, { type: 'state', world: connection.room.world });

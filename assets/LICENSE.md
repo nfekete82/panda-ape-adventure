@@ -88,3 +88,14 @@ not edits or traced versions of vendor sprites. Retained vendor files and their
 registry keep their separate licenses; removing their use from active scenery
 and enemies does not relicense them. The former imported ground samples and
 animated mushroom scatter are no longer used by the active world renderer.
+
+## Wild Valley original farming artwork
+
+The crop growth frames (carrot, potato, tomato, strawberry), wet/dry soil,
+resource caches, watering-can icon and six furniture sprites are original
+procedural artwork created in `apps/game/src/valley-art.ts` and `art.ts`, using
+the existing woodland palette. They are dedicated to CC0-1.0; source code is MIT.
+No external images, generated bitmap assets or runtime CDN resources were added.
+Texture contracts: `valley-soil[-wet]` 32×32; `valley-crop-{crop}` three 32×32
+frames (sprout, growing, ripe); `valley-building-{recipe}` 32×48;
+`valley-cache-{resource}` and `valley-watering-can` 32×32.

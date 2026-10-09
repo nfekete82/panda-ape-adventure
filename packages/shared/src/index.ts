@@ -1,4 +1,12 @@
 import {
+  createValley,
+  advanceValley,
+  buildingCollision,
+  parseValleyAction,
+  type Valley,
+} from './valley.js';
+export * from './valley.js';
+import {
   initialProgress,
   combatStats,
   awardXp,
@@ -101,6 +109,7 @@ export interface Effect extends Vec {
   radius: number;
 }
 export interface World {
+  valley: Valley;
   tick: number;
   instanceId: string;
   respawn: typeof RESPAWN;
@@ -193,8 +202,14 @@ export const obstacles: Obstacle[] = (() => {
     }),
   ];
 })();
-export function collides(x: number, y: number, radius = 14): boolean {
+export function collides(
+  x: number,
+  y: number,
+  radius = 14,
+  world?: World,
+): boolean {
   return (
+    (world !== undefined && buildingCollision(world.valley, x, y, radius)) ||
     x < radius ||
     y < radius ||
     x > WORLD.width - radius ||
@@ -208,9 +223,15 @@ export function collides(x: number, y: number, radius = 14): boolean {
     )
   );
 }
-export function move(body: Vec, dx: number, dy: number, radius = 14): void {
-  if (!collides(body.x + dx, body.y, radius)) body.x += dx;
-  if (!collides(body.x, body.y + dy, radius)) body.y += dy;
+export function move(
+  body: Vec,
+  dx: number,
+  dy: number,
+  radius = 14,
+  world?: World,
+): void {
+  if (!collides(body.x + dx, body.y, radius, world)) body.x += dx;
+  if (!collides(body.x, body.y + dy, radius, world)) body.y += dy;
 }
 export const distance = (a: Vec, b: Vec): number =>
   Math.hypot(a.x - b.x, a.y - b.y);
@@ -262,6 +283,7 @@ export function createWorld(respawn = RESPAWN): World {
     ['wisp', 2540, 610],
   ];
   return {
+    valley: createValley(),
     tick: 0,
     instanceId: 'solo',
     respawn: structuredClone(respawn),
@@ -338,7 +360,7 @@ export function damageEnemy(
   e.hurt = 0.2;
   effect(w, e, 'hit', 16, `${amount}`);
   const u = unit(e.x - owner.x, e.y - owner.y);
-  if (e.kind !== 'guardian') move(e, u.x * 12, u.y * 12);
+  if (e.kind !== 'guardian') move(e, u.x * 12, u.y * 12, 14, w);
   if (e.hp === 0) {
     w.kills++;
     e.respawnRemaining = w.respawn[e.kind].seconds;
@@ -393,11 +415,12 @@ function hurtPlayer(w: World, p: Player, amount: number, source: Vec) {
   p.invulnerable = 0.65;
   effect(w, p, 'hit', 20, `−${dmg}`);
   const u = unit(p.x - source.x, p.y - source.y);
-  move(p, u.x * 20, u.y * 20);
+  move(p, u.x * 20, u.y * 20, 14, w);
 }
 export function step(w: World, inputs: Map<string, Input>, dt: number): void {
   dt = Math.min(0.05, Math.max(0, dt));
   w.tick++;
+  advanceValley(w.valley, dt);
   for (const p of w.players) {
     if (!p.connected) continue;
     const input = inputs.get(p.id) ?? neutralInput();
@@ -434,6 +457,8 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
         p,
         (input.x / Math.max(1, d)) * speed * dt,
         (input.y / Math.max(1, d)) * speed * dt,
+        14,
+        w,
       );
     }
     if (Math.hypot(input.aimX, input.aimY) > 0.1)
@@ -593,6 +618,7 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
         u.x * speed * dt,
         u.y * speed * dt,
         e.kind === 'guardian' ? 26 : 14,
+        w,
       );
     if (e.cooldown <= 0 && d < detect) {
       if (e.kind === 'wisp') {
@@ -684,6 +710,7 @@ export type ClientMessage =
   | { type: 'resume'; code: string; token: string }
   | { type: 'input'; input: Input }
   | { type: 'save' }
+  | { type: 'valley'; seq: number; action: import('./valley.js').ValleyAction }
   | { type: 'rpg'; seq: number; action: import('./rpg.js').RpgAction };
 export type ServerMessage =
   | { type: 'welcome'; code: string; token: string; playerId: string }
@@ -703,11 +730,22 @@ export function parseMessage(raw: string): ClientMessage | null {
       resume: ['type', 'code', 'token'],
       input: ['type', 'input'],
       rpg: ['type', 'seq', 'action'],
+      valley: ['type', 'seq', 'action'],
     };
     if (typeof o.type !== 'string') return null;
     const fields = allowed[o.type];
     if (!fields || Object.keys(o).some((k) => !fields.includes(k))) return null;
 
+    if (o.type === 'valley') {
+      if (
+        typeof o.seq !== 'number' ||
+        !Number.isSafeInteger(o.seq) ||
+        o.seq <= 0
+      )
+        return null;
+      const action = parseValleyAction(o.action);
+      return action ? { type: 'valley', seq: o.seq, action } : null;
+    }
     if (
       o.type === 'rpg' &&
       Number.isSafeInteger(o.seq) &&

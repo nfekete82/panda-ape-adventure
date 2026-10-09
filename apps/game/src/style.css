@@ -1108,3 +1108,119 @@ dialog .inventory-row small {
     transform: none;
   }
 }
+
+#valley {
+  position: absolute;
+  left: 24px;
+  top: 185px;
+  width: min(300px, calc(100vw - 48px));
+  pointer-events: auto;
+  color: #eadcb4;
+  font-size: 12px;
+}
+#valley-clock {
+  display: block;
+  padding: 6px 2px;
+  text-shadow: 1px 1px #20352f;
+}
+#valley-content {
+  max-height: calc(100vh - 390px);
+  overflow-y: auto;
+  padding: 14px;
+  background: #20352ff2;
+  border: 1px solid #8b8759;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px #10251d66;
+}
+#valley-content h3,
+#valley-content h4 {
+  margin: 10px 0 6px;
+}
+#valley-content p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #bcc6a9;
+}
+#valley-content label {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+#valley-content select {
+  width: 100%;
+  padding: 7px;
+  background: #344c39;
+  color: #f1dfac;
+  border: 1px solid #718062;
+}
+#valley button {
+  background: #30483b;
+  color: #f1dfb4;
+  border: 1px solid #80906b;
+  border-radius: 5px;
+  padding: 8px;
+  font-size: 12px;
+}
+#valley button[aria-pressed='true'] {
+  background: #68774b;
+  border-color: #d3ca8e;
+}
+.valley-tools,
+.valley-market {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.valley-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+.valley-item {
+  padding: 7px;
+  border: 1px solid #587057;
+  background: #344b37;
+  display: grid;
+  gap: 4px;
+  min-height: 48px;
+}
+.valley-item strong {
+  color: #f0d699;
+}
+#valley-status {
+  padding: 8px;
+  background: #20352f;
+  border: 1px solid #9c8e65;
+  border-radius: 6px;
+}
+@media (max-width: 700px) {
+  #valley {
+    top: 128px;
+    left: 12px;
+    width: 240px;
+  }
+  #valley-content {
+    max-height: calc(100vh - 340px);
+  }
+}
+
+.valley-item img {
+  image-rendering: pixelated;
+  float: left;
+  margin-right: 4px;
+}
+
+#valley button:disabled {
+  cursor: default;
+  opacity: 0.45;
+  filter: none;
+}
+.valley-tabs {
+  display: flex;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #63765b;
+}
+.valley-tabs button {
+  flex: 1;
+}
