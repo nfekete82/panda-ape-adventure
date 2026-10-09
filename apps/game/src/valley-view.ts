@@ -76,28 +76,54 @@ export class ValleyView {
         this.update();
       };
     }
+    // Farmyard is painted below crops, with no collision or savegame changes.
     const ground = scene.add.graphics().setDepth(0.5);
-    ground.fillStyle(0x785c3c, 0.92);
-    ground.fillRect(
-      FARM.x - 12,
-      FARM.y - 8,
-      FARM.columns * 32 + 24,
-      FARM.rows * 32 + 16,
-    );
-    ground.lineStyle(2, 0xbda177, 0.8);
+    const left = FARM.x - 32;
+    const top = FARM.y - 28;
+    const width = FARM.columns * FARM.tile + 64;
+    const height = FARM.rows * FARM.tile + 60;
+    ground.fillStyle(0x314e31, 0.58);
+    ground.fillRoundedRect(left - 5, top - 3, width + 10, height + 6, 14);
+    ground.fillStyle(0x82945b, 1);
+    ground.fillRoundedRect(left, top, width, height, 9);
+    ground.fillStyle(0xc3a16b, 1);
+    ground.fillRoundedRect(FARM.x - 20, FARM.y - 15, FARM.columns * 32 + 40, FARM.rows * 32 + 30, 7);
+    ground.fillStyle(0x8f6746, 1);
+    ground.fillRect(FARM.x - 5, FARM.y - 5, FARM.columns * 32 + 10, FARM.rows * 32 + 10);
     for (let cell = 0; cell < FARM.columns * FARM.rows; cell++) {
+      const col = cell % FARM.columns;
+      const row = Math.floor(cell / FARM.columns);
       const p = cellPoint(cell);
-      ground.fillStyle((Math.floor(cell / FARM.columns) + cell % FARM.columns) % 2 ? 0x765435 : 0x866341, 0.95);
-      ground.fillRect(p.x - 15, p.y - 15, 30, 30);
-      ground.strokeRect(p.x - 15, p.y - 15, 30, 30);
+      ground.fillStyle((row + col) % 2 ? 0x906442 : 0x9e704a, 1);
+      ground.fillRoundedRect(p.x - 15, p.y - 15, 30, 30, 3);
+      ground.lineStyle(1, 0xbb9060, 0.95);
+      ground.strokeRoundedRect(p.x - 15, p.y - 15, 30, 30, 3);
+      ground.lineStyle(1, 0x714d35, 0.35);
+      ground.lineBetween(p.x - 10, p.y - 5, p.x + 9, p.y - 5);
+      ground.lineBetween(p.x - 10, p.y + 5, p.x + 9, p.y + 5);
     }
+    // A welcoming fence with an opening on the south side.
+    for (let x = left + 10; x <= left + width - 10; x += 20) {
+      for (const y of [top + 3, top + height - 6]) {
+        if (y > top + height / 2 && Math.abs(x - (left + width / 2)) < 32) continue;
+        ground.fillStyle(0x6c492e, 1);
+        ground.fillRect(x - 2, y - 5, 5, 13);
+        ground.fillStyle(0xd4b27b, 1);
+        ground.fillRect(x - 2, y - 5, 3, 3);
+      }
+    }
+    ground.lineStyle(3, 0xa87b4b, 0.9);
+    ground.lineBetween(left + 8, top + 4, left + width - 8, top + 4);
+    ground.lineBetween(left + 8, top + height - 6, left + width / 2 - 34, top + height - 6);
+    ground.lineBetween(left + width / 2 + 34, top + height - 6, left + width - 8, top + height - 6);
     scene.add
-      .text(FARM.x + 128, FARM.y - 28, 'ROWAN’S GARDEN · F', {
+      .text(FARM.x + FARM.columns * 16, FARM.y - 42, '✿  WILD VALLEY FARM  ✿', {
         fontFamily: 'Georgia',
-        fontSize: '12px',
-        color: '#e5d39b',
-        stroke: '#20352f',
-        strokeThickness: 3,
+        fontSize: '13px',
+        fontStyle: 'bold',
+        color: '#fff0c5',
+        stroke: '#344b2d',
+        strokeThickness: 4,
       })
       .setOrigin(0.5)
       .setDepth(1190);
