@@ -324,6 +324,26 @@ export function paintCottage(c: Canvas, source: CanvasImageSource) {
   px(c, '#a17b4b', 41, 57, 14, 21);
   px(c, '#c39a60', 42, 58, 3, 19);
   px(c, '#f1d493', 51, 67, 2, 2);
+  // Layered eaves, masonry and warm light give the small cottage visual weight.
+  for (let row = 0; row < 7; row++) {
+    const y = 19 + row * 4;
+    const left = 43 - row * 5;
+    const width = 10 + row * 10;
+    px(c, '#774e37', left, y + 2, width, 2);
+    for (let shingle = left + 3; shingle < left + width - 2; shingle += 9)
+      px(c, row % 2 ? '#d4a471' : '#a8734e', shingle, y, 5, 2);
+  }
+  px(c, '#8b6347', 13, 74, 72, 3);
+  for (const x of [18, 29, 65, 76]) {
+    px(c, '#d8b787', x, 76, 5, 2);
+    px(c, '#67553f', x + 1, 78, 4, 2);
+  }
+  // Lantern beside the door and a narrow slate porch path.
+  px(c, '#5a5142', 56, 60, 5, 9);
+  px(c, '#f5d896', 57, 61, 3, 6);
+  px(c, '#e5a85c', 58, 62, 1, 4);
+  px(c, '#9c8c68', 36, 86, 24, 3);
+  px(c, '#d9c398', 38, 86, 19, 1);
   // Porch steps align with the retained door / smith interaction lane.
   px(c, '#72563b', 35, 78, 26, 5);
   px(c, '#d8ba81', 35, 78, 26, 2);
