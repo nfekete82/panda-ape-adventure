@@ -215,7 +215,7 @@ export class ValleyView {
         false;
       if (toolMatches) {
         const actor = this.player();
-        if (actor && distance(actor, resource) <= 72) this.send({ kind: 'gather', node });
+        if (actor && distance(actor, resource) <= 72) this.send({ kind: 'strike', node });
         else {
           this.pendingGather = node;
           this.navigate(resource.x, resource.y);
@@ -247,7 +247,7 @@ export class ValleyView {
       if (target && distance(p, target) <= 72) {
         const node = this.pendingGather;
         this.pendingGather = null;
-        this.send({ kind: 'gather', node });
+        this.send({ kind: 'strike', node });
       }
     }
     this.content.hidden = !this.open;
@@ -264,7 +264,8 @@ export class ValleyView {
     this.caches.forEach((cache, index) => {
       const depleted = (w.valley.nodes[index] ?? 0) >= w.valley.day;
       cache.setAlpha(depleted ? 0.28 : 1);
-      cache.setTint(depleted ? 0x748077 : 0xffffff);
+      const hits = w.valley.nodeHits?.[index] ?? 0;
+      cache.setTint(depleted ? 0x748077 : hits > 0 ? 0xf5c989 : 0xffffff);
     });
     const nearby = [
       distance(p, WORLD.npc) <= 90,
@@ -276,6 +277,7 @@ export class ValleyView {
       w.valley.plots,
       w.valley.buildings,
       w.valley.nodes,
+      w.valley.nodeHits,
       w.valley.day,
       nearby,
       this.tool,
