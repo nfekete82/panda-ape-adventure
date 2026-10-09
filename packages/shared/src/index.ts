@@ -375,7 +375,8 @@ export function damageEnemy(
           if (!hero.receipts.includes(receipt)) hero.receipts.push(receipt);
         }
       }
-      w.message = 'The guardian spirit has faded. Return to the Mossbound Shrine.';
+      w.message =
+        'The guardian spirit has faded. Return to the Mossbound Shrine.';
     }
     if (e.kind === 'guardian') {
       w.bossDefeated = true;
@@ -447,19 +448,23 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
       const defeated = `${w.instanceId}:shrine:sentinel`;
       const rewarded = `${w.instanceId}:shrine:rewarded`;
       if (p.receipts.includes(rewarded)) {
-        w.message = 'The Mossbound Shrine is at peace. Its emerald remembers you.';
+        w.message =
+          'The Mossbound Shrine is at peace. Its emerald remembers you.';
       } else if (!p.receipts.includes(awakened)) {
         p.receipts.push(awakened);
-        w.message = 'The mossy altar stirs: defeat the guardian spirit in the southern bamboo grove.';
+        w.message =
+          'The mossy altar stirs: defeat the guardian spirit in the southern bamboo grove.';
         effect(w, BAMBOO_SHRINE, 'magic', 78, 'SHRINE AWAKENED');
       } else if (!p.receipts.includes(defeated)) {
-        w.message = 'The shrine whispers: seek the guardian spirit south of the bridge.';
+        w.message =
+          'The shrine whispers: seek the guardian spirit south of the bridge.';
       } else {
         p.receipts.push(rewarded);
         grant(p, 'ancient', 1);
         grant(p, 'crystal', 6);
         if (awardXp(p, 75)) effect(w, p, 'heal', 50, 'LEVEL UP');
-        w.message = 'The shrine blesses you with an ancient relic, six crystals and 75 XP!';
+        w.message =
+          'The shrine blesses you with an ancient relic, six crystals and 75 XP!';
         effect(w, BAMBOO_SHRINE, 'magic', 100, 'SHRINE RESTORED');
       }
     }
