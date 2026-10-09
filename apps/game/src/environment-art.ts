@@ -596,7 +596,7 @@ function campDetails(ctx: CanvasRenderingContext2D) {
   ink(ctx, '#b4ad89', 544, 1163, 5, 5);
 }
 
-export function paintForestWorld(ctx: CanvasRenderingContext2D): void {
+export function paintForestWorld(ctx: CanvasRenderingContext2D, mini: HTMLImageElement | null = null): void {
   ctx.imageSmoothingEnabled = false;
   const rng = random(93104);
   ink(ctx, WOODLAND.shadow, 0, 0, WORLD.width, WORLD.height);
@@ -607,6 +607,16 @@ export function paintForestWorld(ctx: CanvasRenderingContext2D): void {
     const x = rng() * WORLD.width;
     const y = rng() * WORLD.height;
     ctx.fillRect(Math.floor(x / 16) * 16, Math.floor(y / 16) * 16, 32, 16);
+  }
+  // The uploaded CC0 Mini Farm grass sheet replaces the procedural meadow
+  // across the complete world. Roads, lakes and collision remain unchanged.
+  if (mini) {
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let y = 0; y < WORLD.height; y += 32)
+      for (let x = 0; x < WORLD.width; x += 32)
+        ctx.drawImage(mini, 0, 0, 32, 32, x, y, 32, 32);
+    ctx.restore();
   }
   // Sparse leaf litter ties trunks to the groves. Contact shadows belong to
   // the tree sprites, keeping the floor free of repeated circular patches.
