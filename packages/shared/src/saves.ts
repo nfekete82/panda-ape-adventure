@@ -168,11 +168,25 @@ export function migrateWorld(
   )
     return null;
   const legacy = value.respawn === undefined;
+  // Existing worlds predate the eastern guardian spirit. Add it at load time
+  // so long-lived solo/co-op saves can still complete the new shrine quest.
+  const shrineSentinel = createWorld().enemies.find(
+    (enemy) => enemy.id === 'enemy11',
+  );
+  const hasShrineSentinel = value.enemies.some(
+    (enemy: unknown) => record(enemy) && enemy.id === 'enemy11',
+  );
   const migrated = {
     ...value,
     instanceId:
       typeof value.instanceId === 'string' ? value.instanceId : instanceId,
-    respawn: value.respawn ?? createWorld().respawn,
+    respawn: (() => {
+      const config = parseRespawnConfig(value.respawn) ?? createWorld().respawn;
+      return {
+        ...config,
+        wisp: { ...config.wisp, maximum: Math.max(4, config.wisp.maximum) },
+      };
+    })(),
     players: value.players.map((p: unknown) => {
       if (
         !record(p) ||
@@ -189,22 +203,25 @@ export function migrateWorld(
           }
         : p;
     }),
-    enemies: value.enemies.map((e: unknown) =>
-      record(e)
-        ? {
-            respawnRemaining: 0,
-            generation: 0,
-            ...e,
-            ...(legacy &&
-            e.id === 'enemy5' &&
-            record(e.spawn) &&
-            e.spawn.x === 1120 &&
-            e.spawn.y === 800
-              ? { spawn: { x: 1080, y: 760 } }
-              : {}),
-          }
-        : e,
-    ),
+    enemies: [
+      ...value.enemies.map((e: unknown) =>
+        record(e)
+          ? {
+              respawnRemaining: 0,
+              generation: 0,
+              ...e,
+              ...(legacy &&
+              e.id === 'enemy5' &&
+              record(e.spawn) &&
+              e.spawn.x === 1120 &&
+              e.spawn.y === 800
+                ? { spawn: { x: 1080, y: 760 } }
+                : {}),
+            }
+          : e,
+      ),
+      ...(!hasShrineSentinel && shrineSentinel ? [shrineSentinel] : []),
+    ],
     loot: value.loot.map((l: unknown) =>
       record(l) ? { quantity: 1, ...l } : l,
     ),

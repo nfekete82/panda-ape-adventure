@@ -16,6 +16,7 @@ import {
   bambooObstacles,
   bambooRiverColliders,
   BAMBOO_WORLD_WIDTH,
+  BAMBOO_SHRINE,
 } from './bamboo-crossing.js';
 export * from './bamboo-crossing.js';
 export * from './rpg.js';
@@ -257,6 +258,8 @@ export function createWorld(respawn = RESPAWN): World {
     ['slime', 650, 500],
     ['wisp', 1300, 300],
     ['guardian', 1580, 340],
+    // Ancient shrine sentinel: familiar wisp combat, unique encounter location.
+    ['wisp', 2540, 610],
   ];
   return {
     tick: 0,
@@ -365,6 +368,16 @@ export function damageEnemy(
       if (awardXp(p, e.kind === 'guardian' ? 150 : 25))
         effect(w, p, 'heal', 55, 'LEVEL UP');
     }
+    if (e.id === 'enemy11') {
+      for (const hero of w.players) {
+        if (hero.receipts.includes(`${w.instanceId}:shrine:awakened`)) {
+          const receipt = `${w.instanceId}:shrine:sentinel`;
+          if (!hero.receipts.includes(receipt)) hero.receipts.push(receipt);
+        }
+      }
+      w.message =
+        'The guardian spirit has faded. Return to the Mossbound Shrine.';
+    }
     if (e.kind === 'guardian') {
       w.bossDefeated = true;
       w.message = 'The Thorn Guardian has fallen. Emerald Forest is safe.';
@@ -429,6 +442,31 @@ export function step(w: World, inputs: Map<string, Input>, dt: number): void {
       p.potions--;
       p.hp = Math.min(p.maxHp, p.hp + 70);
       effect(w, p, 'heal', 32, '+70');
+    }
+    if (input.interact && distance(p, BAMBOO_SHRINE) < 106) {
+      const awakened = `${w.instanceId}:shrine:awakened`;
+      const defeated = `${w.instanceId}:shrine:sentinel`;
+      const rewarded = `${w.instanceId}:shrine:rewarded`;
+      if (p.receipts.includes(rewarded)) {
+        w.message =
+          'The Mossbound Shrine is at peace. Its emerald remembers you.';
+      } else if (!p.receipts.includes(awakened)) {
+        p.receipts.push(awakened);
+        w.message =
+          'The mossy altar stirs: defeat the guardian spirit in the southern bamboo grove.';
+        effect(w, BAMBOO_SHRINE, 'magic', 78, 'SHRINE AWAKENED');
+      } else if (!p.receipts.includes(defeated)) {
+        w.message =
+          'The shrine whispers: seek the guardian spirit south of the bridge.';
+      } else {
+        p.receipts.push(rewarded);
+        grant(p, 'ancient', 1);
+        grant(p, 'crystal', 6);
+        if (awardXp(p, 75)) effect(w, p, 'heal', 50, 'LEVEL UP');
+        w.message =
+          'The shrine blesses you with an ancient relic, six crystals and 75 XP!';
+        effect(w, BAMBOO_SHRINE, 'magic', 100, 'SHRINE RESTORED');
+      }
     }
     if (input.interact && distance(p, WORLD.npc) < 90) {
       if (w.quest === 'available') {

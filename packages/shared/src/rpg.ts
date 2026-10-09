@@ -37,7 +37,7 @@ export const RESPAWN: Record<
 > = {
   slime: { seconds: 20, maximum: 4, safeDistance: 160 },
   wolf: { seconds: 30, maximum: 3, safeDistance: 180 },
-  wisp: { seconds: 40, maximum: 3, safeDistance: 180 },
+  wisp: { seconds: 40, maximum: 4, safeDistance: 180 },
   guardian: { seconds: 0, maximum: 1, safeDistance: 400 },
 };
 export const WEAPONS = {
