@@ -1,5 +1,6 @@
 import { applyValleyAction, type ValleyAction } from '@panda/shared';
 import { ValleyView } from './valley-view';
+import { MINI_FARM_HOUSE_DATA } from './mini-farm-house';
 import { weatherForDay } from '@panda/shared';
 import { findClickPath, type Waypoint } from './click-path';
 import Phaser from 'phaser';
@@ -809,6 +810,7 @@ class ForestScene extends Phaser.Scene {
   preload() {
     preloadHeroSheets(this);
     preloadVendorArt(this);
+    this.load.image('mini-farm-cottage', MINI_FARM_HOUSE_DATA);
   }
   create() {
     scene = this; // eslint-disable-line @typescript-eslint/no-this-alias
@@ -822,6 +824,7 @@ class ForestScene extends Phaser.Scene {
       navigateTo,
     );
     this.add.image(0, 0, 'forest').setOrigin(0);
+    this.add.image(323, 974, 'mini-farm-cottage').setOrigin(0.5, 1).setScale(2.35).setDepth(974);
     for (const o of obstacles) {
       if (o.kind !== 'tree') continue;
       const footX = o.x + o.w / 2;
