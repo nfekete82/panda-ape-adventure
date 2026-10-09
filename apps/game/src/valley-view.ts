@@ -9,6 +9,7 @@ import {
   RECIPE_IDS,
   RECIPES,
   RESOURCE_NODES,
+  obstacles,
   cellPoint,
   plotStage,
   placementError,
@@ -40,6 +41,7 @@ export class ValleyView {
   private previousNodes: number[] | null = null;
   private previousHits: number[] | null = null;
   private pendingGather: number | null = null;
+  private pendingTree: number | null = null;
   private readonly preview: Phaser.GameObjects.Graphics;
   constructor(
     private scene: Phaser.Scene,
@@ -62,6 +64,7 @@ export class ValleyView {
       button.onclick = () => {
         this.tool = button.dataset.quickTool as Tool;
         this.pendingGather = null;
+        this.pendingTree = null;
         this.open = false;
         this.signature = '';
         this.preview.clear();
@@ -206,6 +209,21 @@ export class ValleyView {
   }
   pointer(x: number, y: number): boolean {
     if (!this.working) return false;
+    if (this.tool === 'axe') {
+      const tree = obstacles.findIndex((o, i) => o.kind === 'tree' && !this.world().valley.felledTrees?.includes(i) && x >= o.x - 25 && x <= o.x + o.w + 25 && y >= o.y - 90 && y <= o.y + o.h + 15);
+      if (tree >= 0) {
+        const trunk = obstacles[tree]!;
+        const at = { x: trunk.x + trunk.w / 2, y: trunk.y + trunk.h / 2 };
+        const actor = this.player();
+        if (actor && distance(actor, at) <= 85) this.send({ kind: 'chopTree', tree });
+        else {
+          this.pendingTree = tree;
+          this.navigate(at.x + trunk.w / 2 + 40, at.y);
+          this.feedback('Walking to the tree…');
+        }
+        return true;
+      }
+    }
     const node = RESOURCE_NODES.findIndex(
       (resource) => Math.hypot(resource.x - x, resource.y - y) < 24,
     );
@@ -260,6 +278,15 @@ export class ValleyView {
     const w = this.world(),
       p = this.player();
     if (!p) return;
+    if (this.pendingTree !== null) {
+      const tree = obstacles[this.pendingTree];
+      if (!tree || w.valley.felledTrees?.includes(this.pendingTree)) this.pendingTree = null;
+      else if (distance(p, { x: tree.x + tree.w / 2, y: tree.y + tree.h / 2 }) <= 85) {
+        const selected = this.pendingTree;
+        this.pendingTree = null;
+        this.send({ kind: 'chopTree', tree: selected });
+      }
+    }
     if (this.pendingGather !== null) {
       const target = RESOURCE_NODES[this.pendingGather];
       if (target && distance(p, target) <= 72) {
