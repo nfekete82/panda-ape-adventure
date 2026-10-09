@@ -290,13 +290,32 @@ export class ValleyView {
       this.feedback('Choose a tile in Rowan’s garden, south of the camp.');
       return true;
     }
-    if (this.tool === 'plant')
+    if (this.tool === 'plant') {
       this.send({ kind: 'plant', cell, crop: this.crop });
-    else if (this.tool === 'build')
+      this.farmActionEffect(cell, 'plant');
+    } else if (this.tool === 'build')
       this.send({ kind: 'build', cell, recipe: this.recipe });
-    else if (this.tool !== 'none') this.send({ kind: this.tool, cell });
+    else if (this.tool === 'hoe' || this.tool === 'water' || this.tool === 'harvest') {
+      this.send({ kind: this.tool, cell });
+      this.farmActionEffect(cell, this.tool);
+    } else if (this.tool === 'remove') this.send({ kind: 'remove', cell });
     this.previewAt(x, y);
     return true;
+  }
+  private farmActionEffect(cell: number, action: 'hoe' | 'plant' | 'water' | 'harvest') {
+    const at = cellPoint(cell);
+    const symbols = { hoe: '✦', plant: '🌱', water: '💧', harvest: '✿' } as const;
+    const visual = this.scene.add.text(at.x, at.y - 16, symbols[action], {
+      fontSize: '17px', stroke: '#314c38', strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(at.y + 35);
+    this.scene.tweens.add({
+      targets: visual,
+      y: at.y - 39,
+      alpha: 0,
+      duration: 540,
+      ease: 'Sine.easeOut',
+      onComplete: () => visual.destroy(),
+    });
   }
   private strikeEffect(index: number, finished: boolean) {
     const node = RESOURCE_NODES[index];
