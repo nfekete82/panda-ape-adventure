@@ -1,4 +1,3 @@
-import { paintMiniFarmGrass } from './mini-farm-tiles';
 import { WOODLAND, pixelOval } from './world-style';
 import { regionLight } from './world-composition';
 import {
@@ -195,31 +194,12 @@ function shoreline(
   polygon(ctx, ring(29), WOODLAND.leafDark);
   polygon(ctx, ring(19), '#628454');
   polygon(ctx, ring(7), '#a2a078');
-  polygon(ctx, ring(3), '#20d6c7');
-  polygon(ctx, [...points], '#249fde');
-  polygon(ctx, ring(-8), '#249fde');
-  polygon(ctx, ring(-19), '#285cc4');
-  polygon(ctx, ring(-34), '#285cc4');
-  polygon(ctx, ring(-52), '#234c9b');
-  // CC0 water texture fills only the inner lake and keeps the original bank shape.
-  if (mini) {
-    ctx.save();
-    ctx.beginPath();
-    points.forEach((p, i) => {
-      if (i === 0) ctx.moveTo(p.x, p.y);
-      else ctx.lineTo(p.x, p.y);
-    });
-    ctx.closePath();
-    ctx.clip();
-    const left = Math.floor(Math.min(...points.map((p) => p.x)) / 32) * 32;
-    const topY = Math.floor(Math.min(...points.map((p) => p.y)) / 32) * 32;
-    const right = Math.max(...points.map((p) => p.x));
-    const bottomY = Math.max(...points.map((p) => p.y));
-    for (let y = topY; y <= bottomY; y += 32)
-      for (let x = left; x <= right; x += 32)
-        ctx.drawImage(mini, 96, 0, 32, 32, x, y, 32, 32);
-    ctx.restore();
-  }
+  polygon(ctx, ring(3), '#749d86');
+  polygon(ctx, [...points], '#559494');
+  polygon(ctx, ring(-8), '#48868b');
+  polygon(ctx, ring(-19), '#3e7881');
+  polygon(ctx, ring(-34), '#396f7c');
+  polygon(ctx, ring(-52), '#356978');
   const top = Math.min(...points.map((p) => p.y));
   const bottom = Math.max(...points.map((p) => p.y));
   for (let i = 0; i < 36; i++) {
@@ -621,22 +601,19 @@ export function paintForestWorld(ctx: CanvasRenderingContext2D, mini: HTMLImageE
   const rng = random(93104);
   ink(ctx, WOODLAND.shadow, 0, 0, WORLD.width, WORLD.height);
   // Mini Farm CC0 grass base. Large-scale meadow highlights break repeated tile edges.
-  paintMiniFarmGrass(ctx, WORLD.width, WORLD.height);
+  // Calm meadow palette; isolated Mini Farm atlas tiles are too high-contrast for the existing world.
+  const meadow = ['#365846', '#3c604a', '#42674e', '#4b6e50', '#537653', '#5b7b56'];
+  for (let y = 0; y < WORLD.height; y += 8)
+    for (let x = 0; x < WORLD.width; x += 8) {
+      const n = Math.sin(x * 0.009 + y * 0.005) + Math.cos(y * 0.013 - x * 0.004);
+      const idx = Math.max(0, Math.min(5, Math.floor(2.5 + n * 0.9)));
+      ink(ctx, meadow[idx]!, x, y, 8, 8);
+    }
   ctx.fillStyle = 'rgba(47, 139, 52, 0.07)';
   for (let n = 0; n < 120; n++) {
     const x = rng() * WORLD.width;
     const y = rng() * WORLD.height;
     ctx.fillRect(Math.floor(x / 16) * 16, Math.floor(y / 16) * 16, 32, 16);
-  }
-  // The uploaded CC0 Mini Farm grass sheet replaces the procedural meadow
-  // across the complete world. Roads, lakes and collision remain unchanged.
-  if (mini) {
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    for (let y = 0; y < WORLD.height; y += 32)
-      for (let x = 0; x < WORLD.width; x += 32)
-        ctx.drawImage(mini, 0, 0, 32, 32, x, y, 32, 32);
-    ctx.restore();
   }
   // Sparse leaf litter ties trunks to the groves. Contact shadows belong to
   // the tree sprites, keeping the floor free of repeated circular patches.
@@ -681,7 +658,7 @@ export function paintForestWorld(ctx: CanvasRenderingContext2D, mini: HTMLImageE
         ctx.drawImage(mini, 32, 0, 32, 32, x, y, 32, 32);
     ctx.restore();
   }
-  for (const lake of lakes) shoreline(ctx, lake, rng, mini);
+  for (const lake of lakes) shoreline(ctx, lake, rng);
   for (const o of obstacles) if (o.kind === 'rock') boulders(ctx, o);
   // Much less noise than the original checkerboard-like forest scatter.
   for (let i = 0; i < 360; i++) {
