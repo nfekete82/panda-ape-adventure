@@ -55,7 +55,7 @@ export function paintMiniFarmTree(ctx: CanvasRenderingContext2D) {
       const count = Number(token.slice(1));
       if (code !== 'A') {
         ctx.fillStyle = COLORS[code]!;
-        ctx.fillRect(7 + x * 3, 20 + y * 3, count * 3, 3);
+        ctx.fillRect(7 + x * 3, 43 + y * 3, count * 3, 3);
       }
       x += count;
     }
