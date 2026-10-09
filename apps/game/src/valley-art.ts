@@ -304,6 +304,29 @@ export function paintCottage(c: Canvas, source: CanvasImageSource) {
   px(c, '#e5a85c', 58, 62, 1, 4);
   px(c, '#9c8c68', 36, 86, 24, 3);
   px(c, '#d9c398', 38, 86, 19, 1);
+  // Larger warm-colored timber accents, flowering window boxes and porch awning.
+  px(c, '#4e3d30', 7, 46, 82, 4);
+  px(c, '#edd09a', 9, 46, 78, 2);
+  for (const x of [18, 62]) {
+    px(c, '#775137', x-2, 69, 22, 4);
+    px(c, '#c89b61', x, 69, 18, 3);
+    px(c, '#496d47', x+1, 66, 16, 5);
+    for(const dx of [3,9,15]) {
+      px(c, '#e6a0a7', x+dx, 64, 3, 3);
+      px(c, '#f4ddaf', x+dx+1, 65, 1, 1);
+    }
+  }
+  px(c, '#79543a', 34, 52, 28, 3);
+  px(c, '#d3ac73', 35, 52, 26, 1);
+  for (const x of [36,58]) {
+    px(c, '#6c5036', x, 55, 3, 25);
+    px(c, '#e9bc82', x, 55, 1, 22);
+  }
+  // Front doorstep and small flagstone run toward the path.
+  for (const [x,y,w] of [[38,86,19],[33,89,29],[29,92,38]] as const) {
+    px(c, '#6f735c', x, y+1, w, 3);
+    px(c, '#d2c29a', x+1, y, w-2, 2);
+  }
   // Porch steps align with the retained door / smith interaction lane.
   px(c, '#72563b', 35, 78, 26, 5);
   px(c, '#d8ba81', 35, 78, 26, 2);
