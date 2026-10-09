@@ -134,6 +134,8 @@ export interface Valley {
   nodes: number[];
   /** Hits this game day; optional to retain compatibility with older saved settlements. */
   nodeHits?: number[];
+  felledTrees?: number[];
+  treeHits?: Record<string, number>;
 }
 export function createValley(): Valley {
   return {
@@ -162,6 +164,8 @@ export function createValley(): Valley {
     buildings: [],
     nodes: [0, 0, 0, 0],
     nodeHits: [0, 0, 0, 0],
+    felledTrees: [],
+    treeHits: {},
   };
 }
 export function cellPoint(cell: number) {
@@ -216,6 +220,7 @@ export type ValleyAction =
   | { kind: 'plant'; cell: number; crop: Crop }
   | { kind: 'build'; cell: number; recipe: Recipe }
   | { kind: 'gather' | 'strike'; node: number }
+  | { kind: 'chopTree'; tree: number }
   | { kind: 'buy' | 'sell'; item: ValleyItem; count: number };
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
@@ -238,6 +243,7 @@ export function parseValleyAction(v: unknown): ValleyAction | null {
     return { kind: v.kind, item: v.item, count: v.count };
   if ((v.kind === 'gather' || v.kind === 'strike') && exact(['kind', 'node']) && integer(v.node, 0, 3))
     return { kind: v.kind, node: v.node };
+  if (v.kind === 'chopTree' && exact(['kind', 'tree']) && integer(v.tree, 0, obstacles.length - 1) && obstacles[v.tree]?.kind === 'tree') return { kind: 'chopTree', tree: v.tree };
   if (!integer(v.cell, 0, FARM.columns * FARM.rows - 1)) return null;
   if (
     (v.kind === 'hoe' ||
@@ -303,7 +309,23 @@ export function applyValleyAction(
   p.commandSeq = seq;
   if (!p.connected || p.hp <= 0) return 'Your hero cannot work right now.';
   const v = w.valley;
-  if (a.kind === 'buy' || a.kind === 'sell') {
+  if (a.kind === 'chopTree') {
+    const tree = obstacles[a.tree];
+    if (!tree || tree.kind !== 'tree') return 'Invalid tree.';
+    if (v.felledTrees?.includes(a.tree)) return 'Tree already felled.';
+    const cx = tree.x + tree.w / 2;
+    const cy = tree.y + tree.h / 2;
+    if (Math.hypot(p.x - cx, p.y - cy) > 90) return 'Move closer to the tree.';
+    v.treeHits ??= {};
+    const hit = (v.treeHits[String(a.tree)] ?? 0) + 1;
+    if (hit >= 3) {
+      if (v.bag.wood > 9995) return 'Shared storage is full.';
+      v.felledTrees ??= [];
+      v.felledTrees.push(a.tree);
+      delete v.treeHits[String(a.tree)];
+      v.bag.wood += 4;
+    } else v.treeHits[String(a.tree)] = hit;
+  } else if (a.kind === 'buy' || a.kind === 'sell') {
     if (distance(p, WORLD.npc) > 90) return 'Visit Rowan to trade.';
     const product = ITEMS[a.item],
       price = a.kind === 'buy' ? product.buy : product.sell;
@@ -455,6 +477,8 @@ export function isValley(value: unknown): value is Valley {
     !value.nodes.every((n) => integer(n, 0, Number(value.day)))
   )
     return false;
+  if (value.felledTrees !== undefined && (!Array.isArray(value.felledTrees) || value.felledTrees.length > obstacles.length || !value.felledTrees.every((n) => integer(n, 0, obstacles.length - 1) && obstacles[n]?.kind === 'tree') || new Set(value.felledTrees).size !== value.felledTrees.length)) return false;
+  if (value.treeHits !== undefined && (!record(value.treeHits) || Object.keys(value.treeHits).length > obstacles.length || !Object.entries(value.treeHits).every(([key, hit]) => /^\\d+$/.test(key) && integer(Number(key), 0, obstacles.length - 1) && obstacles[Number(key)]?.kind === 'tree' && integer(hit, 1, 2) && !value.felledTrees?.includes(Number(key))))) return false;
   if (value.nodeHits !== undefined && (!Array.isArray(value.nodeHits) || value.nodeHits.length !== 4 || !value.nodeHits.every((n) => integer(n, 0, 3)))) return false;
   if (
     !Array.isArray(value.plots) ||
