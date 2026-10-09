@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import {
   FARM,
   DAY_SECONDS,
+  weatherForDay,
   CROP_IDS,
   CROPS,
   ITEMS,
@@ -302,7 +303,10 @@ export class ValleyView {
     this.content.hidden = !this.open;
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-quick-tool]'))
       button.setAttribute('aria-pressed', String(button.dataset.quickTool === this.tool));
-    this.clock.textContent = `Day ${w.valley.day} · ${Math.ceil(DAY_SECONDS - w.valley.elapsed)}s · ${w.valley.gold} gold`;
+    const weather = w.valley.weather ?? weatherForDay(w.valley.day);
+    const weatherLabel = weather === 'rain' ? '🌧 Rain' : weather === 'cloudy' ? '☁ Cloudy' : '☀ Sunny';
+    this.clock.textContent = `Day ${w.valley.day} · ${weatherLabel} · ${Math.ceil(DAY_SECONDS - w.valley.elapsed)}s · ${w.valley.gold} gold`;
+    this.root.dataset.weather = weather;
     this.root.dataset.gold = String(w.valley.gold);
     this.root.dataset.day = String(w.valley.day);
     this.root.dataset.ripe = String(
@@ -338,6 +342,7 @@ export class ValleyView {
       w.valley.nodes,
       w.valley.nodeHits,
       w.valley.toolLevels,
+      w.valley.weather,
       w.valley.day,
       nearby,
       this.tool,
@@ -396,7 +401,7 @@ export class ValleyView {
       }
     }
     if (!this.open) return;
-    this.content.innerHTML = `<h3>Our woodland home</h3><nav class="valley-tabs" aria-label="Wild Valley menus">${(['garden', 'supplies', 'market'] as const).map((tab) => `<button data-tab="${tab}" aria-pressed="${tab === this.tab}">${tab === 'garden' ? 'Garden' : tab === 'supplies' ? 'Supplies' : 'Market'}</button>`).join('')}</nav><section ${this.tab === 'garden' ? '' : 'hidden'}><p>Select a tool, then click a nearby garden tile. Dry crops wait safely; days last 45 seconds.</p>
+    this.content.innerHTML = `<h3>Our woodland home</h3><nav class="valley-tabs" aria-label="Wild Valley menus">${(['garden', 'supplies', 'market'] as const).map((tab) => `<button data-tab="${tab}" aria-pressed="${tab === this.tab}">${tab === 'garden' ? 'Garden' : tab === 'supplies' ? 'Supplies' : 'Market'}</button>`).join('')}</nav><section ${this.tab === 'garden' ? '' : 'hidden'}><p>Select a tool, then click a nearby garden tile. Rain automatically waters growing crops. Dry crops wait safely; days last 45 seconds.</p>
       <div class="valley-tools">${(['none', 'axe', 'sapling', 'pickaxe', 'hoe', 'plant', 'water', 'harvest', 'build', 'remove'] as const).map((tool) => `<button data-tool="${tool}" aria-pressed="${tool === this.tool}">${tool === 'none' ? 'Explore' : tool === 'axe' ? 'Axe · wood' : tool === 'sapling' ? 'Sapling · 2 fibre' : tool === 'pickaxe' ? 'Pickaxe · stone/ore' : tool === 'remove' ? 'Remove furniture' : tool}</button>`).join('')}</div>
       <label>Seed <select id="valley-seed">${CROP_IDS.map((crop) => `<option value="${crop}" ${this.crop === crop ? 'selected' : ''}>${CROPS[crop].name} · ${CROPS[crop].days} day(s) · ${w.valley.bag[CROPS[crop].seed]} seeds</option>`).join('')}</select></label>
       <label>Build <select id="valley-recipe">${RECIPE_IDS.map((recipe) => `<option value="${recipe}" ${recipe === this.recipe ? 'selected' : ''}>${RECIPES[recipe].name}</option>`).join('')}</select></label>
