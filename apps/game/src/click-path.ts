@@ -12,7 +12,7 @@ export function findClickPath(start: Waypoint, target: Waypoint, world: World): 
   const blocked = new Uint8Array(COLS * ROWS);
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const at = point(c, r);
-    if (obstacles.some(o => at.x >= o.x - 17 && at.x <= o.x + o.w + 17 && at.y >= o.y - 17 && at.y <= o.y + o.h + 17) || buildingCollision(world, at.x, at.y, 16)) blocked[r * COLS + c] = 1;
+    if (obstacles.some(o => at.x >= o.x - 17 && at.x <= o.x + o.w + 17 && at.y >= o.y - 17 && at.y <= o.y + o.h + 17) || buildingCollision(world.valley, at.x, at.y, 16)) blocked[r * COLS + c] = 1;
   }
   const index = (p: Waypoint) => Math.max(0, Math.min(ROWS - 1, Math.floor(p.y / SIZE))) * COLS + Math.max(0, Math.min(COLS - 1, Math.floor(p.x / SIZE)));
   const source = index(start), goal = index(target);
