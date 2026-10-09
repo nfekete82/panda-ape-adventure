@@ -21,7 +21,7 @@ import {
   type Player,
   type ValleyAction,
 } from '@panda/shared';
-type Tool = 'none' | 'axe' | 'pickaxe' | 'hoe' | 'plant' | 'water' | 'harvest' | 'build' | 'remove';
+type Tool = 'none' | 'axe' | 'sapling' | 'pickaxe' | 'hoe' | 'plant' | 'water' | 'harvest' | 'build' | 'remove';
 export class ValleyView {
   private tool: Tool = 'none';
   private crop: Crop = 'carrot';
@@ -42,6 +42,7 @@ export class ValleyView {
   private previousHits: number[] | null = null;
   private pendingGather: number | null = null;
   private pendingTree: number | null = null;
+  private pendingTreeAction: 'chopTree' | 'clearStump' | 'plantSapling' = 'chopTree';
   private readonly preview: Phaser.GameObjects.Graphics;
   constructor(
     private scene: Phaser.Scene,
@@ -53,7 +54,7 @@ export class ValleyView {
     this.root = document.createElement('section');
     this.root.id = 'valley';
     this.root.innerHTML =
-      '<div class="valley-summary"><button id="valley-toggle" aria-label="Open farm management">☰ Farm · F</button><span id="valley-clock"></span></div><div id="valley-content" hidden></div><div id="valley-hotbar" role="toolbar" aria-label="Farming tools"><button data-quick-tool="none" title="Explore">✋</button><button data-quick-tool="axe" title="Axe · Chop wood">🪓</button><button data-quick-tool="pickaxe" title="Pickaxe · Mine stone and ore">⛏️</button><button data-quick-tool="hoe" title="Hoe">▦</button><button data-quick-tool="plant" title="Plant">🌱</button><button data-quick-tool="water" title="Water">💧</button><button data-quick-tool="harvest" title="Harvest">🌾</button><button data-quick-tool="build" title="Build">🔨</button><button data-quick-tool="remove" title="Remove furniture">✕</button></div><p id="valley-status" role="status" hidden></p>';
+      '<div class="valley-summary"><button id="valley-toggle" aria-label="Open farm management">☰ Farm · F</button><span id="valley-clock"></span></div><div id="valley-content" hidden></div><div id="valley-hotbar" role="toolbar" aria-label="Farming tools"><button data-quick-tool="none" title="Explore">✋</button><button data-quick-tool="axe" title="Axe · Chop trees and clear stumps">🪓</button><button data-quick-tool="sapling" title="Plant sapling · 2 fibre">🌳</button><button data-quick-tool="pickaxe" title="Pickaxe · Mine stone and ore">⛏️</button><button data-quick-tool="hoe" title="Hoe">▦</button><button data-quick-tool="plant" title="Plant">🌱</button><button data-quick-tool="water" title="Water">💧</button><button data-quick-tool="harvest" title="Harvest">🌾</button><button data-quick-tool="build" title="Build">🔨</button><button data-quick-tool="remove" title="Remove furniture">✕</button></div><p id="valley-status" role="status" hidden></p>';
     document.getElementById('hud')!.append(this.root);
     this.content = this.root.querySelector('#valley-content')!;
     this.status = this.root.querySelector('#valley-status')!;
@@ -209,15 +210,18 @@ export class ValleyView {
   }
   pointer(x: number, y: number): boolean {
     if (!this.working) return false;
-    if (this.tool === 'axe') {
-      const tree = obstacles.findIndex((o, i) => o.kind === 'tree' && !this.world().valley.felledTrees?.includes(i) && x >= o.x - 25 && x <= o.x + o.w + 25 && y >= o.y - 90 && y <= o.y + o.h + 15);
+    if (this.tool === 'axe' || this.tool === 'sapling') {
+      const valley = this.world().valley;
+      const tree = obstacles.findIndex((o, i) => o.kind === 'tree' && (valley.felledTrees?.includes(i) ? (this.tool === 'sapling' ? valley.clearedStumps?.includes(i) && valley.saplings?.[String(i)] === undefined : !valley.clearedStumps?.includes(i)) : this.tool === 'axe') && x >= o.x - 25 && x <= o.x + o.w + 25 && y >= (valley.felledTrees?.includes(i) ? o.y - 20 : o.y - 90) && y <= o.y + o.h + 15);
       if (tree >= 0) {
         const trunk = obstacles[tree]!;
         const at = { x: trunk.x + trunk.w / 2, y: trunk.y + trunk.h / 2 };
         const actor = this.player();
-        if (actor && distance(actor, at) <= 85) this.send({ kind: 'chopTree', tree });
+        const kind = valley.felledTrees?.includes(tree) ? (this.tool === 'sapling' ? 'plantSapling' : 'clearStump') : 'chopTree';
+        if (actor && distance(actor, at) <= 85) this.send({ kind, tree });
         else {
           this.pendingTree = tree;
+          this.pendingTreeAction = kind;
           this.navigate(at.x + trunk.w / 2 + 40, at.y);
           this.feedback('Walking to the tree…');
         }
@@ -284,7 +288,7 @@ export class ValleyView {
       else if (distance(p, { x: tree.x + tree.w / 2, y: tree.y + tree.h / 2 }) <= 85) {
         const selected = this.pendingTree;
         this.pendingTree = null;
-        this.send({ kind: 'chopTree', tree: selected });
+        this.send({ kind: this.pendingTreeAction, tree: selected });
       }
     }
     if (this.pendingGather !== null) {
@@ -392,7 +396,7 @@ export class ValleyView {
     }
     if (!this.open) return;
     this.content.innerHTML = `<h3>Our woodland home</h3><nav class="valley-tabs" aria-label="Wild Valley menus">${(['garden', 'supplies', 'market'] as const).map((tab) => `<button data-tab="${tab}" aria-pressed="${tab === this.tab}">${tab === 'garden' ? 'Garden' : tab === 'supplies' ? 'Supplies' : 'Market'}</button>`).join('')}</nav><section ${this.tab === 'garden' ? '' : 'hidden'}><p>Select a tool, then click a nearby garden tile. Dry crops wait safely; days last 45 seconds.</p>
-      <div class="valley-tools">${(['none', 'axe', 'pickaxe', 'hoe', 'plant', 'water', 'harvest', 'build', 'remove'] as const).map((tool) => `<button data-tool="${tool}" aria-pressed="${tool === this.tool}">${tool === 'none' ? 'Explore' : tool === 'axe' ? 'Axe · wood' : tool === 'pickaxe' ? 'Pickaxe · stone/ore' : tool === 'remove' ? 'Remove furniture' : tool}</button>`).join('')}</div>
+      <div class="valley-tools">${(['none', 'axe', 'sapling', 'pickaxe', 'hoe', 'plant', 'water', 'harvest', 'build', 'remove'] as const).map((tool) => `<button data-tool="${tool}" aria-pressed="${tool === this.tool}">${tool === 'none' ? 'Explore' : tool === 'axe' ? 'Axe · wood' : tool === 'sapling' ? 'Sapling · 2 fibre' : tool === 'pickaxe' ? 'Pickaxe · stone/ore' : tool === 'remove' ? 'Remove furniture' : tool}</button>`).join('')}</div>
       <label>Seed <select id="valley-seed">${CROP_IDS.map((crop) => `<option value="${crop}" ${this.crop === crop ? 'selected' : ''}>${CROPS[crop].name} · ${CROPS[crop].days} day(s) · ${w.valley.bag[CROPS[crop].seed]} seeds</option>`).join('')}</select></label>
       <label>Build <select id="valley-recipe">${RECIPE_IDS.map((recipe) => `<option value="${recipe}" ${recipe === this.recipe ? 'selected' : ''}>${RECIPES[recipe].name}</option>`).join('')}</select></label>
       <p>${RECIPES[this.recipe].gold} gold · ${ITEM_IDS.filter(
@@ -441,6 +445,7 @@ export class ValleyView {
         if (
           value === 'none' ||
           value === 'axe' ||
+          value === 'sapling' ||
           value === 'pickaxe' ||
           value === 'hoe' ||
           value === 'plant' ||
