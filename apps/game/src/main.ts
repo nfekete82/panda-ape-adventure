@@ -785,6 +785,7 @@ class ForestScene extends Phaser.Scene {
   vegetation: Phaser.GameObjects.Sprite[] = [];
   private observedFelled = new Set<number>();
   private stumps = new Map<number, Phaser.GameObjects.Graphics>();
+  private saplingSprites = new Map<number, Phaser.GameObjects.Graphics>();
   private treeFallInProgress = new Set<number>();
   private initialTreeState = true;
   sprites = new Map<string, Phaser.GameObjects.Sprite>();
@@ -1014,7 +1015,7 @@ class ForestScene extends Phaser.Scene {
       const sprite = this.vegetation[treeSprite++];
       if (!sprite) return;
       if (felled.has(index)) {
-        if (!this.stumps.has(index)) {
+        if (!world.valley.clearedStumps?.includes(index) && !this.stumps.has(index)) {
           const x = obstacle.x + obstacle.w / 2;
           const y = obstacle.y + obstacle.h;
           const stump = this.add.graphics().setDepth(y - 1);
@@ -1022,6 +1023,18 @@ class ForestScene extends Phaser.Scene {
           stump.fillStyle(0xb68a57, 1).fillEllipse(x, y - 5, 21, 8);
           stump.lineStyle(1, 0x684426, 0.9).strokeEllipse(x, y - 5, 14, 5);
           this.stumps.set(index, stump);
+        }
+        if (world.valley.clearedStumps?.includes(index)) {
+          this.stumps.get(index)?.destroy();
+          this.stumps.delete(index);
+        }
+        if (world.valley.saplings?.[String(index)] !== undefined && !this.saplingSprites.has(index)) {
+          const x = obstacle.x + obstacle.w / 2, y = obstacle.y + obstacle.h;
+          const sprout = this.add.graphics().setDepth(y);
+          sprout.lineStyle(3, 0x519345).lineBetween(x, y, x, y - 19);
+          sprout.fillStyle(0x78bc59).fillEllipse(x - 6, y - 15, 13, 6);
+          sprout.fillEllipse(x + 6, y - 19, 13, 6);
+          this.saplingSprites.set(index, sprout);
         }
         if (!this.observedFelled.has(index)) {
           this.observedFelled.add(index);
@@ -1043,6 +1056,10 @@ class ForestScene extends Phaser.Scene {
         sprite.setVisible(true).setAngle(0).setAlpha(1);
         this.stumps.get(index)?.destroy();
         this.stumps.delete(index);
+      }
+      if (!felled.has(index) || world.valley.saplings?.[String(index)] === undefined) {
+        this.saplingSprites.get(index)?.destroy();
+        this.saplingSprites.delete(index);
       }
     });
     this.initialTreeState = false;
