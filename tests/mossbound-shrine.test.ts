@@ -10,7 +10,10 @@ import {
   step,
 } from '@panda/shared';
 
-const interact = (world: ReturnType<typeof createWorld>, player: ReturnType<typeof createPlayer>) => {
+const interact = (
+  world: ReturnType<typeof createWorld>,
+  player: ReturnType<typeof createPlayer>,
+) => {
   const input = neutralInput();
   input.interact = true;
   step(world, new Map([[player.id, input]]), 0.016);
@@ -29,18 +32,24 @@ describe('Mossbound Shrine adventure', () => {
 
     interact(world, player);
     expect(world.message).toContain('defeat the guardian spirit');
-    expect(player.receipts.some((receipt) => receipt.endsWith('shrine:awakened'))).toBe(true);
+    expect(
+      player.receipts.some((receipt) => receipt.endsWith('shrine:awakened')),
+    ).toBe(true);
     interact(world, player);
     expect(quantity(player, 'ancient')).toBe(0);
 
     damageEnemy(world, sentinel!, 1000, player);
-    expect(player.receipts.some((receipt) => receipt.endsWith('shrine:sentinel'))).toBe(true);
+    expect(
+      player.receipts.some((receipt) => receipt.endsWith('shrine:sentinel')),
+    ).toBe(true);
     const oldXp = player.xp;
     interact(world, player);
     expect(quantity(player, 'ancient')).toBe(1);
     expect(quantity(player, 'crystal')).toBe(6);
     expect(player.xp).toBeGreaterThanOrEqual(oldXp);
-    expect(player.receipts.some((receipt) => receipt.endsWith('shrine:rewarded'))).toBe(true);
+    expect(
+      player.receipts.some((receipt) => receipt.endsWith('shrine:rewarded')),
+    ).toBe(true);
     const count = player.receipts.length;
     interact(world, player);
     expect(quantity(player, 'ancient')).toBe(1);
@@ -60,7 +69,12 @@ describe('Mossbound Shrine adventure', () => {
     interact(world, ape);
     expect(panda.receipts).toHaveLength(1);
     expect(ape.receipts).toHaveLength(1);
-    damageEnemy(world, world.enemies.find((enemy) => enemy.id === 'enemy11')!, 1000, panda);
+    damageEnemy(
+      world,
+      world.enemies.find((enemy) => enemy.id === 'enemy11')!,
+      1000,
+      panda,
+    );
     interact(world, panda);
     interact(world, ape);
     expect(quantity(panda, 'ancient')).toBe(1);
@@ -69,14 +83,20 @@ describe('Mossbound Shrine adventure', () => {
 
   it('migrates a saved world created before the shrine guardian was introduced', () => {
     const previous = createWorld();
-    previous.enemies = previous.enemies.filter((enemy) => enemy.id !== 'enemy11');
+    previous.enemies = previous.enemies.filter(
+      (enemy) => enemy.id !== 'enemy11',
+    );
     previous.respawn.wisp.maximum = 3;
     const saved = structuredClone(previous);
     const loaded = migrateWorld(saved);
     expect(loaded).not.toBeNull();
-    expect(loaded?.enemies.filter((enemy) => enemy.id === 'enemy11')).toHaveLength(1);
+    expect(
+      loaded?.enemies.filter((enemy) => enemy.id === 'enemy11'),
+    ).toHaveLength(1);
     expect(loaded?.respawn.wisp.maximum).toBe(4);
-    expect(migrateWorld(loaded)?.enemies.filter((enemy) => enemy.id === 'enemy11')).toHaveLength(1);
+    expect(
+      migrateWorld(loaded)?.enemies.filter((enemy) => enemy.id === 'enemy11'),
+    ).toHaveLength(1);
   });
 
   it('retains quest progress in existing player receipts without introducing save fields', () => {
