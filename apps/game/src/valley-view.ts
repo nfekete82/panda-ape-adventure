@@ -37,6 +37,8 @@ export class ValleyView {
   private readonly clock: HTMLElement;
   private readonly objects = new Map<string, Phaser.GameObjects.Image>();
   private readonly caches: Phaser.GameObjects.Image[] = [];
+  private previousNodes: number[] | null = null;
+  private previousHits: number[] | null = null;
   private pendingGather: number | null = null;
   private readonly preview: Phaser.GameObjects.Graphics;
   constructor(
@@ -238,6 +240,22 @@ export class ValleyView {
     this.previewAt(x, y);
     return true;
   }
+  private strikeEffect(index: number, finished: boolean) {
+    const node = RESOURCE_NODES[index];
+    const cache = this.caches[index];
+    if (!node || !cache) return;
+    this.scene.tweens.killTweensOf(cache);
+    cache.setAngle(0).setScale(1);
+    if (finished && node.item === 'wood') {
+      this.scene.tweens.add({ targets: cache, angle: 72, y: node.y + 9, alpha: 0.1, duration: 420, ease: 'Cubic.easeIn', onComplete: () => { cache.setAngle(0).setPosition(node.x, node.y).setScale(1); } });
+    } else if (finished) {
+      this.scene.tweens.add({ targets: cache, scaleX: 1.25, scaleY: 0.25, alpha: 0.1, duration: 220, ease: 'Cubic.easeIn', onComplete: () => cache.setScale(1) });
+    } else {
+      this.scene.tweens.add({ targets: cache, x: node.x + 4, duration: 55, yoyo: true, repeat: 2, onComplete: () => cache.setX(node.x) });
+    }
+    const spark = this.scene.add.text(node.x, node.y - 25, finished ? '+4' : '✦', { fontSize: '14px', color: finished ? '#eac779' : '#ffffff', stroke: '#20352f', strokeThickness: 3 }).setDepth(node.y + 50).setOrigin(0.5);
+    this.scene.tweens.add({ targets: spark, y: node.y - 52, alpha: 0, duration: 650, onComplete: () => spark.destroy() });
+  }
   update() {
     const w = this.world(),
       p = this.player();
@@ -261,9 +279,19 @@ export class ValleyView {
     );
     this.root.dataset.plots = String(w.valley.plots.length);
     this.root.dataset.buildings = String(w.valley.buildings.length);
+    const nodes = w.valley.nodes;
+    const hits = w.valley.nodeHits ?? [0, 0, 0, 0];
+    if (this.previousNodes && this.previousHits) {
+      this.caches.forEach((_, index) => {
+        if (nodes[index] !== this.previousNodes![index] && nodes[index] === w.valley.day) this.strikeEffect(index, true);
+        else if (hits[index] !== this.previousHits![index] && hits[index]! > this.previousHits![index]!) this.strikeEffect(index, false);
+      });
+    }
+    this.previousNodes = [...nodes];
+    this.previousHits = [...hits];
     this.caches.forEach((cache, index) => {
       const depleted = (w.valley.nodes[index] ?? 0) >= w.valley.day;
-      cache.setAlpha(depleted ? 0.28 : 1);
+      if (!this.scene.tweens.isTweening(cache)) cache.setAlpha(depleted ? 0.28 : 1);
       const hits = w.valley.nodeHits?.[index] ?? 0;
       cache.setTint(depleted ? 0x748077 : hits > 0 ? 0xf5c989 : 0xffffff);
     });
