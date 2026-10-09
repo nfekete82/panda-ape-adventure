@@ -783,6 +783,10 @@ function readInput(): Input {
 }
 class ForestScene extends Phaser.Scene {
   vegetation: Phaser.GameObjects.Sprite[] = [];
+  private observedFelled = new Set<number>();
+  private stumps = new Map<number, Phaser.GameObjects.Graphics>();
+  private treeFallInProgress = new Set<number>();
+  private initialTreeState = true;
   sprites = new Map<string, Phaser.GameObjects.Sprite>();
   weapons = new Map<string, Phaser.GameObjects.Image>();
   weaponTiming = new Map<string, WeaponTiming>();
@@ -1004,11 +1008,44 @@ class ForestScene extends Phaser.Scene {
   }
   update(time: number, delta: number) {
     let treeSprite = 0;
+    const felled = new Set(world.valley.felledTrees ?? []);
     obstacles.forEach((obstacle, index) => {
       if (obstacle.kind !== 'tree') return;
       const sprite = this.vegetation[treeSprite++];
-      if (sprite) sprite.setVisible(!world.valley.felledTrees?.includes(index));
+      if (!sprite) return;
+      if (felled.has(index)) {
+        if (!this.stumps.has(index)) {
+          const x = obstacle.x + obstacle.w / 2;
+          const y = obstacle.y + obstacle.h;
+          const stump = this.add.graphics().setDepth(y - 1);
+          stump.fillStyle(0x55371e, 1).fillEllipse(x, y - 2, 22, 10);
+          stump.fillStyle(0xb68a57, 1).fillEllipse(x, y - 5, 21, 8);
+          stump.lineStyle(1, 0x684426, 0.9).strokeEllipse(x, y - 5, 14, 5);
+          this.stumps.set(index, stump);
+        }
+        if (!this.observedFelled.has(index)) {
+          this.observedFelled.add(index);
+          if (this.initialTreeState || reducedMotion.matches) sprite.setVisible(false);
+          else {
+            this.treeFallInProgress.add(index);
+            this.tweens.add({ targets: sprite, angle: index % 2 ? -82 : 82, alpha: 0, duration: 420, ease: 'Cubic.easeIn', onComplete: () => {
+              sprite.setVisible(false);
+              sprite.setAngle(0);
+              sprite.setAlpha(1);
+              this.treeFallInProgress.delete(index);
+            } });
+          }
+        }
+      } else if (this.observedFelled.has(index)) {
+        this.observedFelled.delete(index);
+        this.treeFallInProgress.delete(index);
+        this.tweens.killTweensOf(sprite);
+        sprite.setVisible(true).setAngle(0).setAlpha(1);
+        this.stumps.get(index)?.destroy();
+        this.stumps.delete(index);
+      }
     });
+    this.initialTreeState = false;
     const dt = Math.min(delta / 1000, 0.05);
     if (paused && mode === 'solo')
       for (const timing of this.weaponTiming.values())
@@ -1080,6 +1117,11 @@ class ForestScene extends Phaser.Scene {
       this.cameras.main.shake(60, 0.0012);
     const visualTime = this.feedback.clock(time, reducedMotion.matches);
     for (const tree of this.vegetation) {
+      if (this.treeFallInProgress.size && [...this.treeFallInProgress].some((index) => {
+        let offset = 0;
+        for (let i = 0; i <= index; i++) if (obstacles[i]?.kind === 'tree') offset++;
+        return this.vegetation[offset - 1] === tree;
+      })) continue;
       // Stable canopy frame; the vendor loop noticeably stretches the crown.
       tree.setAngle(
         reducedMotion.matches
