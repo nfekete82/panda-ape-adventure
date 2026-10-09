@@ -128,6 +128,7 @@ export interface Building {
   cell: number;
   recipe: Recipe;
 }
+export interface GroundDrop { id: number; x: number; y: number; item: ValleyItem; count: number }
 export interface Valley {
   version: 1;
   settled: boolean;
@@ -147,6 +148,7 @@ export interface Valley {
   saplings?: Record<string, number>;
   toolLevels?: { axe: number; pickaxe: number };
   weather?: ValleyWeather;
+  drops?: GroundDrop[];
 }
 export function createValley(): Valley {
   return {
@@ -181,6 +183,7 @@ export function createValley(): Valley {
     saplings: {},
     toolLevels: { axe: 1, pickaxe: 1 },
     weather: weatherForDay(1),
+    drops: [],
   };
 }
 export function cellPoint(cell: number) {
@@ -250,6 +253,7 @@ export type ValleyAction =
   | { kind: 'gather' | 'strike'; node: number }
   | { kind: 'chopTree' | 'clearStump' | 'plantSapling'; tree: number }
   | { kind: 'upgradeTool'; tool: 'axe' | 'pickaxe' }
+  | { kind: 'pickup'; id: number }
   | { kind: 'buy' | 'sell'; item: ValleyItem; count: number };
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
@@ -273,6 +277,7 @@ export function parseValleyAction(v: unknown): ValleyAction | null {
   if ((v.kind === 'gather' || v.kind === 'strike') && exact(['kind', 'node']) && integer(v.node, 0, 3))
     return { kind: v.kind, node: v.node };
   if ((v.kind === 'chopTree' || v.kind === 'clearStump' || v.kind === 'plantSapling') && exact(['kind', 'tree']) && integer(v.tree, 0, obstacles.length - 1) && obstacles[v.tree]?.kind === 'tree') return { kind: v.kind, tree: v.tree };
+  if (v.kind === 'pickup' && exact(['kind', 'id']) && integer(v.id, 0, obstacles.length - 1)) return { kind: 'pickup', id: v.id };
   if (v.kind === 'upgradeTool' && exact(['kind', 'tool']) && (v.tool === 'axe' || v.tool === 'pickaxe')) return { kind: 'upgradeTool', tool: v.tool };
   if (!integer(v.cell, 0, FARM.columns * FARM.rows - 1)) return null;
   if (
@@ -339,7 +344,14 @@ export function applyValleyAction(
   p.commandSeq = seq;
   if (!p.connected || p.hp <= 0) return 'Your hero cannot work right now.';
   const v = w.valley;
-  if (a.kind === 'upgradeTool') {
+  if (a.kind === 'pickup') {
+    const drop = v.drops?.find((entry) => entry.id === a.id);
+    if (!drop) return 'Item is no longer on the ground.';
+    if (distance(p, drop) > 85) return 'Move closer to pick up the item.';
+    if (v.bag[drop.item] + drop.count > 9999) return 'Shared supplies are full.';
+    v.bag[drop.item] += drop.count;
+    v.drops = v.drops!.filter((entry) => entry.id !== a.id);
+  } else if (a.kind === 'upgradeTool') {
     const bench = v.buildings.some((b) => b.recipe === 'workbench' && distance(p, cellPoint(b.cell)) <= 95);
     if (!bench) return 'Stand next to a workbench to upgrade tools.';
     v.toolLevels ??= { axe: 1, pickaxe: 1 };
@@ -376,11 +388,12 @@ export function applyValleyAction(
     v.treeHits ??= {};
     const hit = (v.treeHits[String(a.tree)] ?? 0) + 1;
     if (hit >= Math.max(1, 4 - (v.toolLevels?.axe ?? 1))) {
-      if (v.bag.wood > 9995) return 'Shared storage is full.';
+      v.drops ??= [];
+      if (v.drops.length >= obstacles.length) return 'Collect some dropped wood first.';
       v.felledTrees ??= [];
       v.felledTrees.push(a.tree);
       delete v.treeHits[String(a.tree)];
-      v.bag.wood += 4;
+      v.drops.push({ id: a.tree, x: cx, y: tree.y + tree.h + 12, item: 'wood', count: 4 });
     } else v.treeHits[String(a.tree)] = hit;
   } else if (a.kind === 'buy' || a.kind === 'sell') {
     if (distance(p, WORLD.npc) > 90) return 'Visit Rowan to trade.';
@@ -540,6 +553,7 @@ export function isValley(value: unknown): value is Valley {
   if (value.treeHits !== undefined && (!record(value.treeHits) || Object.keys(value.treeHits).length > obstacles.length || !Object.entries(value.treeHits).every(([key, hit]) => /^\d+$/.test(key) && integer(Number(key), 0, obstacles.length - 1) && obstacles[Number(key)]?.kind === 'tree' && integer(hit, 1, 2) && !(Array.isArray(value.felledTrees) && value.felledTrees.includes(Number(key)))))) return false;
   if (value.clearedStumps !== undefined && (!Array.isArray(value.clearedStumps) || new Set(value.clearedStumps).size !== value.clearedStumps.length || !value.clearedStumps.every((index) => integer(index, 0, obstacles.length - 1) && obstacles[index]?.kind === 'tree' && (Array.isArray(value.felledTrees) && value.felledTrees.includes(index))))) return false;
   if (value.saplings !== undefined && (!record(value.saplings) || !Object.entries(value.saplings).every(([key, day]) => /^\d+$/.test(key) && integer(Number(key), 0, obstacles.length - 1) && (Array.isArray(value.clearedStumps) && value.clearedStumps.includes(Number(key))) && integer(day, value.day as number, (value.day as number) + 3)))) return false;
+  if (value.drops !== undefined && (!Array.isArray(value.drops) || value.drops.length > obstacles.length || new Set(value.drops.map((d) => record(d) ? d.id : -1)).size !== value.drops.length || !value.drops.every((d) => record(d) && integer(d.id, 0, obstacles.length - 1) && obstacles[d.id]?.kind === 'tree' && value.felledTrees?.includes(d.id) && d.item === 'wood' && d.count === 4 && typeof d.x === 'number' && Number.isFinite(d.x) && typeof d.y === 'number' && Number.isFinite(d.y) && d.x >= 0 && d.x <= WORLD.width && d.y >= 0 && d.y <= WORLD.height))) return false;
   if (value.weather !== undefined && value.weather !== 'sunny' && value.weather !== 'cloudy' && value.weather !== 'rain') return false;
   if (value.toolLevels !== undefined && (!record(value.toolLevels) || Object.keys(value.toolLevels).length !== 2 || !integer(value.toolLevels.axe, 1, 3) || !integer(value.toolLevels.pickaxe, 1, 3))) return false;
   if (value.nodeHits !== undefined && (!Array.isArray(value.nodeHits) || value.nodeHits.length !== 4 || !value.nodeHits.every((n) => integer(n, 0, 3)))) return false;
