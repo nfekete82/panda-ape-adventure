@@ -42,6 +42,8 @@ export class ValleyView {
   private previousNodes: number[] | null = null;
   private previousHits: number[] | null = null;
   private pendingGather: number | null = null;
+  private pendingPickup: number | null = null;
+  private readonly dropSprites = new Map<number, Phaser.GameObjects.Image>();
   private pendingTree: number | null = null;
   private pendingTreeAction: 'chopTree' | 'clearStump' | 'plantSapling' = 'chopTree';
   private readonly preview: Phaser.GameObjects.Graphics;
@@ -210,6 +212,13 @@ export class ValleyView {
     this.preview.strokeRect(point.x - 16, point.y - 16, 32, 32);
   }
   pointer(x: number, y: number): boolean {
+    const drop = this.world().valley.drops?.find((item) => Math.hypot(item.x - x, item.y - y) < 26);
+    if (drop) {
+      const actor = this.player();
+      if (actor && distance(actor, drop) <= 75) this.send({ kind: 'pickup', id: drop.id });
+      else { this.pendingPickup = drop.id; this.navigate(drop.x + 32, drop.y); this.feedback('Walking to the dropped item…'); }
+      return true;
+    }
     if (!this.working) return false;
     if (this.tool === 'axe' || this.tool === 'sapling') {
       const valley = this.world().valley;
@@ -283,6 +292,28 @@ export class ValleyView {
     const w = this.world(),
       p = this.player();
     if (!p) return;
+    if (this.pendingPickup !== null) {
+      const drop = w.valley.drops?.find((item) => item.id === this.pendingPickup);
+      if (!drop) this.pendingPickup = null;
+      else if (distance(p, drop) <= 75) {
+        this.pendingPickup = null;
+        this.send({ kind: 'pickup', id: drop.id });
+      }
+    }
+    const activeDrops = new Set<number>();
+    for (const drop of w.valley.drops ?? []) {
+      activeDrops.add(drop.id);
+      let sprite = this.dropSprites.get(drop.id);
+      if (!sprite) {
+        sprite = this.scene.add.image(drop.x, drop.y, 'valley-cache-wood').setScale(0.75).setDepth(drop.y + 2);
+        this.dropSprites.set(drop.id, sprite);
+      }
+      sprite.setPosition(drop.x, drop.y);
+    }
+    for (const [id, sprite] of this.dropSprites) if (!activeDrops.has(id)) {
+      sprite.destroy();
+      this.dropSprites.delete(id);
+    }
     if (this.pendingTree !== null) {
       const tree = obstacles[this.pendingTree];
       if (!tree || (this.pendingTreeAction === 'chopTree' ? w.valley.felledTrees?.includes(this.pendingTree) : this.pendingTreeAction === 'clearStump' ? !w.valley.felledTrees?.includes(this.pendingTree) || w.valley.clearedStumps?.includes(this.pendingTree) : !w.valley.clearedStumps?.includes(this.pendingTree) || w.valley.saplings?.[String(this.pendingTree)] !== undefined)) this.pendingTree = null;
@@ -337,6 +368,7 @@ export class ValleyView {
     const signature = JSON.stringify([
       w.instanceId,
       w.valley.bag,
+      w.valley.drops,
       w.valley.plots,
       w.valley.buildings,
       w.valley.nodes,
