@@ -326,3 +326,147 @@ See [V0.2.0.md](V0.2.0.md) for manual gameplay, migration and backup testing and
   projecting world coordinates. This initial failed rerun is not a pass.
 - After fixing that camera helper, the complete farming E2E passed again
   (50.9 seconds) and its planted/workbench captures were retained in docs.
+
+## Wild Valley focused visual rebuild — 2026-10-09
+
+- Branch: `feat/wild-valley-visual-overhaul`. Rebuilt the cottage, four grouped
+  garden beds and Panda/Ape artwork. Shared simulation, network, persistence,
+  dependencies and collision geometry were not changed. Existing click-path
+  typed-array reads now use explicit fallback values to satisfy strict indexing.
+- `npm run typecheck`, `npm run lint`, `npm run build` and `git diff --check`
+  passed. Prettier checks passed for every changed source/document file.
+  Full `npm run format:check` **failed** on six untouched baseline files:
+  `mini-farm-house.ts`, `mini-farm-tiles.ts`, `mini-farm-tree.ts`,
+  `minifarm-atlas.ts`, `style.css` and `packages/shared/src/valley.ts`.
+  They were left alone to avoid unrelated formatting churn.
+- `npm test` with local socket access: **86 passed, 2 failed** (15 files).
+  All four real WebSocket integration tests passed. Both failures are in the
+  unchanged farming tests: the crop-cycle test attempts to water an already
+  rain-watered crop; the capacity test expects growth to remain at one after
+  10,000 days despite automatic rain. No authoritative weather or growth rules
+  were altered to make these older assertions pass.
+- Final Chromium command:
+  `PLAYWRIGHT_BASE_URL=http://127.0.0.1:8083 PLAYWRIGHT_EXTERNAL_SERVER=1 npm run test:browser -- --workers=1 --output=test-results/visual-overhaul`.
+  Result: **12 passed, 6 failed**. Both Wild Valley scenarios passed, including
+  the complete gather/buy/hoe/plant/water/grow/harvest/sell/build/reload loop
+  (52.2 seconds), four crop silhouettes, placement preview and compact menu.
+  Forest rendering, movement/save, audio settings, zoom persistence, reconnect,
+  progression migration, forge, lakes, Bamboo Crossing/shrine and region blending
+  also passed. Failed checks: equipped-weapon attacks, shared combat, potion
+  revive, the HUD portrait selector, confirmed damage/trails and Ape cast pulses.
+  These same six checks also failed against the already-running older Docker
+  build on port 8080. This pass does not claim full combat/HUD regression success.
+- Initial sandboxed unit/browser attempts could not start local servers. Socket
+  access allowed the integration tests to run. The default browser URL reused
+  an older Docker build on 8080; that run was excluded from final validation.
+  An overlapping initial run caused Playwright trace-file conflicts, so the final
+  run used the isolated Vite port, a separate output directory and one worker.
+- Reviewed [the actual scene](screenshots/wild-valley-overhaul/garden-and-companions.png)
+  with a valid saved fixture showing both companions, all four crop types,
+  untilled/dry/watered soil and the cottage in rain. Browser error list was empty.
+  Reviewed [the generated art sheet](screenshots/wild-valley-overhaul/art-sheet.png)
+  with all eight hero directions and both soil textures. Early capture fixtures
+  and captures interrupted by development reloads were discarded.
+- An additional ad hoc click-to-move browser probe timed out; it is **not a pass**.
+  The shared collision map and routing algorithm are unchanged, but this probe
+  does not establish full click-to-move coverage. The passing farming loop verifies
+  keyboard movement and precise interaction-cell projection.
+- Host runtime: Node 25.9.0; Node 24 reference runtime was not available for this
+  pass. No container changes were made, so image builds, Compose checks and
+  production restart validation were not repeated. Firefox, Safari, physical
+  controllers, mobile-device performance and Canvas fallback were not tested.
+  No commit was created while the full regression/format checks remain failing.
+
+## Visual overhaul review and baseline comparison — 2026-10-09
+
+This review supersedes the inconclusive click-to-move result above. The exact
+pre-overhaul HEAD, `a18e795c06721d3b13a19a6d62bd491b7857a884`, was exported into
+ignored `test-results/review-baseline/`. Its browser client ran on port 8084;
+the working-tree client ran on 8083. Both used the same unchanged shared/server
+sources and local WebSocket server. The older Docker deployment was not used
+as the baseline for this review.
+
+- Inspected every changed source file, the complete working-tree diff, provenance,
+  retained screenshots and this validation history. Shared source directories,
+  server sources, save migrations, protocol, lockfile and hero frame manifest
+  are unchanged. Generated development-server data is ignored and excluded.
+- Exact HEAD unit suite: **86 passed, 2 failed**. Working-tree `npm test`:
+  **88 passed, 2 failed** across 16 files. The two new tests pass: every fixed
+  farm cell accepts hoe/plant/water and survives legacy/version-3 save migration;
+  navigation rejects solid workbench destinations and reopens after removal.
+  All four actual WebSocket scenarios pass, including concurrent authoritative
+  farm operations and state synchronization. The two rain-related failures are
+  identical on HEAD and the working tree; no simulation workaround was added.
+- Exact HEAD Chromium suite: **12 passed, 6 failed** (18 scenarios). The same
+  six failing scenarios listed above are confirmed on this exact baseline.
+  `readInput()` disables attack, special, heal and guard unconditionally on HEAD;
+  the farming-first CSS hides `.character-hud`. Those existing choices account
+  for the combat/revive and legacy HUD checks. Their restoration is outside this
+  rendering pass. Shared movement and reconnect succeed; the shared-combat
+  scenario fails at its enemy-damage assertion rather than room movement.
+- Click-to-move is resolved: the old probe waited for camera Y **greater than
+  1140**, but the camera clamps to **1140** with a 1440×900 viewport at 1.5×
+  zoom near the map bottom. It never reached the click. A browser-only diagnostic
+  on both HEAD and the working tree clicked `(600, 1160)` from `(520, 1160)`;
+  both stopped at approximately `(589.18, 1161.15)`, within the existing
+  12-pixel arrival threshold. No movement or collision implementation changed.
+  The diagnostic hooks were injected by Playwright routing only, not added to
+  application code.
+- Persistent Chromium coverage now checks Panda and Ape click movement using a
+  converged actual camera midpoint, keyboard cancellation, all 32 ripe rendered
+  plots, and legacy-to-version-3 save/reload equality. All three targeted tests
+  passed. An initial cancellation assertion sampled stale HUD telemetry after
+  key-up; waiting for the existing 100 ms telemetry update corrected the test.
+  An initial unit assertion expected an exact destination despite the existing
+  32-pixel navigation grid; it now checks the documented cell-sized tolerance.
+  Neither initial test attempt is counted as a pass.
+- Typecheck, lint and build pass. Exact HEAD has five strict indexed-array
+  diagnostics and three unused-variable lint errors; the overhaul resolves them.
+  Full-repository formatting still fails on the same six untouched files listed
+  above (HEAD has twelve unformatted files). Changed source/test/docs formatting
+  and `git diff --check` pass. No unrelated formatting or gameplay changes were
+  introduced merely to turn these baseline checks green.
+- Reviewed the cottage/hero sheet and actual rainy farm composition. Cottage
+  and heroes share warm outlines, cream highlights, subdued sage/blue workwear
+  and crisp pixel clusters; native source pixels use nearest-neighbour rendering.
+  The four bed seams remain visible in planted layouts. All decorations remain
+  outside the 256×128 farm interaction rectangle; resource caches and plot/crop
+  objects retain their foreground depth ordering. Hero bounds are still 64×64
+  with four frames/eight rows. All 32 cell centres and collision dimensions are
+  unchanged. Assets continue to register through `art.ts`; installed Phaser
+  4.2.1 CanvasTexture/spritesheet implementations were rechecked.
+- Host remains Node 25.9.0. Node 24, Firefox, Safari, physical controllers,
+  mobile-device performance and production restart were not revalidated.
+  No persistence/network/container implementation changed, so no container
+  rebuild or restart was required. PR #17 remains draft and must not be merged
+  on the strength of these partial regression results.
+
+Final full browser rerun:
+`PLAYWRIGHT_BASE_URL=http://127.0.0.1:8083 PLAYWRIGHT_EXTERNAL_SERVER=1 npm run test:browser -- --workers=1 --output=test-results/review-final-browser`.
+**15 passed, 6 failed** (21 scenarios). All original 12 passing cases stayed
+passing; all three added browser cases passed. The failing scenario set exactly
+matches the exact-HEAD run. No new gameplay, collision, save or multiplayer
+regression was found by the diff review and executed checks.
+
+The visual review also caught two east-apron decorations overlapping resource
+cache artwork. The barrel and flower tile were moved to clear the fibre and ore
+cache footprints without moving any interactive object. The scene capture was
+refreshed with a valid two-hero fixture that holds Ape still for art inspection;
+it does not claim to exercise companion AI. The source sheet capture is unchanged.
+
+After the resource-art cleanup, both original farming scenarios passed again
+(complete loop: 52.0 seconds). A follow-up run exposed one further race in the
+new Ape test: repeated HUD camera values during the title-to-game transition
+could satisfy a drift-only check before the camera reached the player. The trace
+showed the resulting click projected with an outdated midpoint. The helper now
+requires both low drift and convergence to the player's position clamped to
+world bounds. This is a test projection correction; application input, movement
+and collision code remain unchanged. That intermediate run was 4 passed / 1
+failed and is not reported as an all-green run.
+
+Final repeat of the corrected navigation/save coverage:
+`PLAYWRIGHT_BASE_URL=http://127.0.0.1:8083 PLAYWRIGHT_EXTERNAL_SERVER=1 node_modules/.bin/playwright test tests/browser/visual-overhaul.spec.ts --workers=1 --repeat-each=3 --output=test-results/review-navigation-settled`.
+**9 passed** (three scenarios repeated three times, 40.1 seconds). Final
+post-correction typecheck and lint passed again. The production build and full
+unit results above include the final resource-art placement; the camera helper
+change affects tests only. All requested checks were executed before commits.
