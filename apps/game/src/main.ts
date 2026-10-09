@@ -74,7 +74,7 @@ let pending: { input: Input; dt: number }[] = [],
 let music = false,
   soundEffects = true,
   volume = 0.25,
-  cameraZoom = 1.5,
+  cameraZoom = 1.9,
   audio: AudioContext | undefined,
   audioTimer: ReturnType<typeof setInterval> | undefined;
 const keys = new Set<string>(),
@@ -916,7 +916,7 @@ class ForestScene extends Phaser.Scene {
       .setDepth(2900);
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
     this.cameras.main.startFollow(this.cameraTarget, true, 0.08, 0.08);
-    this.cameras.main.setZoom(0.85);
+    this.cameras.main.setZoom(cameraZoom);
     this.scale.on('resize', () => {
       if (mode !== 'menu') applyCameraZoom();
     });
@@ -986,6 +986,24 @@ class ForestScene extends Phaser.Scene {
       $('hud').dataset.staffAngle = String(
         pose.rotation - pose.facingAngle - Math.PI / 2,
       );
+    }
+    // Farming mode: an equipped tool replaces the legacy sword or staff.
+    // World position and hitboxes remain untouched; the tool is a visual overlay.
+    const held = p.id === playerId ? valleyView?.heldTool : null;
+    if (held && p.hp > 0) {
+      const texture = `valley-held-${held}`;
+      if (weapon.texture.key !== texture) weapon.setTexture(texture);
+      const left = p.facing.x < -0.2;
+      weapon
+        .setVisible(true)
+        .setPosition(sprite.x + (left ? -21 : 21), sprite.y - 6)
+        .setOrigin(0.5, 0.78)
+        .setFlipX(left)
+        .setRotation(left ? -0.28 : 0.28)
+        .setScale(1.5)
+        .setDepth(sprite.depth + 1)
+        .setAlpha(p.connected ? 1 : 0.35);
+      return;
     }
     if (p.hp <= 0) {
       weapon.setVisible(false);
@@ -1246,7 +1264,7 @@ class ForestScene extends Phaser.Scene {
               : p.action;
       const frame = heroFrame(p.hero, state, dir, time);
       const sprite = this.entity(p.id, pos.x, pos.y, p.hero, frame, dt);
-      sprite.setScale(1.22);
+      sprite.setScale(1.4);
       this.shadows.get(p.id)?.setScale(1.2, 1.1);
       sprite.setAlpha(p.connected ? 1 : 0.35);
       const animation = weaponAnimation(
@@ -1264,8 +1282,8 @@ class ForestScene extends Phaser.Scene {
       // Shift only the texture origin: interpolation, collision and camera
       // continue to use the authoritative/predicted world position.
       sprite.setOrigin(
-        0.5 - pose.bodyDx / (64 * 1.22),
-        0.5 - pose.bodyDy / (64 * 1.22),
+        0.5 - pose.bodyDx / (64 * 1.4),
+        0.5 - pose.bodyDy / (64 * 1.4),
       );
       sprite.setAngle(pose.bodyAngle);
       sprite.setTint(p.invulnerable > 0 ? 0xffcfb0 : 0xffffff);
