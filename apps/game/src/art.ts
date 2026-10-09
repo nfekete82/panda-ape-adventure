@@ -1,7 +1,15 @@
 import { CROP_IDS, RECIPE_IDS, RESOURCE_NODES } from '@panda/shared';
-import { paintPlot, paintCrop, paintBuilding, paintCache } from './valley-art';
+import {
+  paintPlot,
+  paintCrop,
+  paintBuilding,
+  paintCache,
+  paintGarden,
+  paintCottage,
+} from './valley-art';
 import sheets from '../../../assets/hero-sheets.json';
 import Phaser from 'phaser';
+import { MINI_FARM_HOUSE_DATA } from './mini-farm-house';
 import { MINI_FARM_ATLAS } from './minifarm-atlas';
 import { WORLD } from '@panda/shared';
 import { paintForestWorld } from './environment-art';
@@ -30,6 +38,7 @@ const activeStates: Record<'panda' | 'ape', string[]> = {
 };
 export function preloadHeroSheets(scene: Phaser.Scene) {
   scene.load.image('minifarm-cc0-atlas', MINI_FARM_ATLAS);
+  scene.load.image('mini-farm-cottage-source', MINI_FARM_HOUSE_DATA);
   for (const hero of ['panda', 'ape'] as const) {
     const source = sheets[hero].source;
     if (typeof source === 'string') scene.load.image(`${hero}-source`, source);
@@ -54,26 +63,67 @@ export function heroFrame(
   );
 }
 export function makeAssets(scene: Phaser.Scene) {
-  const mini = scene.textures.exists('minifarm-cc0-atlas')
-    ? scene.textures.get('minifarm-cc0-atlas').getSourceImage() as HTMLImageElement
+  const miniSource = scene.textures.exists('minifarm-cc0-atlas')
+    ? scene.textures.get('minifarm-cc0-atlas').getSourceImage()
     : null;
-  const sample = (ctx: CanvasRenderingContext2D, cell: number, width: number, height: number) => {
+  const mini = miniSource instanceof HTMLImageElement ? miniSource : null;
+  const sample = (
+    ctx: CanvasRenderingContext2D,
+    cell: number,
+    width: number,
+    height: number,
+  ) => {
     if (!mini) return;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(mini, (cell % 4) * 32, Math.floor(cell / 4) * 32, 32, 32, 0, 0, width, height);
+    ctx.drawImage(
+      mini,
+      (cell % 4) * 32,
+      Math.floor(cell / 4) * 32,
+      32,
+      32,
+      0,
+      0,
+      width,
+      height,
+    );
   };
   // Native decorative tiles from the CC0 sheet are kept separate from
   // gameplay sprites so the farm can use original pixels without collision.
-  if (mini) for (const [name, cell] of [
-    ['minifarm-flowers', 4],
-    ['minifarm-shrub', 5],
-    ['minifarm-barrel', 7],
-    ['minifarm-garden', 8],
-  ] as const) {
-    const art = canvas(32, 32);
-    sample(art.ctx, cell, 32, 32);
-    scene.textures.addCanvas(name, art.c);
-  }
+  if (mini)
+    for (const [name, cell] of [
+      ['minifarm-flowers', 4],
+      ['minifarm-shrub', 5],
+      ['minifarm-barrel', 7],
+      ['minifarm-garden', 8],
+    ] as const) {
+      const art = canvas(32, 32);
+      sample(art.ctx, cell, 32, 32);
+      scene.textures.addCanvas(name, art.c);
+    }
+  const cottage = canvas(96, 92);
+  const houseSource = scene.textures
+    .get('mini-farm-cottage-source')
+    .getSourceImage();
+  if (houseSource instanceof HTMLImageElement)
+    paintCottage(cottage.ctx, houseSource);
+  scene.textures.addCanvas('mini-farm-cottage', cottage.c);
+  const garden = canvas(352, 208);
+  paintGarden(garden.ctx);
+  // Selected native CC0 accents stay outside plots and leave the fibre/ore
+  // cache footprints clear on the east apron.
+  if (mini)
+    for (const [cell, x, y] of [
+      [4, 4, 112],
+      [5, 7, 153],
+      [7, 316, 9],
+      [4, 318, 80],
+    ] as const) {
+      garden.ctx.save();
+      garden.ctx.translate(x, y);
+      sample(garden.ctx, cell, 32, 32);
+      garden.ctx.restore();
+    }
+  scene.textures.addCanvas('valley-garden', garden.c);
   const can = canvas(32, 32);
   can.ctx.fillStyle = '#304c46';
   can.ctx.fillRect(8, 10, 16, 18);
@@ -87,10 +137,7 @@ export function makeAssets(scene: Phaser.Scene) {
   scene.textures.addCanvas('valley-watering-can', can.c);
   for (const wet of [false, true]) {
     const a = canvas(32, 32);
-    if (mini) {
-      sample(a.ctx, 1, 32, 32);
-      if (wet) { a.ctx.fillStyle = 'rgba(42,56,69,0.38)'; a.ctx.fillRect(0, 0, 32, 32); }
-    } else paintPlot(a.ctx, wet);
+    paintPlot(a.ctx, wet);
     scene.textures.addCanvas(wet ? 'valley-soil-wet' : 'valley-soil', a.c);
   }
   for (const crop of CROP_IDS) {

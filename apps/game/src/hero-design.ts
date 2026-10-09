@@ -26,9 +26,8 @@ const oval = (
   c.fill();
 };
 const rim = '#1d292c';
-/** Original 64-pixel characters based on the supplied Panda and Ape concepts,
- * with distinct silhouettes, scarlet scarves, belts, equipment and head shapes.
- * Detached weapons are rendered by the weapon animation system in gameplay. */
+/** Original CC0 farm companions on a 32-pixel drawing grid, doubled into the
+ * stable 64×64 frame. Four walk frames and eight direction rows stay unchanged. */
 export function conceptHero(
   c: Canvas,
   hero: Hero,
@@ -39,172 +38,124 @@ export function conceptHero(
   const panda = hero === 'panda';
   const back = dir >= 5;
   const side = dir === 0 || dir === 4;
-  const stride = [0, 3, 0, -3][frame % 4]!;
-  const bounce = frame === 1 || frame === 3 ? 2 : 0;
-  const flip = dir === 4 || dir === 3 || dir === 5;
-  const fur = panda ? '#253038' : '#985e3a';
-  const bright = panda ? '#f4ecd7' : '#e3ad76';
-  const lit = panda ? '#fff7e5' : '#f7c98b';
-  const pants = panda ? '#465043' : '#52603c';
+  const step = [0, 1, 0, -1][frame % 4] ?? 0;
+  const bob = frame % 2 === 1 ? -1 : 0;
+  const edge = '#493f35';
+  const fur = panda ? '#444742' : '#946647';
+  const furLight = panda ? '#646459' : '#b17c50';
+  const cream = panda ? '#eee5c9' : '#e1b57f';
+  const cloth = panda ? '#77865a' : '#728c87';
+  const clothDark = panda ? '#546647' : '#536e6a';
+  // Scanline silhouettes create crisp pixel clusters, without antialiased ovals.
+  const round = (
+    color: string,
+    x: number,
+    y: number,
+    rx: number,
+    ry: number,
+  ) => {
+    for (let row = -ry; row <= ry; row++) {
+      const half = Math.floor(
+        rx * Math.sqrt(Math.max(0, 1 - (row * row) / (ry * ry))),
+      );
+      px(c, color, x - half, y + row, half * 2 + 1, 1);
+    }
+  };
   c.save();
-  if (flip) {
-    c.translate(64, 0);
+  c.scale(2, 2);
+  if (dir === 4 || dir === 3 || dir === 5) {
+    c.translate(32, 0);
     c.scale(-1, 1);
   }
-  c.translate(0, -bounce);
-  // Soft foxed shadow, contrasting staggered boots and leather travelling trousers.
-  oval(c, '#1c382f', 32, 60, 21, 5);
-  px(c, rim, 18 + stride, 48, 12, 12);
-  px(c, rim, 34 - stride, 48, 12, 12);
-  px(c, pants, 19 + stride, 44, 12, 10);
-  px(c, pants, 34 - stride, 44, 11, 10);
-  px(c, '#a68a63', 20 + stride, 55, 10, 3);
-  px(c, '#a68a63', 34 - stride, 55, 10, 3);
-  px(c, '#302d2a', 18 + stride, 58, 12, 3);
-  px(c, '#302d2a', 34 - stride, 58, 12, 3);
-  // Bright stitching makes the sturdy farm boots easier to read at gameplay scale.
-  px(c, '#cbb27b', 19 + stride, 57, 4, 1);
-  px(c, '#cbb27b', 35 - stride, 57, 4, 1);
-  // The ape's curled tail is crucial for recognising it at gameplay scale.
-  if (!panda) {
-    px(c, '#603e2d', 13, 43, 7, 5);
-    px(c, '#754b32', 8, 38, 8, 9);
-    px(c, '#985f3c', 7, 33, 7, 8);
-    px(c, '#b2744b', 11, 30, 8, 6);
-    px(c, '#a16b47', 13, 32, 3, 4);
+  round('#4e6042', 16, 30, 10, 1);
+  // Boots remain grounded while the body shifts subtly with each step.
+  for (const [x, offset] of [
+    [10, step],
+    [18, -step],
+  ] as const) {
+    px(c, edge, x + offset, 25, 5, 5);
+    px(c, '#8c704b', x + offset, 27, 5, 2);
+    px(c, '#c7aa77', x + offset, 27, 4, 1);
   }
-  // Satchel and torso outline.
-  px(c, rim, 14, 29, 36, 21);
-  px(c, fur, 16, 30, 32, 19);
-  px(c, panda ? '#f0e5c9' : '#dbad79', 23, 33, 18, 17);
-  px(c, '#9a6a40', 21, 29, 6, 21);
-  px(c, '#e5b16c', 23, 35, 3, 8);
-  px(c, '#70472e', 13, 41, 37, 5);
-  px(c, '#c79551', 13, 43, 36, 3);
-  px(c, '#efd28b', 27, 40, 10, 9);
-  px(c, '#6c6035', 29, 42, 6, 5);
-  px(c, '#7c5435', 40, 44, 13, 12);
-  px(c, '#c99653', 42, 46, 9, 5);
-  px(c, '#e4c582', 44, 47, 5, 2);
-  // Cozy woodland utility satchel: embroidered leaf emblem and brass fasteners.
-  px(c, '#e8c37e', 43, 46, 2, 2);
-  px(c, '#d6a866', 47, 46, 2, 2);
-  px(c, '#526e45', 45, 49, 4, 3);
-  px(c, '#9dbb68', 46, 48, 2, 4);
-  px(c, '#c69d63', 42, 53, 10, 2);
-  // Adventurer gauntlets, moving opposite to their boots.
-  px(c, rim, 10, 31 - stride / 3, 12, 20);
-  px(c, fur, 12, 33 - stride / 3, 10, 15);
-  px(c, '#b27c4a', 11, 42 - stride / 3, 12, 5);
-  px(c, '#e1c095', 13, 45 - stride / 3, 7, 3);
-  px(c, rim, 44, 31 + stride / 3, 12, 18);
-  px(c, fur, 45, 32 + stride / 3, 10, 15);
-  px(c, '#b27c4a', 44, 40 + stride / 3, 12, 5);
-  px(c, '#e1c095', 47, 43 + stride / 3, 7, 3);
-  // Scarf tails (animated) and oversize crimson collar.
-  px(c, '#722a26', panda ? 13 : 7, 30, 15, 6);
-  px(c, '#bd3d31', panda ? 7 : 5, 33 + stride / 3, 16, 7);
-  px(c, '#e2573d', panda ? 7 : 5, 33 + stride / 3, 13, 3);
-  px(c, '#7e2a27', 18, 26, 33, 11);
-  px(c, '#c33d31', 15, 26, 35, 8);
-  px(c, '#ed6342', 18, 27, 30, 3);
-  // Ear/head silhouette. Panda is broad and round; Ape gets a swept hair tuft.
+  c.translate(0, bob);
+  px(c, edge, 8, 16, 17, 11);
+  px(c, fur, 9, 17, 15, 9);
+  // Work shirt and simple overalls: broad colour planes read at gameplay zoom.
+  px(c, cream, 11, 17, 11, 8);
+  px(c, clothDark, 10, 23, 13, 4);
+  px(c, cloth, 12, 20, 9, 6);
+  px(c, cloth, 12, 17, 2, 7);
+  px(c, cloth, 19, 17, 2, 7);
+  px(c, '#e4c58b', 12, 20, 1, 1);
+  px(c, '#e4c58b', 20, 20, 1, 1);
+  if (!back) {
+    px(c, clothDark, 14, 22, 5, 3);
+    px(c, '#abb391', 14, 22, 5, 1);
+  }
+  // Bare furry hands, small rolled cuffs and opposite arm swing.
+  for (const [x, swing] of [
+    [6, -step],
+    [24, step],
+  ] as const) {
+    px(c, edge, x, 18 + swing, 4, 8);
+    px(c, fur, x + 1, 19 + swing, 3, 6);
+    px(c, furLight, x + 1, 23 + swing, 2, 2);
+    px(c, cream, x, 21 + swing, 4, 1);
+  }
+  // A small ochre neckerchief replaces the oversized adventurer collar.
+  px(c, '#a96d49', 11, 16, 11, 3);
+  px(c, '#d8a067', 12, 16, 9, 1);
+  if (!back) px(c, '#bf8353', 18, 18, 3, 3);
   if (panda) {
-    oval(c, rim, 15, 14, 10, 11);
-    oval(c, rim, 48, 14, 10, 11);
-    oval(c, '#463d3c', 15, 13, 5, 5);
-    oval(c, '#463d3c', 48, 13, 5, 5);
-    oval(c, rim, 32, 21, 23, 18);
-    oval(c, bright, 32, 20, 21, 17);
-    oval(c, lit, 29, 16, 16, 11);
+    round(edge, 8, 5, 4, 4);
+    round(edge, 24, 5, 4, 4);
+    round('#716557', 8, 5, 2, 2);
+    round('#716557', 24, 5, 2, 2);
+    round(edge, 16, 10, 11, 9);
+    round(cream, 16, 10, 10, 8);
+    px(c, '#faf0d6', 10, 4, 10, 3);
     if (back) {
-      px(c, '#d6d3c3', 19, 18, 26, 13);
-      px(c, '#f5edde', 23, 14, 17, 9);
-      px(c, '#a9794f', 35, 27, 6, 12);
+      px(c, '#d3ceb5', 9, 13, 15, 3);
     } else {
-      // A three-quarter profile keeps both eyes readable; the near eye faces
-      // the travel direction. Mirroring preserves the same face facing west.
-      oval(c, '#2b3337', side ? 25 : 23, 23, side ? 5 : 7, 8);
-      oval(c, '#2b3337', 41, 23, 7, 8);
-      oval(c, '#fff6e5', side ? 26 : 24, 21, side ? 3 : 4, 4);
-      oval(c, '#fff6e5', 41, 21, 4, 4);
-      px(c, '#4c3026', 25, 19, 3, 4);
-      px(c, '#4c3026', 42, 19, 3, 4);
-      px(c, '#fcffff', 26, 19, 2, 2);
-      px(c, '#fcffff', 43, 19, 2, 2);
-      // Small rounded cheeks, a soft nose and a short upturned smile keep
-      // the snout separate from the eyes and crimson scarf.
-      if (side) {
-        oval(c, '#dfd4bd', 42, 30, 9, 5);
-        oval(c, '#fff3da', 43, 29, 8, 4);
-        oval(c, '#30383a', 49, 27, 3, 2);
-        px(c, '#617070', 48, 26, 2, 1);
-        px(c, '#77594c', 45, 32, 4, 1);
-        px(c, '#77594c', 44, 31, 1, 1);
-      } else {
-        oval(c, '#dfd4bd', 33, 31, 10, 5);
-        oval(c, '#fff3da', 29, 29, 6, 4);
-        oval(c, '#fff3da', 37, 29, 6, 4);
-        oval(c, '#30383a', 33, 27, 3.5, 2);
-        px(c, '#617070', 32, 26, 2, 1);
-        px(c, '#77594c', 33, 29, 1, 3);
-        px(c, '#77594c', 30, 32, 6, 1);
-        px(c, '#77594c', 29, 31, 1, 1);
-        px(c, '#77594c', 36, 31, 1, 1);
-      }
-      px(c, '#e9a9a0', 20, 31, 4, 2);
-      if (!side) px(c, '#e9a9a0', 43, 31, 4, 2);
+      round(fur, side ? 13 : 11, 10, side ? 2 : 3, 4);
+      round(fur, 21, 10, 3, 4);
+      px(c, '#fff5d9', side ? 13 : 11, 9, 2, 2);
+      px(c, '#fff5d9', 21, 9, 2, 2);
+      px(c, edge, side ? 14 : 12, 10, 1, 2);
+      px(c, edge, 22, 10, 1, 2);
+      round('#faf0d6', side ? 20 : 16, 15, 5, 2);
+      px(c, fur, side ? 24 : 15, 13, 3, 2);
+      px(c, '#9a7c62', side ? 21 : 15, 16, 3, 1);
+      px(c, '#d6a28b', 9, 14, 2, 1);
     }
   } else {
-    oval(c, rim, 12, 19, 10, 13);
-    oval(c, rim, 51, 19, 10, 13);
-    oval(c, '#b78259', 12, 19, 7, 9);
-    oval(c, '#dfaa76', 12, 19, 4, 6);
-    oval(c, '#b78259', 51, 19, 7, 9);
-    oval(c, '#dfaa76', 51, 19, 4, 6);
-    oval(c, rim, 32, 22, 22, 18);
-    oval(c, '#90552f', 32, 23, 20, 16);
-    // Distinct windswept hair locks, golden muzzle and oversized bright eyes.
-    px(c, '#573e2f', 16, 11, 27, 7);
-    px(c, '#815035', 19, 7, 26, 9);
-    px(c, '#ad7044', 29, 5, 13, 9);
-    px(c, '#875334', 40, 9, 8, 8);
-    px(c, '#b97a4a', 20, 13, 24, 8);
+    round(edge, 5, 10, 3, 4);
+    round(edge, 27, 10, 3, 4);
+    round('#d3a272', 5, 10, 2, 3);
+    round('#d3a272', 27, 10, 2, 3);
+    round(edge, 16, 10, 10, 9);
+    round(fur, 16, 10, 9, 8);
+    px(c, edge, 12, 1, 9, 3);
+    px(c, furLight, 15, 1, 5, 4);
     if (back) {
-      px(c, '#7b5036', 19, 21, 28, 11);
-      px(c, '#a16d49', 20, 13, 24, 7);
+      px(c, furLight, 11, 5, 10, 3);
     } else {
-      oval(c, bright, side ? 38 : 32, 28, side ? 14 : 16, 10);
-      oval(c, lit, side ? 40 : 32, 31, 9, 5);
-      // Matching three-quarter eyes keep Ape's side face as readable as Panda.
-      px(c, '#2c2c29', 23, 21, side ? 4 : 5, 6);
-      px(c, '#2c2c29', 39, 21, 5, 6);
-      px(c, '#fff9df', 24, 20, side ? 3 : 4, 4);
-      px(c, '#fff9df', 40, 20, 4, 4);
-      px(c, '#251f20', 26, 21, 2, 3);
-      px(c, '#251f20', 41, 21, 3, 3);
-      px(c, '#ffffff', 26, 20, 1, 2);
-      px(c, '#ffffff', 42, 20, 1, 2);
-      oval(c, '#a66c48', side ? 46 : 33, 28, 3, 2);
-      px(c, '#684431', side ? 42 : 30, 33, 6, 1);
-      px(c, '#684431', side ? 41 : 29, 32, 1, 1);
-      px(c, '#f3c18b', 23, 33, 5, 3);
+      round(cream, side ? 18 : 16, 12, 8, 6);
+      px(c, '#f0c994', side ? 17 : 11, 14, 9, 2);
+      px(c, edge, side ? 14 : 11, 9, 2, 3);
+      px(c, edge, 21, 9, 2, 3);
+      px(c, '#fff0d0', side ? 14 : 11, 9, 1, 1);
+      px(c, '#fff0d0', 21, 9, 1, 1);
+      px(c, '#9c6d4b', side ? 23 : 16, 13, 2, 1);
+      px(c, '#80543d', side ? 20 : 14, 16, 4, 1);
     }
   }
-  // Portraits show a held prop. Gameplay uses separate animated weapons.
+  // Portrait prop only; gameplay weapons retain their detached animation system.
   if (includeWeapon) {
-    if (panda) {
-      px(c, '#3a5539', 54, 8, 6, 47);
-      px(c, '#8ab36c', 55, 8, 3, 43);
-      px(c, '#e6d7ab', 53, 22, 8, 3);
-      px(c, '#f7e4c2', 53, 37, 8, 3);
-      px(c, '#83ad57', 50, 11, 12, 4);
-    } else {
-      px(c, '#6d472e', 53, 7, 6, 47);
-      px(c, '#b88d51', 55, 7, 2, 46);
-      px(c, '#c69250', 52, 5, 8, 5);
-      px(c, '#7da654', 51, 10, 11, 4);
-    }
+    px(c, edge, 28, 7, 2, 22);
+    px(c, '#ba9661', 28, 8, 1, 20);
+    px(c, '#859881', 26, 7, 5, 3);
+    px(c, '#d4d4ae', 26, 7, 5, 1);
   }
   c.restore();
 }

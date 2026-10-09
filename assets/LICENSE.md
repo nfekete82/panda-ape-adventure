@@ -99,3 +99,28 @@ No external images, generated bitmap assets or runtime CDN resources were added.
 Texture contracts: `valley-soil[-wet]` 32×32; `valley-crop-{crop}` three 32×32
 frames (sprout, growing, ripe); `valley-building-{recipe}` 32×48;
 `valley-cache-{resource}` and `valley-watering-can` 32×32.
+
+## Wild Valley focused visual rebuild — 2026-10-09
+
+Jofra, **Mini Farm Asset Pack**, https://jofra.itch.io/mini-farm, CC0-1.0.
+The existing user-supplied `houses_furnitures.png` crop is embedded in
+`apps/game/src/mini-farm-house.ts` (original source rectangle x=6, y=14,
+72×82). The rebuilt cottage reuses its lower timber facade (crop-local
+x=0, y=47, 72×35). Selected flowers, shrub and barrel pixels come from the
+existing embedded `minifarm-atlas.ts`, sourced from the same pack's
+`tileset.png` and `houses_furnitures.png`. No human player sprites are used.
+The original archive is not added to the repository; no new downloads or
+external screenshots were used.
+
+The low terracotta gable, chimney trim, windows/shutters, porch, planters,
+four grouped bed foundations, pathways, seed crate, markers and Panda/Ape
+farm outfits and pixel silhouettes are original procedural artwork in
+`valley-art.ts` and `hero-design.ts`, registered through `art.ts`.
+These additions are CC0-1.0; source code remains MIT. They are code-drawn
+artwork, not AI-generated bitmap edits of the pack.
+
+Retained contracts: cottage key `mini-farm-cottage` (now 96×92, displayed
+at integer 2× scale); heroes 64×64 with four walk frames and eight direction
+rows; soil 32×32 and crop frames unchanged. New `valley-garden` is a
+352×208 transparent apron anchored at `(FARM.x - 48, FARM.y - 40)`.
+All 32 plot centres, collision geometry and simulation rules are unchanged.

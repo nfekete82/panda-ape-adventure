@@ -1,6 +1,5 @@
 import { applyValleyAction, type ValleyAction } from '@panda/shared';
 import { ValleyView } from './valley-view';
-import { MINI_FARM_HOUSE_DATA } from './mini-farm-house';
 import { weatherForDay } from '@panda/shared';
 import { findClickPath, type Waypoint } from './click-path';
 import Phaser from 'phaser';
@@ -712,8 +711,13 @@ function navigateTo(x: number, y: number) {
   const actor = world.players.find((p) => p.id === playerId);
   if (!actor) return;
   walkTarget = { x, y };
-  walkPath = findClickPath(mode === 'online' ? predicted : actor, walkTarget, world);
-  if (!walkPath.length && Math.hypot(actor.x - x, actor.y - y) >= 10) walkTarget = null;
+  walkPath = findClickPath(
+    mode === 'online' ? predicted : actor,
+    walkTarget,
+    world,
+  );
+  if (!walkPath.length && Math.hypot(actor.x - x, actor.y - y) >= 10)
+    walkTarget = null;
 }
 function readInput(): Input {
   const i = neutralInput();
@@ -729,7 +733,10 @@ function readInput(): Input {
   i.y =
     Number(keys.has('KeyS') || keys.has('ArrowDown')) -
     Number(keys.has('KeyW') || keys.has('ArrowUp'));
-  if (i.x || i.y) { walkTarget = null; walkPath = []; }
+  if (i.x || i.y) {
+    walkTarget = null;
+    walkPath = [];
+  }
   if (!i.x && !i.y && walkTarget && walkPath.length) {
     const actor = world.players.find((p) => p.id === playerId);
     const origin = mode === 'online' ? predicted : actor;
@@ -744,8 +751,10 @@ function readInput(): Input {
       const dx = next.x - origin.x;
       const dy = next.y - origin.y;
       // Stop ahead of the cursor to avoid sub-pixel oscillations.
-      if (!walkPath.length || (walkPath.length === 1 && remaining < 12)) { walkTarget = null; walkPath = []; }
-      else {
+      if (!walkPath.length || (walkPath.length === 1 && remaining < 12)) {
+        walkTarget = null;
+        walkPath = [];
+      } else {
         i.x = dx / remaining;
         i.y = dy / remaining;
       }
@@ -810,7 +819,6 @@ class ForestScene extends Phaser.Scene {
   preload() {
     preloadHeroSheets(this);
     preloadVendorArt(this);
-    this.load.image('mini-farm-cottage', MINI_FARM_HOUSE_DATA);
   }
   create() {
     scene = this; // eslint-disable-line @typescript-eslint/no-this-alias
@@ -824,7 +832,11 @@ class ForestScene extends Phaser.Scene {
       navigateTo,
     );
     this.add.image(0, 0, 'forest').setOrigin(0);
-    this.add.image(323, 974, 'mini-farm-cottage').setOrigin(0.5, 1).setScale(2.35).setDepth(974);
+    this.add
+      .image(323, 974, 'mini-farm-cottage')
+      .setOrigin(0.5, 1)
+      .setScale(2)
+      .setDepth(974);
     for (const o of obstacles) {
       if (o.kind !== 'tree') continue;
       const footX = o.x + o.w / 2;
@@ -898,7 +910,10 @@ class ForestScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.graphics = this.add.graphics().setDepth(3000);
     this.atmosphere = new WorldAtmosphere(this);
-    this.weatherGraphics = this.add.graphics().setScrollFactor(0).setDepth(2900);
+    this.weatherGraphics = this.add
+      .graphics()
+      .setScrollFactor(0)
+      .setDepth(2900);
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
     this.cameras.main.startFollow(this.cameraTarget, true, 0.08, 0.08);
     this.cameras.main.setZoom(0.85);
@@ -1019,13 +1034,16 @@ class ForestScene extends Phaser.Scene {
     if (mode === 'menu') return;
     const weather = world.valley.weather ?? weatherForDay(world.valley.day);
     if (weather === 'sunny') return;
-    const width = this.scale.width, height = this.scale.height;
+    const width = this.scale.width,
+      height = this.scale.height;
     g.fillStyle(0x172d37, weather === 'rain' ? 0.16 : 0.07);
     g.fillRect(0, 0, width, height);
     if (weather !== 'rain') return;
     // Screen-space deterministic streaks: no per-particle timers or network traffic.
     g.lineStyle(1, 0xb5d5e4, 0.4);
-    const count = reducedMotion.matches ? 0 : Math.min(180, Math.ceil(width * height / 6800));
+    const count = reducedMotion.matches
+      ? 0
+      : Math.min(180, Math.ceil((width * height) / 6800));
     for (let i = 0; i < count; i++) {
       const x = ((i * 131 + Math.floor(time * 0.18)) % (width + 40)) - 20;
       const y = ((i * 229 + Math.floor(time * 0.43)) % (height + 30)) - 15;
@@ -1047,7 +1065,10 @@ class ForestScene extends Phaser.Scene {
       const sprite = this.vegetation[treeSprite++];
       if (!sprite) return;
       if (felled.has(index)) {
-        if (!world.valley.clearedStumps?.includes(index) && !this.stumps.has(index)) {
+        if (
+          !world.valley.clearedStumps?.includes(index) &&
+          !this.stumps.has(index)
+        ) {
           const x = obstacle.x + obstacle.w / 2;
           const y = obstacle.y + obstacle.h;
           const stump = this.add.graphics().setDepth(y - 1);
@@ -1060,8 +1081,12 @@ class ForestScene extends Phaser.Scene {
           this.stumps.get(index)?.destroy();
           this.stumps.delete(index);
         }
-        if (world.valley.saplings?.[String(index)] !== undefined && !this.saplingSprites.has(index)) {
-          const x = obstacle.x + obstacle.w / 2, y = obstacle.y + obstacle.h;
+        if (
+          world.valley.saplings?.[String(index)] !== undefined &&
+          !this.saplingSprites.has(index)
+        ) {
+          const x = obstacle.x + obstacle.w / 2,
+            y = obstacle.y + obstacle.h;
           const sprout = this.add.graphics().setDepth(y);
           sprout.lineStyle(3, 0x519345).lineBetween(x, y, x, y - 19);
           sprout.fillStyle(0x78bc59).fillEllipse(x - 6, y - 15, 13, 6);
@@ -1070,15 +1095,23 @@ class ForestScene extends Phaser.Scene {
         }
         if (!this.observedFelled.has(index)) {
           this.observedFelled.add(index);
-          if (this.initialTreeState || reducedMotion.matches) sprite.setVisible(false);
+          if (this.initialTreeState || reducedMotion.matches)
+            sprite.setVisible(false);
           else {
             this.treeFallInProgress.add(index);
-            this.tweens.add({ targets: sprite, angle: index % 2 ? -82 : 82, alpha: 0, duration: 420, ease: 'Cubic.easeIn', onComplete: () => {
-              sprite.setVisible(false);
-              sprite.setAngle(0);
-              sprite.setAlpha(1);
-              this.treeFallInProgress.delete(index);
-            } });
+            this.tweens.add({
+              targets: sprite,
+              angle: index % 2 ? -82 : 82,
+              alpha: 0,
+              duration: 420,
+              ease: 'Cubic.easeIn',
+              onComplete: () => {
+                sprite.setVisible(false);
+                sprite.setAngle(0);
+                sprite.setAlpha(1);
+                this.treeFallInProgress.delete(index);
+              },
+            });
           }
         }
       } else if (this.observedFelled.has(index)) {
@@ -1089,7 +1122,10 @@ class ForestScene extends Phaser.Scene {
         this.stumps.get(index)?.destroy();
         this.stumps.delete(index);
       }
-      if (!felled.has(index) || world.valley.saplings?.[String(index)] === undefined) {
+      if (
+        !felled.has(index) ||
+        world.valley.saplings?.[String(index)] === undefined
+      ) {
         this.saplingSprites.get(index)?.destroy();
         this.saplingSprites.delete(index);
       }
@@ -1166,11 +1202,16 @@ class ForestScene extends Phaser.Scene {
       this.cameras.main.shake(60, 0.0012);
     const visualTime = this.feedback.clock(time, reducedMotion.matches);
     for (const tree of this.vegetation) {
-      if (this.treeFallInProgress.size && [...this.treeFallInProgress].some((index) => {
-        let offset = 0;
-        for (let i = 0; i <= index; i++) if (obstacles[i]?.kind === 'tree') offset++;
-        return this.vegetation[offset - 1] === tree;
-      })) continue;
+      if (
+        this.treeFallInProgress.size &&
+        [...this.treeFallInProgress].some((index) => {
+          let offset = 0;
+          for (let i = 0; i <= index; i++)
+            if (obstacles[i]?.kind === 'tree') offset++;
+          return this.vegetation[offset - 1] === tree;
+        })
+      )
+        continue;
       // Stable canopy frame; the vendor loop noticeably stretches the crown.
       tree.setAngle(
         reducedMotion.matches
