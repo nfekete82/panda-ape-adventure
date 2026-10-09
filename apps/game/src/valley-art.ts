@@ -185,103 +185,63 @@ export function paintCache(c: Canvas, item: ValleyItem) {
 
 /** Original CC0 garden apron. Four 4×2 beds share the fixed 8×4 gameplay grid.
  * Eight-pixel seams suggest paths without moving or hiding any cell centre. */
+/** Cozy garden: four separate planted islands aligned with all 32 fixed cells. */
 export function paintGarden(c: Canvas) {
-  const ox = 48,
-    oy = 40;
-  // Soft grass islands, rather than a rectangular brown foundation.
-  for (const [x, y, w, h] of [
-    [20, 21, 308, 158],
-    [6, 52, 33, 69],
-    [316, 91, 30, 74],
-  ] as const) {
-    oval(c, '#607b48', x + w / 2, y + h / 2, w / 2, h / 2);
-    oval(c, '#829257', x + w / 2, y + h / 2 - 2, w / 2 - 3, h / 2 - 4);
+  const ox = 48, oy = 40;
+  // Loose meadow border: no full-sized solid rectangular platform.
+  for (const [x,y,rx,ry] of [[170,103,163,95],[38,107,28,65],[314,103,26,66]] as const) {
+    oval(c, '#436b49', x, y+4, rx, ry);
+    oval(c, '#748d58', x, y, rx-4, ry-5);
   }
-  // Central cross paths occupy only the seams between interaction cells.
-  px(c, '#c5ad79', ox + 124, oy - 8, 8, 144);
-  px(c, '#c5ad79', ox - 8, oy + 60, 272, 8);
-  for (const gy of [0, 2])
-    for (const gx of [0, 4]) {
-      const x = ox + gx * 32 + 4,
-        y = oy + gy * 32 + 4;
-      px(c, '#51452f', x, y + 2, 120, 56);
-      px(c, '#b29463', x, y, 120, 54);
-      px(c, '#d6ba82', x + 2, y, 116, 2);
-      px(c, '#8d6845', x + 2, y + 3, 116, 48);
-      // Each untilled cell has a quiet centre, distinct from hoed furrows.
-      for (let row = 0; row < 2; row++)
-        for (let col = 0; col < 4; col++) {
-          const cx = ox + (gx + col) * 32,
-            cy = oy + (gy + row) * 32;
-          px(c, '#a27e52', cx + 6, cy + 6, 20, 20);
-          px(c, '#bd9863', cx + 9, cy + 10, 4, 2);
-          px(c, '#796442', cx + 21, cy + 22, 3, 2);
-        }
-      for (const dx of [1, 116]) {
-        px(c, '#6a5137', x + dx, y + 1, 3, 52);
-        px(c, '#e1c48a', x + dx, y + 1, 2, 3);
+  // Paths in the gaps, with small stepping-stone texture.
+  px(c, '#c9b286', ox+124, oy-12, 9, 155);
+  px(c, '#e2cda0', ox+126, oy-8, 4, 149);
+  px(c, '#c9b286', ox-8, oy+60, 274, 9);
+  for (let x=ox+4;x<ox+252;x+=19) {
+    px(c, '#e7d1a8', x, oy+63, 10, 3);
+  }
+  for (const gy of [0,2]) for (const gx of [0,4]) {
+    const x=ox+gx*32+3, y=oy+gy*32+3;
+    // Each island has its own raised rounded bank, not a joined spreadsheet.
+    oval(c, '#4c5136', x+61, y+28, 63, 30);
+    oval(c, '#816044', x+61, y+25, 62, 28);
+    oval(c, '#b38654', x+61, y+23, 60, 25);
+    oval(c, '#9e7049', x+61, y+25, 57, 22);
+    for (let r=0;r<2;r++) for (let col=0;col<4;col++) {
+      const cx=ox+(gx+col)*32+16, cy=oy+(gy+r)*32+16;
+      // Three softly contrasted earthy rows per growing cell.
+      for (const dy of [-7,0,7]) {
+        px(c, '#704b38', cx-11, cy+dy+2, 22, 2);
+        px(c, '#bf9161', cx-10, cy+dy, 20, 2);
       }
+      px(c, '#d4ab79', cx-8, cy-9, 3, 2);
     }
-  // Soft soil ridges and tiny seed traces provide depth without changing plot hitboxes.
-  for (const gy of [0, 2])
-    for (const gx of [0, 4])
-      for (let row = 0; row < 2; row++)
-        for (let col = 0; col < 4; col++) {
-          const x = ox + (gx + col) * 32 + 5;
-          const y = oy + (gy + row) * 32 + 5;
-          for (const dy of [5, 12, 19]) {
-            px(c, '#76573c', x + 2, y + dy + 2, 23, 2);
-            px(c, '#d3a976', x + 3, y + dy, 21, 2);
-          }
-          px(c, '#e6be86', x + 11, y + 11, 2, 2);
-          px(c, '#83623e', x + 20, y + 18, 2, 2);
-        }
-  // Flower-border clusters emphasize the entrance and reduce the spreadsheet feel.
-  for (const [x, y, flower] of [
-    [31, 37, '#e4a1a4'], [321, 42, '#e3c27c'],
-    [26, 151, '#f0c589'], [323, 150, '#d6a5cb'],
-    [158, 25, '#e6a3a8'], [193, 178, '#e8ca87'],
+    // Tiny posts define islands without boxing each individual tile.
+    for (const postX of [x+2,x+118]) {
+      px(c, '#674a35', postX, y+6, 4, 44);
+      px(c, '#d1af7b', postX, y+6, 2, 4);
+    }
+  }
+  // Garden entry, seed markers and garden-edge flora.
+  for (const [x,y] of [[153,179],[168,188],[183,179]] as const) {
+    oval(c, '#b7ac88', x, y, 9, 4);
+    px(c, '#e0d2ad', x-6, y-2, 12, 2);
+  }
+  for (const [x,y,color] of [
+    [26,49,'#edbaad'],[321,49,'#e3bf77'],[23,157,'#e9d5a1'],
+    [327,154,'#ddabd2'],[157,19,'#f1d2ab'],[187,189,'#debea0'],
   ] as const) {
-    px(c, '#466b3f', x - 4, y + 3, 9, 4);
-    px(c, '#739653', x, y - 4, 2, 9);
-    px(c, flower, x - 3, y - 6, 8, 5);
-    px(c, '#f6e6bb', x, y - 4, 2, 2);
+    px(c, '#466d42', x-5,y+2,10,4);
+    px(c, '#7da05c', x,y-5,2,10);
+    oval(c,color,x,y-6,5,4);
+    px(c,'#f6e7b3',x-1,y-7,3,2);
   }
-  // Open south entrance: stepping stones and two short sections of picket fence.
-  for (const x of [ox + 113, ox + 124, ox + 115]) {
-    const y = oy + 140 + (x === ox + 124 ? 13 : x === ox + 115 ? 26 : 0);
-    px(c, '#877e5a', x, y, 19, 8);
-    px(c, '#d1c39b', x + 1, y, 16, 5);
+  for(const x of [31,312]) {
+    px(c,'#674a33',x,oy+124,5,16);
+    px(c,'#d2ad72',x-4,oy+119,15,9);
+    px(c,'#624a32',x,oy+121,6,3);
   }
-  for (const y of [oy - 17, oy + 148])
-    for (const [x, w] of [
-      [ox - 8, 104],
-      [ox + 160, 104],
-    ] as const) {
-      px(c, '#715437', x, y + 5, w, 3);
-      px(c, '#bc9965', x, y + 4, w, 2);
-      for (let dx = 0; dx <= w; dx += 26) {
-        px(c, '#715437', x + dx, y, 4, 15);
-        px(c, '#e0c58c', x + dx, y, 3, 3);
-      }
-    }
-  // Low wooden crop markers on the outer apron; never over a plot.
-  for (const x of [ox + 22, ox + 218]) {
-    px(c, '#715437', x + 5, oy + 133, 3, 12);
-    px(c, '#715437', x, oy + 130, 15, 8);
-    px(c, '#d9b77b', x + 1, oy + 130, 13, 6);
-    px(c, '#63814a', x + 5, oy + 131, 4, 4);
-  }
-  // A seed crate and folded sack, confined to the west apron.
-  px(c, '#674b35', 11, 46, 20, 20);
-  px(c, '#b18a59', 13, 47, 16, 16);
-  for (const y of [49, 56, 62]) px(c, '#d4b27b', 13, y, 16, 2);
-  px(c, '#674b35', 21, 48, 2, 16);
-  oval(c, '#a4895d', 23, 91, 9, 11);
-  oval(c, '#d4bd8a', 21, 88, 8, 10);
-  px(c, '#80613e', 16, 82, 11, 2);
 }
-
 /** Rebuilt low-gabled cottage. The facade uses the supplied Jofra house crop;
  * roof, porch, windows, planters and foundation are original CC0 pixel work. */
 export function paintCottage(c: Canvas, source: CanvasImageSource) {
