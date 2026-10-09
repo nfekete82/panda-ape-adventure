@@ -1,3 +1,4 @@
+import { paintMiniFarmGrass } from './mini-farm-tiles';
 import { WOODLAND, pixelOval } from './world-style';
 import { regionLight } from './world-composition';
 import {
@@ -599,44 +600,13 @@ export function paintForestWorld(ctx: CanvasRenderingContext2D): void {
   ctx.imageSmoothingEnabled = false;
   const rng = random(93104);
   ink(ctx, WOODLAND.shadow, 0, 0, WORLD.width, WORLD.height);
-  // Low-frequency meadow colour fields sampled on a 4px pixel grid. The
-  // coherent colours cross tile boundaries; tiny accents are a separate pass.
-  const grass = [
-    '#304e3d',
-    '#365640',
-    '#3d6044',
-    '#466a48',
-    '#50734b',
-    '#5d7d51',
-  ];
-  for (let y = 0; y < WORLD.height; y += 4)
-    for (let x = 0; x < WORLD.width; x += 4) {
-      const field =
-        Math.sin(x * 0.008 + Math.sin(y * 0.009) * 2) +
-        Math.cos(y * 0.012 - x * 0.004) * 0.7 +
-        Math.sin(x * 0.027 + y * 0.018) * 0.22;
-      const tone = Math.max(
-        0,
-        Math.min(
-          5,
-          Math.floor(
-            2.8 + field * 0.85 + regionLight(x, y) * 1.8 + rng() * 0.3,
-          ),
-        ),
-      );
-      ink(ctx, grass[tone]!, x, y, 4, 4);
-    }
-  for (let i = 0; i < 2400; i++) {
-    const x = rng() * WORLD.width,
-      y = rng() * WORLD.height;
-    ink(
-      ctx,
-      rng() > 0.6 ? '#56764d' : '#3d6044',
-      x,
-      y,
-      2 + rng() * 6,
-      1 + rng() * 2,
-    );
+  // Mini Farm CC0 grass base. Large-scale meadow highlights break repeated tile edges.
+  paintMiniFarmGrass(ctx, WORLD.width, WORLD.height);
+  ctx.fillStyle = 'rgba(47, 139, 52, 0.07)';
+  for (let n = 0; n < 120; n++) {
+    const x = rng() * WORLD.width;
+    const y = rng() * WORLD.height;
+    ctx.fillRect(Math.floor(x / 16) * 16, Math.floor(y / 16) * 16, 32, 16);
   }
   // Sparse leaf litter ties trunks to the groves. Contact shadows belong to
   // the tree sprites, keeping the floor free of repeated circular patches.
