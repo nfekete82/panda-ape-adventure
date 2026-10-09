@@ -46,24 +46,36 @@ export class ValleyView {
     this.root = document.createElement('section');
     this.root.id = 'valley';
     this.root.innerHTML =
-      '<button id="valley-toggle">F · Wild Valley ↓</button><span id="valley-clock"></span><div id="valley-content" hidden></div><p id="valley-status" role="status" hidden></p>';
+      '<div class="valley-summary"><button id="valley-toggle" aria-label="Open farm management">☰ Farm · F</button><span id="valley-clock"></span></div><div id="valley-content" hidden></div><div id="valley-hotbar" role="toolbar" aria-label="Farming tools"><button data-quick-tool="none" title="Explore">✋</button><button data-quick-tool="hoe" title="Hoe">▦</button><button data-quick-tool="plant" title="Plant">🌱</button><button data-quick-tool="water" title="Water">💧</button><button data-quick-tool="harvest" title="Harvest">🌾</button><button data-quick-tool="build" title="Build">🔨</button><button data-quick-tool="remove" title="Remove furniture">✕</button></div><p id="valley-status" role="status" hidden></p>';
     document.getElementById('hud')!.append(this.root);
     this.content = this.root.querySelector('#valley-content')!;
     this.status = this.root.querySelector('#valley-status')!;
     this.clock = this.root.querySelector('#valley-clock')!;
     this.root.querySelector<HTMLButtonElement>('#valley-toggle')!.onclick =
       () => this.toggle();
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-quick-tool]')) {
+      button.onclick = () => {
+        this.tool = button.dataset.quickTool as Tool;
+        this.open = false;
+        this.signature = '';
+        this.preview.clear();
+        this.ghost.setVisible(false);
+        this.update();
+      };
+    }
     const ground = scene.add.graphics().setDepth(0.5);
-    ground.fillStyle(0x536b46, 0.7);
+    ground.fillStyle(0x785c3c, 0.92);
     ground.fillRect(
       FARM.x - 12,
       FARM.y - 8,
       FARM.columns * 32 + 24,
       FARM.rows * 32 + 16,
     );
-    ground.lineStyle(1, 0xa5ab73, 0.26);
-    for (let cell = 0; cell < 32; cell++) {
+    ground.lineStyle(2, 0xbda177, 0.8);
+    for (let cell = 0; cell < FARM.columns * FARM.rows; cell++) {
       const p = cellPoint(cell);
+      ground.fillStyle((Math.floor(cell / FARM.columns) + cell % FARM.columns) % 2 ? 0x765435 : 0x866341, 0.95);
+      ground.fillRect(p.x - 15, p.y - 15, 30, 30);
       ground.strokeRect(p.x - 15, p.y - 15, 30, 30);
     }
     scene.add
@@ -101,12 +113,11 @@ export class ValleyView {
     );
   }
   get working() {
-    return this.open && this.tool !== 'none';
+    return this.tool !== 'none';
   }
   toggle(force?: boolean) {
     this.open = force ?? !this.open;
     if (!this.open) {
-      this.tool = 'none';
       this.preview.clear();
       this.ghost.setVisible(false);
       this.status.hidden = true;
@@ -214,6 +225,8 @@ export class ValleyView {
       p = this.player();
     if (!p) return;
     this.content.hidden = !this.open;
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-quick-tool]'))
+      button.setAttribute('aria-pressed', String(button.dataset.quickTool === this.tool));
     this.clock.textContent = `Day ${w.valley.day} · ${Math.ceil(DAY_SECONDS - w.valley.elapsed)}s · ${w.valley.gold} gold`;
     this.root.dataset.gold = String(w.valley.gold);
     this.root.dataset.day = String(w.valley.day);
@@ -291,7 +304,7 @@ export class ValleyView {
     }
     if (!this.open) return;
     this.content.innerHTML = `<h3>Our woodland home</h3><nav class="valley-tabs" aria-label="Wild Valley menus">${(['garden', 'supplies', 'market'] as const).map((tab) => `<button data-tab="${tab}" aria-pressed="${tab === this.tab}">${tab === 'garden' ? 'Garden' : tab === 'supplies' ? 'Supplies' : 'Market'}</button>`).join('')}</nav><section ${this.tab === 'garden' ? '' : 'hidden'}><p>Select a tool, then click a nearby garden tile. Dry crops wait safely; days last 45 seconds.</p>
-      <div class="valley-tools">${(['none', 'hoe', 'plant', 'water', 'harvest', 'build', 'remove'] as const).map((tool) => `<button data-tool="${tool}" aria-pressed="${tool === this.tool}">${tool === 'none' ? 'Combat' : tool === 'remove' ? 'Remove furniture' : tool}</button>`).join('')}</div>
+      <div class="valley-tools">${(['none', 'hoe', 'plant', 'water', 'harvest', 'build', 'remove'] as const).map((tool) => `<button data-tool="${tool}" aria-pressed="${tool === this.tool}">${tool === 'none' ? 'Explore' : tool === 'remove' ? 'Remove furniture' : tool}</button>`).join('')}</div>
       <label>Seed <select id="valley-seed">${CROP_IDS.map((crop) => `<option value="${crop}" ${this.crop === crop ? 'selected' : ''}>${CROPS[crop].name} · ${CROPS[crop].days} day(s) · ${w.valley.bag[CROPS[crop].seed]} seeds</option>`).join('')}</select></label>
       <label>Build <select id="valley-recipe">${RECIPE_IDS.map((recipe) => `<option value="${recipe}" ${recipe === this.recipe ? 'selected' : ''}>${RECIPES[recipe].name}</option>`).join('')}</select></label>
       <p>${RECIPES[this.recipe].gold} gold · ${ITEM_IDS.filter(
