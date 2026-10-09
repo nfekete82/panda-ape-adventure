@@ -478,7 +478,7 @@ export function isValley(value: unknown): value is Valley {
   )
     return false;
   if (value.felledTrees !== undefined && (!Array.isArray(value.felledTrees) || value.felledTrees.length > obstacles.length || !value.felledTrees.every((n) => integer(n, 0, obstacles.length - 1) && obstacles[n]?.kind === 'tree') || new Set(value.felledTrees).size !== value.felledTrees.length)) return false;
-  if (value.treeHits !== undefined && (!record(value.treeHits) || Object.keys(value.treeHits).length > obstacles.length || !Object.entries(value.treeHits).every(([key, hit]) => /^\\d+$/.test(key) && integer(Number(key), 0, obstacles.length - 1) && obstacles[Number(key)]?.kind === 'tree' && integer(hit, 1, 2) && !value.felledTrees?.includes(Number(key))))) return false;
+  if (value.treeHits !== undefined && (!record(value.treeHits) || Object.keys(value.treeHits).length > obstacles.length || !Object.entries(value.treeHits).every(([key, hit]) => /^\d+$/.test(key) && integer(Number(key), 0, obstacles.length - 1) && obstacles[Number(key)]?.kind === 'tree' && integer(hit, 1, 2) && !(Array.isArray(value.felledTrees) && value.felledTrees.includes(Number(key)))))) return false;
   if (value.nodeHits !== undefined && (!Array.isArray(value.nodeHits) || value.nodeHits.length !== 4 || !value.nodeHits.every((n) => integer(n, 0, 3)))) return false;
   if (
     !Array.isArray(value.plots) ||
