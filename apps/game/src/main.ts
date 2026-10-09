@@ -1104,7 +1104,17 @@ class ForestScene extends Phaser.Scene {
       sprite.setScale(
         e.kind === 'guardian' ? 1.8 : e.kind === 'slime' ? 1.05 : 1.1,
       );
-      sprite.setTint(e.hurt > 0 ? 0xffd8b4 : 0xffffff);
+      const shrineSentinel = e.id === 'enemy11';
+      sprite.setTint(e.hurt > 0 ? 0xffd8b4 : shrineSentinel ? 0x82e6c4 : 0xffffff);
+      if (shrineSentinel && reducedMotion.matches === false) {
+        this.graphics.lineStyle(2, 0x80efcc, 0.32 + Math.sin(time * 0.003) * 0.12);
+        this.graphics.strokeCircle(sprite.x, sprite.y - 6, 28);
+        for (let n = 0; n < 3; n++) {
+          const a = time * 0.0009 + n * Math.PI * 2 / 3;
+          this.graphics.fillStyle(0xc6ffd7, 0.54);
+          this.graphics.fillCircle(sprite.x + Math.cos(a) * 28, sprite.y - 6 + Math.sin(a) * 17, 2);
+        }
+      }
       if (e.kind === 'slime')
         sprite.scaleY = sprite.scaleX * (1 + Math.sin(time * 0.003) * 0.045);
       // A small impact compression follows only confirmed enemy hurt state.
