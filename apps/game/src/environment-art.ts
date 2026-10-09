@@ -179,6 +179,7 @@ function shoreline(
   ctx: CanvasRenderingContext2D,
   points: readonly ShorePoint[],
   rng: () => number,
+  mini: HTMLImageElement | null = null,
 ) {
   const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
   const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
@@ -200,6 +201,25 @@ function shoreline(
   polygon(ctx, ring(-19), '#285cc4');
   polygon(ctx, ring(-34), '#285cc4');
   polygon(ctx, ring(-52), '#234c9b');
+  // CC0 water texture fills only the inner lake and keeps the original bank shape.
+  if (mini) {
+    ctx.save();
+    ctx.beginPath();
+    points.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.closePath();
+    ctx.clip();
+    const left = Math.floor(Math.min(...points.map((p) => p.x)) / 32) * 32;
+    const topY = Math.floor(Math.min(...points.map((p) => p.y)) / 32) * 32;
+    const right = Math.max(...points.map((p) => p.x));
+    const bottomY = Math.max(...points.map((p) => p.y));
+    for (let y = topY; y <= bottomY; y += 32)
+      for (let x = left; x <= right; x += 32)
+        ctx.drawImage(mini, 96, 0, 32, 32, x, y, 32, 32);
+    ctx.restore();
+  }
   const top = Math.min(...points.map((p) => p.y));
   const bottom = Math.max(...points.map((p) => p.y));
   for (let i = 0; i < 36; i++) {
@@ -661,7 +681,7 @@ export function paintForestWorld(ctx: CanvasRenderingContext2D, mini: HTMLImageE
         ctx.drawImage(mini, 32, 0, 32, 32, x, y, 32, 32);
     ctx.restore();
   }
-  for (const lake of lakes) shoreline(ctx, lake, rng);
+  for (const lake of lakes) shoreline(ctx, lake, rng, mini);
   for (const o of obstacles) if (o.kind === 'rock') boulders(ctx, o);
   // Much less noise than the original checkerboard-like forest scatter.
   for (let i = 0; i < 360; i++) {
