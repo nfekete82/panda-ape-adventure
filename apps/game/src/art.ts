@@ -62,6 +62,18 @@ export function makeAssets(scene: Phaser.Scene) {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(mini, (cell % 4) * 32, Math.floor(cell / 4) * 32, 32, 32, 0, 0, width, height);
   };
+  // Native decorative tiles from the CC0 sheet are kept separate from
+  // gameplay sprites so the farm can use original pixels without collision.
+  if (mini) for (const [name, cell] of [
+    ['minifarm-flowers', 4],
+    ['minifarm-shrub', 5],
+    ['minifarm-barrel', 7],
+    ['minifarm-garden', 8],
+  ] as const) {
+    const art = canvas(32, 32);
+    sample(art.ctx, cell, 32, 32);
+    scene.textures.addCanvas(name, art.c);
+  }
   const can = canvas(32, 32);
   can.ctx.fillStyle = '#304c46';
   can.ctx.fillRect(8, 10, 16, 18);
