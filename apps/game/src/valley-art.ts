@@ -344,6 +344,31 @@ export function paintCottage(c: Canvas, source: CanvasImageSource) {
     px(c, '#6f735c', x, y+1, w, 3);
     px(c, '#d2c29a', x+1, y, w-2, 2);
   }
+  // New garden-friendly details without changing source image, cottage bounds
+  // or the camp collision. Warm roof ridgeline and textured timber cladding.
+  px(c, '#493b31', 44, 11, 9, 5);
+  px(c, '#f4d79c', 46, 13, 5, 4);
+  for (const x of [16, 72]) {
+    px(c, '#694b36', x, 51, 5, 25);
+    px(c, '#d4ae76', x+1, 53, 2, 20);
+    px(c, '#584333', x-2, 74, 10, 4);
+  }
+  for (let i=0;i<5;i++) {
+    const y=51+i*5;
+    px(c, '#c89d6d', 15, y, 22, 1);
+    px(c, '#c89d6d', 60, y, 22, 1);
+  }
+  // Short fence and tiny plantings make the porch feel inhabited.
+  for (const x of [8,86]) {
+    px(c, '#6a4d34', x, 69, 3, 14);
+    px(c, '#d9b783', x, 69, 2, 3);
+  }
+  px(c, '#b88f5d', 7, 74, 13, 3);
+  px(c, '#b88f5d', 77, 74, 13, 3);
+  for (const [x,color] of [[13,'#e7a0a7'],[83,'#ead3a5']] as const) {
+    px(c, '#628450', x, 69, 4, 5);
+    px(c, color, x-1, 66, 6, 4);
+  }
   // Porch steps align with the retained door / smith interaction lane.
   px(c, '#72563b', 35, 78, 26, 5);
   px(c, '#d8ba81', 35, 78, 26, 2);
