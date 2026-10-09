@@ -68,6 +68,11 @@ export function paintBuilding(c: Canvas, recipe: Recipe) {
     px(c, wood, 1, 23, 30, 3);
     px(c, light, 1, 23, 28, 1);
     px(c, wood, 1, 40, 30, 4);
+    px(c, '#dbb981', 3, 24, 26, 2);
+    for (const x of [5, 25]) {
+      px(c, '#5b402d', x, 20, 3, 25);
+      px(c, '#cba371', x, 21, 1, 22);
+    }
     return;
   }
   px(c, P.shadow, 1, 42, 30, 5);
@@ -81,12 +86,27 @@ export function paintBuilding(c: Canvas, recipe: Recipe) {
     px(c, P.stoneLight, 16, 15, 13, 3);
     px(c, wood, 8, 13, 3, 10);
     px(c, P.stoneLight, 5, 12, 9, 4);
+    // Tools and pegs above the planked top.
+    px(c, '#435957', 9, 8, 3, 12);
+    px(c, '#bfd0bb', 6, 7, 10, 3);
+    px(c, '#e7c58d', 19, 21, 5, 2);
+    px(c, '#59422f', 13, 25, 2, 16);
+    px(c, '#b78956', 5, 33, 23, 2);
   } else if (recipe === 'chest') {
     px(c, edge, 3, 22, 26, 21);
     px(c, wood, 5, 24, 22, 16);
     px(c, light, 5, 24, 22, 3);
     px(c, P.ink, 3, 31, 26, 3);
     px(c, P.cream, 14, 29, 5, 7);
+    // Rounded lid highlights, metal corners and keyhole.
+    px(c, '#d0a268', 6, 22, 20, 2);
+    for (const x of [5, 24]) {
+      px(c, '#9a9b83', x, 24, 3, 6);
+      px(c, '#9a9b83', x, 37, 3, 4);
+      px(c, '#d9caa1', x, 25, 2, 1);
+    }
+    px(c, '#67503a', 16, 32, 2, 3);
+    px(c, '#d4b27a', 7, 39, 18, 2);
   } else if (recipe === 'fence') {
     for (const x of [2, 25]) {
       px(c, edge, x, 21, 5, 23);
@@ -94,12 +114,23 @@ export function paintBuilding(c: Canvas, recipe: Recipe) {
     }
     px(c, wood, 4, 26, 24, 4);
     px(c, wood, 4, 35, 24, 4);
+    px(c, light, 5, 26, 22, 1);
+    px(c, light, 5, 35, 22, 1);
+    px(c, '#58432f', 7, 29, 2, 3);
+    px(c, '#58432f', 24, 36, 2, 3);
+    px(c, '#d7bb85', 2, 20, 5, 3);
+    px(c, '#d7bb85', 25, 20, 5, 3);
   } else if (recipe === 'lantern') {
     px(c, edge, 14, 16, 4, 28);
     px(c, wood, 15, 15, 14, 3);
     px(c, P.ink, 21, 17, 10, 15);
     px(c, P.cream, 23, 20, 5, 8);
     px(c, '#dba867', 24, 21, 2, 5);
+    px(c, '#f4d69b', 22, 18, 8, 2);
+    px(c, '#ffeba9', 24, 23, 3, 4);
+    px(c, '#d6ac69', 22, 31, 8, 2);
+    px(c, '#c99d65', 13, 38, 7, 2);
+    px(c, '#8b6b48', 12, 42, 9, 3);
   } else {
     px(c, edge, 3, 12, 4, 32);
     px(c, edge, 25, 12, 4, 32);
@@ -114,6 +145,13 @@ export function paintBuilding(c: Canvas, recipe: Recipe) {
       );
     px(c, light, 3, 24, 26, 2);
     px(c, wood, 5, 37, 22, 6);
+    // A welcoming little timber shelter, with warm window and roof trim.
+    px(c, '#efd39c', 7, 25, 17, 2);
+    px(c, '#644a31', 9, 29, 14, 13);
+    px(c, '#d5ad70', 11, 31, 10, 9);
+    px(c, '#735132', 15, 31, 2, 9);
+    px(c, '#e9c789', 7, 10, 16, 2);
+    px(c, '#b58d5d', 6, 34, 20, 2);
   }
 }
 export function paintCache(c: Canvas, item: ValleyItem) {
