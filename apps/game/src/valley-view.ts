@@ -178,6 +178,18 @@ export class ValleyView {
       })
       .setOrigin(0.5)
       .setDepth(1190);
+    // A few recognizable CC0 decorative sprites tie the farmyard to the
+    // imported tileset. Keep all placements outside playable plot cells.
+    for (const [texture, x, y] of [
+      ['minifarm-flowers', FARM.x - 40, FARM.y + 9],
+      ['minifarm-shrub', FARM.x - 44, FARM.y + 98],
+      ['minifarm-barrel', FARM.x + FARM.columns * FARM.tile + 39, FARM.y + 22],
+      ['minifarm-flowers', FARM.x + FARM.columns * FARM.tile + 43, FARM.y + 91],
+      ['minifarm-garden', FARM.x + FARM.columns * FARM.tile + 39, FARM.y + 146],
+    ] as const) {
+      if (scene.textures.exists(texture))
+        scene.add.image(x, y, texture).setDepth(y + 5);
+    }
     for (const node of RESOURCE_NODES)
       this.caches.push(
         scene.add.image(node.x, node.y, `valley-cache-${node.item}`).setDepth(node.y),
