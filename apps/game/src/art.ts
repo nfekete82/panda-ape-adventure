@@ -7,7 +7,6 @@ import {
   paintGarden,
   paintCottage,
 } from './valley-art';
-import sheets from '../../../assets/hero-sheets.json';
 import Phaser from 'phaser';
 import { MINI_FARM_HOUSE_DATA } from './mini-farm-house';
 import { MINI_FARM_ATLAS } from './minifarm-atlas';
@@ -39,10 +38,6 @@ const activeStates: Record<'panda' | 'ape', string[]> = {
 export function preloadHeroSheets(scene: Phaser.Scene) {
   scene.load.image('minifarm-cc0-atlas', MINI_FARM_ATLAS);
   scene.load.image('mini-farm-cottage-source', MINI_FARM_HOUSE_DATA);
-  for (const hero of ['panda', 'ape'] as const) {
-    const source = sheets[hero].source;
-    if (typeof source === 'string') scene.load.image(`${hero}-source`, source);
-  }
 }
 export function heroFrame(
   hero: 'panda' | 'ape',
@@ -199,12 +194,12 @@ export function makeAssets(scene: Phaser.Scene) {
     scene.textures.addCanvas(`valley-cache-${node.item}`, a.c);
   }
 
+  // Use one coherent, original 64px farming hero atlas for both characters.
+  // The legacy imported RPG hero sheets previously overpainted every new
+  // Panda/Ape drawing and made visual changes invisible in the actual game.
   for (const hero of ['panda', 'ape'] as const) {
-    const external = scene.textures.exists(`${hero}-source`);
-    const { c, ctx } = canvas(
-      64 * 4,
-      64 * 8 * (external ? sheets[hero].states.length : 1),
-    );
+    const { c, ctx } = canvas(64 * 4, 64 * 8);
+    activeStates[hero] = ['walk'];
     for (let dir = 0; dir < 8; dir++)
       for (let frame = 0; frame < 4; frame++) {
         ctx.save();
@@ -212,15 +207,6 @@ export function makeAssets(scene: Phaser.Scene) {
         heroArt(ctx, hero, frame, dir, false);
         ctx.restore();
       }
-    if (external) {
-      const source: unknown = scene.textures
-        .get(`${hero}-source`)
-        .getSourceImage();
-      if (source instanceof HTMLImageElement) {
-        ctx.drawImage(source, 0, 0);
-        activeStates[hero] = sheets[hero].states;
-      }
-    }
     const texture = scene.textures.addCanvas(hero, c)!;
     scene.textures.addSpriteSheet(hero, texture, {
       frameWidth: 64,
