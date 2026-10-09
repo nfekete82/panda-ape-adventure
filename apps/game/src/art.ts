@@ -124,6 +124,30 @@ export function makeAssets(scene: Phaser.Scene) {
       garden.ctx.restore();
     }
   scene.textures.addCanvas('valley-garden', garden.c);
+  // Equipped tools use dedicated crisp pixel textures, not the old RPG weapons.
+  for (const tool of ['axe', 'pickaxe', 'water'] as const) {
+    const a = canvas(32, 32);
+    const c = a.ctx;
+    if (tool === 'water') {
+      c.fillStyle = '#5c7470'; c.fillRect(8, 13, 18, 15);
+      c.fillStyle = '#b7d5cf'; c.fillRect(10, 14, 14, 3);
+      c.fillStyle = '#5c7470'; c.fillRect(22, 8, 8, 5);
+      c.fillStyle = '#b7d5cf'; c.fillRect(24, 7, 5, 2);
+      c.fillStyle = '#d0b57b'; c.fillRect(11, 8, 11, 3);
+    } else {
+      c.fillStyle = '#694932'; c.fillRect(14, 6, 5, 25);
+      c.fillStyle = '#c19760'; c.fillRect(15, 7, 2, 23);
+      c.fillStyle = '#536c70';
+      if (tool === 'axe') {
+        c.fillRect(3, 5, 20, 5); c.fillRect(3, 10, 15, 6);
+        c.fillStyle = '#b8cfcb'; c.fillRect(3, 5, 16, 2);
+      } else {
+        c.fillRect(2, 5, 28, 5); c.fillRect(5, 10, 5, 5);
+        c.fillStyle = '#bed1c9'; c.fillRect(2, 5, 28, 2);
+      }
+    }
+    scene.textures.addCanvas(`valley-held-${tool}`, a.c);
+  }
   const can = canvas(32, 32);
   can.ctx.fillStyle = '#304c46';
   can.ctx.fillRect(8, 10, 16, 18);
