@@ -1003,6 +1003,12 @@ class ForestScene extends Phaser.Scene {
     }
   }
   update(time: number, delta: number) {
+    let treeSprite = 0;
+    obstacles.forEach((obstacle, index) => {
+      if (obstacle.kind !== 'tree') return;
+      const sprite = this.vegetation[treeSprite++];
+      if (sprite) sprite.setVisible(!world.valley.felledTrees?.includes(index));
+    });
     const dt = Math.min(delta / 1000, 0.05);
     if (paused && mode === 'solo')
       for (const timing of this.weaponTiming.values())
