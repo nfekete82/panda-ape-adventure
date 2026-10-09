@@ -136,6 +136,8 @@ export interface Valley {
   nodeHits?: number[];
   felledTrees?: number[];
   treeHits?: Record<string, number>;
+  clearedStumps?: number[];
+  saplings?: Record<string, number>;
 }
 export function createValley(): Valley {
   return {
@@ -166,6 +168,8 @@ export function createValley(): Valley {
     nodeHits: [0, 0, 0, 0],
     felledTrees: [],
     treeHits: {},
+    clearedStumps: [],
+    saplings: {},
   };
 }
 export function cellPoint(cell: number) {
@@ -203,6 +207,14 @@ export function advanceValley(v: Valley, dt: number) {
   while (v.elapsed >= DAY_SECONDS) {
     v.elapsed -= DAY_SECONDS;
     v.day++;
+    for (const [key, readyDay] of Object.entries(v.saplings ?? {})) {
+      if (v.day >= readyDay) {
+        const index = Number(key);
+        v.felledTrees = (v.felledTrees ?? []).filter((tree) => tree !== index);
+        v.clearedStumps = (v.clearedStumps ?? []).filter((tree) => tree !== index);
+        delete v.saplings![key];
+      }
+    }
     v.nodeHits = [0, 0, 0, 0];
     for (const plot of v.plots)
       if (
@@ -220,7 +232,7 @@ export type ValleyAction =
   | { kind: 'plant'; cell: number; crop: Crop }
   | { kind: 'build'; cell: number; recipe: Recipe }
   | { kind: 'gather' | 'strike'; node: number }
-  | { kind: 'chopTree'; tree: number }
+  | { kind: 'chopTree' | 'clearStump' | 'plantSapling'; tree: number }
   | { kind: 'buy' | 'sell'; item: ValleyItem; count: number };
 const record = (v: unknown): v is Record<string, unknown> =>
   !!v && typeof v === 'object' && !Array.isArray(v);
@@ -243,7 +255,7 @@ export function parseValleyAction(v: unknown): ValleyAction | null {
     return { kind: v.kind, item: v.item, count: v.count };
   if ((v.kind === 'gather' || v.kind === 'strike') && exact(['kind', 'node']) && integer(v.node, 0, 3))
     return { kind: v.kind, node: v.node };
-  if (v.kind === 'chopTree' && exact(['kind', 'tree']) && integer(v.tree, 0, obstacles.length - 1) && obstacles[v.tree]?.kind === 'tree') return { kind: 'chopTree', tree: v.tree };
+  if ((v.kind === 'chopTree' || v.kind === 'clearStump' || v.kind === 'plantSapling') && exact(['kind', 'tree']) && integer(v.tree, 0, obstacles.length - 1) && obstacles[v.tree]?.kind === 'tree') return { kind: v.kind, tree: v.tree };
   if (!integer(v.cell, 0, FARM.columns * FARM.rows - 1)) return null;
   if (
     (v.kind === 'hoe' ||
@@ -309,13 +321,27 @@ export function applyValleyAction(
   p.commandSeq = seq;
   if (!p.connected || p.hp <= 0) return 'Your hero cannot work right now.';
   const v = w.valley;
-  if (a.kind === 'chopTree') {
+  if (a.kind === 'chopTree' || a.kind === 'clearStump' || a.kind === 'plantSapling') {
     const tree = obstacles[a.tree];
     if (!tree || tree.kind !== 'tree') return 'Invalid tree.';
-    if (v.felledTrees?.includes(a.tree)) return 'Tree already felled.';
+    if (a.kind === 'chopTree' && v.felledTrees?.includes(a.tree)) return 'Tree already felled.';
     const cx = tree.x + tree.w / 2;
     const cy = tree.y + tree.h / 2;
     if (Math.hypot(p.x - cx, p.y - cy) > 90) return 'Move closer to the tree.';
+    if (a.kind === 'clearStump') {
+      if (!v.felledTrees?.includes(a.tree) || v.clearedStumps?.includes(a.tree)) return 'No stump to clear.';
+      v.clearedStumps ??= [];
+      v.clearedStumps.push(a.tree);
+      return null;
+    }
+    if (a.kind === 'plantSapling') {
+      if (!v.clearedStumps?.includes(a.tree) || v.saplings?.[String(a.tree)] !== undefined) return 'Clear a stump before planting.';
+      if (v.bag.fiber < 2) return 'You need 2 fibre for a sapling.';
+      v.bag.fiber -= 2;
+      v.saplings ??= {};
+      v.saplings[String(a.tree)] = v.day + 3;
+      return null;
+    }
     v.treeHits ??= {};
     const hit = (v.treeHits[String(a.tree)] ?? 0) + 1;
     if (hit >= 3) {
@@ -479,6 +505,8 @@ export function isValley(value: unknown): value is Valley {
     return false;
   if (value.felledTrees !== undefined && (!Array.isArray(value.felledTrees) || value.felledTrees.length > obstacles.length || !value.felledTrees.every((n) => integer(n, 0, obstacles.length - 1) && obstacles[n]?.kind === 'tree') || new Set(value.felledTrees).size !== value.felledTrees.length)) return false;
   if (value.treeHits !== undefined && (!record(value.treeHits) || Object.keys(value.treeHits).length > obstacles.length || !Object.entries(value.treeHits).every(([key, hit]) => /^\d+$/.test(key) && integer(Number(key), 0, obstacles.length - 1) && obstacles[Number(key)]?.kind === 'tree' && integer(hit, 1, 2) && !(Array.isArray(value.felledTrees) && value.felledTrees.includes(Number(key)))))) return false;
+  if (value.clearedStumps !== undefined && (!Array.isArray(value.clearedStumps) || new Set(value.clearedStumps).size !== value.clearedStumps.length || !value.clearedStumps.every((index) => integer(index, 0, obstacles.length - 1) && obstacles[index]?.kind === 'tree' && value.felledTrees?.includes(index)))) return false;
+  if (value.saplings !== undefined && (!record(value.saplings) || !Object.entries(value.saplings).every(([key, day]) => /^\d+$/.test(key) && integer(Number(key), 0, obstacles.length - 1) && value.clearedStumps?.includes(Number(key)) && integer(day, value.day as number, (value.day as number) + 3)))) return false;
   if (value.nodeHits !== undefined && (!Array.isArray(value.nodeHits) || value.nodeHits.length !== 4 || !value.nodeHits.every((n) => integer(n, 0, 3)))) return false;
   if (
     !Array.isArray(value.plots) ||
