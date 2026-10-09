@@ -702,15 +702,8 @@ window.addEventListener('blur', () => {
   pulses.clear();
   walkTarget = null;
 });
-let mouseDown = false;
 // Click-to-move target is client intent only; the server still validates movement.
 let walkTarget: { x: number; y: number } | null = null;
-window.addEventListener('mouseup', () => {
-  mouseDown = false;
-});
-window.addEventListener('blur', () => {
-  mouseDown = false;
-});
 function readInput(): Input {
   const i = neutralInput();
   if (
@@ -764,7 +757,10 @@ function readInput(): Input {
   i.aimX = lastFacing.x;
   i.aimY = lastFacing.y;
   // Farming interaction clicks must never trigger an RPG attack.
-  i.attack ||= false;
+  i.attack = false;
+  i.special = false;
+  i.heal = false;
+  i.guard = false;
   i.special ||= keys.has('KeyQ') || pulses.has('KeyQ');
   i.heal ||= keys.has('KeyR') || pulses.has('KeyR');
   i.guard ||= keys.has('ShiftLeft') || keys.has('ShiftRight');
