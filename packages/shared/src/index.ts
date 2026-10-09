@@ -16,6 +16,7 @@ import {
   bambooObstacles,
   bambooRiverColliders,
   BAMBOO_WORLD_WIDTH,
+  BAMBOO_SHRINE,
 } from './bamboo-crossing.js';
 export * from './bamboo-crossing.js';
 export * from './rpg.js';
