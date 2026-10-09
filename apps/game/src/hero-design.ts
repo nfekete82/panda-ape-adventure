@@ -105,17 +105,24 @@ export function conceptHero(
     px(c, furLight, x + 1, 23 + swing, 2, 2);
     px(c, cream, x, 21 + swing, 4, 1);
   }
+  // Straw garden hat: broad but low, adding a recognizable farming silhouette.
+  if (!back) {
+    px(c, '#7b593b', 6, 4, 21, 3);
+    px(c, '#deb679', 7, 2, 19, 4);
+    px(c, '#f1d7a0', 11, 0, 11, 4);
+    px(c, '#9b704b', 10, 4, 14, 1);
+  }
   // A small ochre neckerchief replaces the oversized adventurer collar.
   px(c, '#a96d49', 11, 16, 11, 3);
   px(c, '#d8a067', 12, 16, 9, 1);
   if (!back) px(c, '#bf8353', 18, 18, 3, 3);
   if (panda) {
-    round(edge, 8, 5, 4, 4);
-    round(edge, 24, 5, 4, 4);
+    round(edge, 9, 4, 3, 3);
+    round(edge, 23, 4, 3, 3);
     round('#716557', 8, 5, 2, 2);
     round('#716557', 24, 5, 2, 2);
-    round(edge, 16, 10, 11, 9);
-    round(cream, 16, 10, 10, 8);
+    round(edge, 16, 10, 9, 8);
+    round(cream, 16, 10, 8, 7);
     px(c, '#faf0d6', 10, 4, 10, 3);
     if (back) {
       px(c, '#d3ceb5', 9, 13, 15, 3);
@@ -136,8 +143,8 @@ export function conceptHero(
     round(edge, 27, 10, 3, 4);
     round('#d3a272', 5, 10, 2, 3);
     round('#d3a272', 27, 10, 2, 3);
-    round(edge, 16, 10, 10, 9);
-    round(fur, 16, 10, 9, 8);
+    round(edge, 16, 10, 9, 8);
+    round(fur, 16, 10, 8, 7);
     px(c, edge, 12, 1, 9, 3);
     px(c, furLight, 15, 1, 5, 4);
     if (back) {
