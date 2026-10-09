@@ -1,5 +1,4 @@
 import { WOODLAND, pixelOval } from './world-style';
-import { regionLight } from './world-composition';
 import {
   obstacles,
   random,
@@ -89,11 +88,11 @@ function stampRoad(ctx: CanvasRenderingContext2D, randomNumber: () => number) {
     polygon(ctx, left.concat(right.reverse()), color);
   };
   // Moss bank, raised earth edge and a warm beaten footpath.
-  drawBand(67, '#426c43', 13);
-  drawBand(59, '#6b8150', 12);
-  drawBand(52, '#a18e61', 11);
-  drawBand(46, '#b6a070', 8);
-  drawBand(39, '#c4ad7a', 6);
+  drawBand(67, '#459a39', 13);
+  drawBand(59, '#68bf42', 12);
+  drawBand(52, '#d5c178', 11);
+  drawBand(46, '#f0cd8f', 8);
+  drawBand(39, '#ffdda6', 6);
   // Two thin wheel-worn tracks make the road read as terrain, not a beige slab.
   ctx.save();
   ctx.setLineDash([18, 12, 34, 19]);
@@ -261,95 +260,8 @@ function shoreline(
   }
 }
 function forge(ctx: CanvasRenderingContext2D) {
-  // Taller copper-roofed woodland smithy; footprint and interaction lanes
-  // remain unchanged. The high gable is the hub's warm visual anchor.
-  ink(ctx, WOODLAND.shadow, 228, 956, 186, 33);
-  ink(ctx, WOODLAND.ink, 247, 897, 145, 70);
-  ink(ctx, '#c39e6f', 255, 905, 127, 54);
-  ink(ctx, '#dfc08b', 257, 905, 121, 7);
-  for (let x = 258; x < 386; x += 24) {
-    ink(ctx, WOODLAND.barkDark, x, 905, 6, 58);
-    ink(ctx, WOODLAND.barkLight, x + 6, 910, 2, 44);
-  }
-  ink(ctx, '#8d7858', 250, 958, 143, 9);
-  for (let i = 0; i < 7; i++) {
-    ink(ctx, '#b4ae8c', 254 + i * 20, 959, 16, 4);
-    ink(ctx, '#5d6350', 270 + i * 20, 960, 2, 6);
-  }
-  polygon(
-    ctx,
-    [
-      { x: 228, y: 896 },
-      { x: 293, y: 803 },
-      { x: 349, y: 807 },
-      { x: 414, y: 896 },
-    ],
-    WOODLAND.ink,
-  );
-  polygon(
-    ctx,
-    [
-      { x: 238, y: 889 },
-      { x: 296, y: 810 },
-      { x: 347, y: 813 },
-      { x: 404, y: 889 },
-    ],
-    '#76533d',
-  );
-  polygon(
-    ctx,
-    [
-      { x: 245, y: 879 },
-      { x: 297, y: 815 },
-      { x: 345, y: 818 },
-      { x: 397, y: 879 },
-    ],
-    '#a1794c',
-  );
-  for (let row = 0; row < 8; row++) {
-    const y = 820 + row * 8;
-    for (let x = 293 - row * 6; x < 349 + row * 6; x += 18) {
-      ink(ctx, row % 2 ? '#826345' : '#957047', x, y, 15, 4);
-      ink(ctx, '#c29c63', x + 1, y, 10, 1);
-    }
-  }
-  // Patinated chimney stone and a distinct little window beneath the ridge.
-  ink(ctx, WOODLAND.ink, 342, 796, 26, 52);
-  ink(ctx, '#7a8370', 346, 799, 18, 45);
-  for (let n = 0; n < 5; n++) ink(ctx, '#b5b18e', 347, 801 + n * 8, 13, 3);
-  ink(ctx, WOODLAND.barkDark, 340, 790, 29, 7);
-  ink(ctx, '#c0a36e', 342, 790, 25, 2);
-  polygon(
-    ctx,
-    [
-      { x: 282, y: 860 },
-      { x: 308, y: 826 },
-      { x: 335, y: 860 },
-    ],
-    WOODLAND.ink,
-  );
-  polygon(
-    ctx,
-    [
-      { x: 289, y: 854 },
-      { x: 308, y: 833 },
-      { x: 328, y: 854 },
-    ],
-    '#d3b079',
-  );
-  ink(ctx, WOODLAND.barkDark, 299, 843, 18, 18);
-  ink(ctx, WOODLAND.cream, 302, 846, 12, 12);
-  ink(ctx, WOODLAND.bark, 307, 846, 3, 12);
-  ink(ctx, '#ba9761', 240, 889, 165, 4);
-  ink(ctx, '#e4c58a', 243, 889, 157, 1);
-  ink(ctx, WOODLAND.barkDark, 265, 921, 41, 43);
-  ink(ctx, '#46382b', 273, 927, 25, 37);
-  ink(ctx, WOODLAND.bark, 271, 924, 3, 39);
-  ink(ctx, WOODLAND.cream, 291, 944, 3, 3);
-  ink(ctx, WOODLAND.barkDark, 323, 913, 39, 28);
-  ink(ctx, '#efcd89', 328, 917, 29, 20);
-  ink(ctx, WOODLAND.bark, 340, 918, 4, 19);
-  ink(ctx, WOODLAND.bark, 328, 926, 28, 3);
+  // The cottage is a single depth-sorted texture registered in art.ts.
+  // Keep the existing smith's outdoor workspace and all interaction coordinates.
   // Workbench and anvil sit beside the house, clear of Bramble's silhouette.
   ink(ctx, '#3b3430', 225, 1012, 62, 22);
   ink(ctx, '#875c43', 230, 1010, 53, 15);
@@ -595,48 +507,35 @@ function campDetails(ctx: CanvasRenderingContext2D) {
   ink(ctx, '#b4ad89', 544, 1163, 5, 5);
 }
 
-export function paintForestWorld(ctx: CanvasRenderingContext2D): void {
+export function paintForestWorld(
+  ctx: CanvasRenderingContext2D,
+  mini: HTMLImageElement | null = null,
+): void {
   ctx.imageSmoothingEnabled = false;
   const rng = random(93104);
   ink(ctx, WOODLAND.shadow, 0, 0, WORLD.width, WORLD.height);
-  // Low-frequency meadow colour fields sampled on a 4px pixel grid. The
-  // coherent colours cross tile boundaries; tiny accents are a separate pass.
-  const grass = [
-    '#304e3d',
-    '#365640',
-    '#3d6044',
-    '#466a48',
-    '#50734b',
-    '#5d7d51',
+  // Mini Farm CC0 grass base. Large-scale meadow highlights break repeated tile edges.
+  // Calm meadow palette; isolated Mini Farm atlas tiles are too high-contrast for the existing world.
+  const meadow = [
+    '#365846',
+    '#3c604a',
+    '#42674e',
+    '#4b6e50',
+    '#537653',
+    '#5b7b56',
   ];
-  for (let y = 0; y < WORLD.height; y += 4)
-    for (let x = 0; x < WORLD.width; x += 4) {
-      const field =
-        Math.sin(x * 0.008 + Math.sin(y * 0.009) * 2) +
-        Math.cos(y * 0.012 - x * 0.004) * 0.7 +
-        Math.sin(x * 0.027 + y * 0.018) * 0.22;
-      const tone = Math.max(
-        0,
-        Math.min(
-          5,
-          Math.floor(
-            2.8 + field * 0.85 + regionLight(x, y) * 1.8 + rng() * 0.3,
-          ),
-        ),
-      );
-      ink(ctx, grass[tone]!, x, y, 4, 4);
+  for (let y = 0; y < WORLD.height; y += 8)
+    for (let x = 0; x < WORLD.width; x += 8) {
+      const n =
+        Math.sin(x * 0.009 + y * 0.005) + Math.cos(y * 0.013 - x * 0.004);
+      const idx = Math.max(0, Math.min(5, Math.floor(2.5 + n * 0.9)));
+      ink(ctx, meadow[idx]!, x, y, 8, 8);
     }
-  for (let i = 0; i < 2400; i++) {
-    const x = rng() * WORLD.width,
-      y = rng() * WORLD.height;
-    ink(
-      ctx,
-      rng() > 0.6 ? '#56764d' : '#3d6044',
-      x,
-      y,
-      2 + rng() * 6,
-      1 + rng() * 2,
-    );
+  ctx.fillStyle = 'rgba(47, 139, 52, 0.07)';
+  for (let n = 0; n < 120; n++) {
+    const x = rng() * WORLD.width;
+    const y = rng() * WORLD.height;
+    ctx.fillRect(Math.floor(x / 16) * 16, Math.floor(y / 16) * 16, 32, 16);
   }
   // Sparse leaf litter ties trunks to the groves. Contact shadows belong to
   // the tree sprites, keeping the floor free of repeated circular patches.
@@ -654,6 +553,34 @@ export function paintForestWorld(ctx: CanvasRenderingContext2D): void {
   clearing(ctx, 430, 1030, 235, 155, rng);
   clearing(ctx, 1580, 340, 188, 145, rng);
   stampRoad(ctx, rng);
+  // Pixel-tiled trail inset follows the existing winding road; no change to collision.
+  if (mini) {
+    const leftEdge: Point[] = [];
+    const rightEdge: Point[] = [];
+    for (let n = 0; n <= 125; n++) {
+      const t = n / 125;
+      const p = trailPoint(t);
+      const before = trailPoint(Math.max(0, t - 0.004));
+      const after = trailPoint(Math.min(1, t + 0.004));
+      const angle = Math.atan2(after.y - before.y, after.x - before.x);
+      const nx = -Math.sin(angle),
+        ny = Math.cos(angle);
+      leftEdge.push({ x: p.x + nx * 33, y: p.y + ny * 33 });
+      rightEdge.push({ x: p.x - nx * 33, y: p.y - ny * 33 });
+    }
+    ctx.save();
+    ctx.beginPath();
+    leftEdge.concat(rightEdge.reverse()).forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.closePath();
+    ctx.clip();
+    for (let y = 0; y < WORLD.height; y += 32)
+      for (let x = 0; x < WORLD.width; x += 32)
+        ctx.drawImage(mini, 32, 0, 32, 32, x, y, 32, 32);
+    ctx.restore();
+  }
   for (const lake of lakes) shoreline(ctx, lake, rng);
   for (const o of obstacles) if (o.kind === 'rock') boulders(ctx, o);
   // Much less noise than the original checkerboard-like forest scatter.
@@ -683,6 +610,27 @@ export function paintForestWorld(ctx: CanvasRenderingContext2D): void {
     } else {
       ink(ctx, '#66816c', x, y + 2, 8, 4);
       ink(ctx, '#a5b29c', x + 1, y, 5, 2);
+    }
+  }
+  // Farm-adjacent meadow accents: deterministic, sparse and away from paths
+  // and the crop grid, so these details never suggest blocking obstacles.
+  for (let n = 0; n < 230; n++) {
+    const x = 190 + rng() * 690;
+    const y = 1070 + rng() * 345;
+    if (x > 355 && x < 745 && y > 1165) continue;
+    if (collides(x, y, 15) || trailDistance(x, y) < 72) continue;
+    const variant = rng();
+    if (variant < 0.4) {
+      ink(ctx, '#426d42', x + 2, y, 2, 8);
+      ink(ctx, '#95aa64', x - 1, y + 4, 3, 4);
+      ink(ctx, '#a9bf78', x + 5, y + 2, 2, 5);
+    } else if (variant < 0.78) {
+      ink(ctx, '#4d7849', x + 3, y + 3, 2, 5);
+      ink(ctx, variant < 0.59 ? '#f4d8a1' : '#e6abb7', x, y, 7, 4);
+      ink(ctx, '#f9ebbd', x + 2, y + 1, 2, 2);
+    } else {
+      ink(ctx, '#997c55', x, y + 3, 9, 3);
+      ink(ctx, '#c2a477', x + 2, y + 2, 4, 2);
     }
   }
   undergrowth(ctx);

@@ -74,7 +74,7 @@ let pending: { input: Input; dt: number }[] = [],
 let music = false,
   soundEffects = true,
   volume = 0.25,
-  cameraZoom = 1.5,
+  cameraZoom = 2.35,
   audio: AudioContext | undefined,
   audioTimer: ReturnType<typeof setInterval> | undefined;
 const keys = new Set<string>(),
@@ -170,7 +170,7 @@ if (settings) {
       typeof saved.cameraZoom === 'number' &&
       Number.isFinite(saved.cameraZoom)
     )
-      cameraZoom = Math.max(1.1, Math.min(1.9, saved.cameraZoom));
+      cameraZoom = Math.max(2.2, Math.min(2.8, saved.cameraZoom));
   } catch {
     /* Use defaults. */
   }
@@ -536,7 +536,7 @@ $('modal').addEventListener('cancel', () => {
 });
 function settingsModal() {
   showModal(
-    `<div class="eyebrow">TAKE A BREATH</div><h2>${mode === 'menu' ? 'Settings' : 'Adventure paused'}</h2><p>${mode === 'online' ? 'Your hero stops moving. Your co-op world continues while this menu is open.' : 'The forest will wait for you.'}</p><label>Forest music<input id="music" type="checkbox" ${music ? 'checked' : ''}></label><label>Combat & item sounds<input id="sound-effects" type="checkbox" ${soundEffects ? 'checked' : ''}></label><label>Master volume<input id="volume" type="range" min="0" max="1" step="0.05" value="${volume}"></label><label>Camera zoom <output id="zoom-value">${Math.round(cameraZoom * 100)}%</output><input id="camera-zoom" aria-label="Camera zoom" type="range" min="1.1" max="1.9" step="0.05" value="${cameraZoom}"></label>${mode === 'solo' ? '<label>AI companion<input id="companion-toggle" type="checkbox" ' + (world.players.some((p) => p.id === 'companion') ? 'checked' : '') + '></label>' : ''}<button id="resume-button">${mode === 'menu' ? 'Back' : 'Resume adventure'} →</button>${mode !== 'menu' ? '<button id="save-button">Save progress</button><button id="exit-button">Return to title</button>' : ''}<p>WASD / arrows: move · Space / left click: attack<br>Q: special · R: potion / revive · E: talk<br>Shift: shield (Panda) · I: inventory · Esc: pause<br>F: farming / building · T: market · Esc: leave tool mode<br>Gamepad: left stick, A attack, X special, B potion, Y talk.</p>`,
+    `<div class="eyebrow">TAKE A BREATH</div><h2>${mode === 'menu' ? 'Settings' : 'Adventure paused'}</h2><p>${mode === 'online' ? 'Your hero stops moving. Your co-op world continues while this menu is open.' : 'The forest will wait for you.'}</p><label>Forest music<input id="music" type="checkbox" ${music ? 'checked' : ''}></label><label>Combat & item sounds<input id="sound-effects" type="checkbox" ${soundEffects ? 'checked' : ''}></label><label>Master volume<input id="volume" type="range" min="0" max="1" step="0.05" value="${volume}"></label><label>Camera zoom <output id="zoom-value">${Math.round(cameraZoom * 100)}%</output><input id="camera-zoom" aria-label="Camera zoom" type="range" min="1.1" max="2.8" step="0.05" value="${cameraZoom}"></label>${mode === 'solo' ? '<label>AI companion<input id="companion-toggle" type="checkbox" ' + (world.players.some((p) => p.id === 'companion') ? 'checked' : '') + '></label>' : ''}<button id="resume-button">${mode === 'menu' ? 'Back' : 'Resume adventure'} →</button>${mode !== 'menu' ? '<button id="save-button">Save progress</button><button id="exit-button">Return to title</button>' : ''}<p>WASD / arrows: move · Space / left click: attack<br>Q: special · R: potion / revive · E: talk<br>Shift: shield (Panda) · I: inventory · Esc: pause<br>F: farming / building · T: market · Esc: leave tool mode<br>Gamepad: left stick, A attack, X special, B potion, Y talk.</p>`,
   );
   $<HTMLInputElement>('music').onchange = (e) => {
     music = (e.target as HTMLInputElement).checked;
@@ -711,8 +711,13 @@ function navigateTo(x: number, y: number) {
   const actor = world.players.find((p) => p.id === playerId);
   if (!actor) return;
   walkTarget = { x, y };
-  walkPath = findClickPath(mode === 'online' ? predicted : actor, walkTarget, world);
-  if (!walkPath.length && Math.hypot(actor.x - x, actor.y - y) >= 10) walkTarget = null;
+  walkPath = findClickPath(
+    mode === 'online' ? predicted : actor,
+    walkTarget,
+    world,
+  );
+  if (!walkPath.length && Math.hypot(actor.x - x, actor.y - y) >= 10)
+    walkTarget = null;
 }
 function readInput(): Input {
   const i = neutralInput();
@@ -728,7 +733,10 @@ function readInput(): Input {
   i.y =
     Number(keys.has('KeyS') || keys.has('ArrowDown')) -
     Number(keys.has('KeyW') || keys.has('ArrowUp'));
-  if (i.x || i.y) { walkTarget = null; walkPath = []; }
+  if (i.x || i.y) {
+    walkTarget = null;
+    walkPath = [];
+  }
   if (!i.x && !i.y && walkTarget && walkPath.length) {
     const actor = world.players.find((p) => p.id === playerId);
     const origin = mode === 'online' ? predicted : actor;
@@ -743,8 +751,10 @@ function readInput(): Input {
       const dx = next.x - origin.x;
       const dy = next.y - origin.y;
       // Stop ahead of the cursor to avoid sub-pixel oscillations.
-      if (!walkPath.length || (walkPath.length === 1 && remaining < 12)) { walkTarget = null; walkPath = []; }
-      else {
+      if (!walkPath.length || (walkPath.length === 1 && remaining < 12)) {
+        walkTarget = null;
+        walkPath = [];
+      } else {
         i.x = dx / remaining;
         i.y = dy / remaining;
       }
@@ -822,6 +832,11 @@ class ForestScene extends Phaser.Scene {
       navigateTo,
     );
     this.add.image(0, 0, 'forest').setOrigin(0);
+    this.add
+      .image(323, 974, 'mini-farm-cottage')
+      .setOrigin(0.5, 1)
+      .setScale(2)
+      .setDepth(974);
     for (const o of obstacles) {
       if (o.kind !== 'tree') continue;
       const footX = o.x + o.w / 2;
@@ -895,10 +910,13 @@ class ForestScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.graphics = this.add.graphics().setDepth(3000);
     this.atmosphere = new WorldAtmosphere(this);
-    this.weatherGraphics = this.add.graphics().setScrollFactor(0).setDepth(2900);
+    this.weatherGraphics = this.add
+      .graphics()
+      .setScrollFactor(0)
+      .setDepth(2900);
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
     this.cameras.main.startFollow(this.cameraTarget, true, 0.08, 0.08);
-    this.cameras.main.setZoom(0.85);
+    applyCameraZoom();
     this.scale.on('resize', () => {
       if (mode !== 'menu') applyCameraZoom();
     });
@@ -969,6 +987,29 @@ class ForestScene extends Phaser.Scene {
         pose.rotation - pose.facingAngle - Math.PI / 2,
       );
     }
+    // Farming mode: an equipped tool replaces the legacy sword or staff.
+    // World position and hitboxes remain untouched; the tool is a visual overlay.
+    const held = p.id === playerId ? valleyView?.heldTool : null;
+    // Farming presentation suppresses legacy RPG weapons even while exploring.
+    if (p.id === playerId && !held) {
+      weapon.setVisible(false);
+      return;
+    }
+    if (held && p.hp > 0) {
+      const texture = `valley-held-${held}`;
+      if (weapon.texture.key !== texture) weapon.setTexture(texture);
+      const left = p.facing.x < -0.2;
+      weapon
+        .setVisible(true)
+        .setPosition(sprite.x + (left ? -21 : 21), sprite.y - 6)
+        .setOrigin(0.5, 0.78)
+        .setFlipX(left)
+        .setRotation(left ? -0.28 : 0.28)
+        .setScale(1.5)
+        .setDepth(sprite.depth + 1)
+        .setAlpha(p.connected ? 1 : 0.35);
+      return;
+    }
     if (p.hp <= 0) {
       weapon.setVisible(false);
       this.weaponTiming.delete(p.id);
@@ -1016,13 +1057,16 @@ class ForestScene extends Phaser.Scene {
     if (mode === 'menu') return;
     const weather = world.valley.weather ?? weatherForDay(world.valley.day);
     if (weather === 'sunny') return;
-    const width = this.scale.width, height = this.scale.height;
+    const width = this.scale.width,
+      height = this.scale.height;
     g.fillStyle(0x172d37, weather === 'rain' ? 0.16 : 0.07);
     g.fillRect(0, 0, width, height);
     if (weather !== 'rain') return;
     // Screen-space deterministic streaks: no per-particle timers or network traffic.
     g.lineStyle(1, 0xb5d5e4, 0.4);
-    const count = reducedMotion.matches ? 0 : Math.min(180, Math.ceil(width * height / 6800));
+    const count = reducedMotion.matches
+      ? 0
+      : Math.min(180, Math.ceil((width * height) / 6800));
     for (let i = 0; i < count; i++) {
       const x = ((i * 131 + Math.floor(time * 0.18)) % (width + 40)) - 20;
       const y = ((i * 229 + Math.floor(time * 0.43)) % (height + 30)) - 15;
@@ -1044,7 +1088,10 @@ class ForestScene extends Phaser.Scene {
       const sprite = this.vegetation[treeSprite++];
       if (!sprite) return;
       if (felled.has(index)) {
-        if (!world.valley.clearedStumps?.includes(index) && !this.stumps.has(index)) {
+        if (
+          !world.valley.clearedStumps?.includes(index) &&
+          !this.stumps.has(index)
+        ) {
           const x = obstacle.x + obstacle.w / 2;
           const y = obstacle.y + obstacle.h;
           const stump = this.add.graphics().setDepth(y - 1);
@@ -1057,8 +1104,12 @@ class ForestScene extends Phaser.Scene {
           this.stumps.get(index)?.destroy();
           this.stumps.delete(index);
         }
-        if (world.valley.saplings?.[String(index)] !== undefined && !this.saplingSprites.has(index)) {
-          const x = obstacle.x + obstacle.w / 2, y = obstacle.y + obstacle.h;
+        if (
+          world.valley.saplings?.[String(index)] !== undefined &&
+          !this.saplingSprites.has(index)
+        ) {
+          const x = obstacle.x + obstacle.w / 2,
+            y = obstacle.y + obstacle.h;
           const sprout = this.add.graphics().setDepth(y);
           sprout.lineStyle(3, 0x519345).lineBetween(x, y, x, y - 19);
           sprout.fillStyle(0x78bc59).fillEllipse(x - 6, y - 15, 13, 6);
@@ -1067,15 +1118,23 @@ class ForestScene extends Phaser.Scene {
         }
         if (!this.observedFelled.has(index)) {
           this.observedFelled.add(index);
-          if (this.initialTreeState || reducedMotion.matches) sprite.setVisible(false);
+          if (this.initialTreeState || reducedMotion.matches)
+            sprite.setVisible(false);
           else {
             this.treeFallInProgress.add(index);
-            this.tweens.add({ targets: sprite, angle: index % 2 ? -82 : 82, alpha: 0, duration: 420, ease: 'Cubic.easeIn', onComplete: () => {
-              sprite.setVisible(false);
-              sprite.setAngle(0);
-              sprite.setAlpha(1);
-              this.treeFallInProgress.delete(index);
-            } });
+            this.tweens.add({
+              targets: sprite,
+              angle: index % 2 ? -82 : 82,
+              alpha: 0,
+              duration: 420,
+              ease: 'Cubic.easeIn',
+              onComplete: () => {
+                sprite.setVisible(false);
+                sprite.setAngle(0);
+                sprite.setAlpha(1);
+                this.treeFallInProgress.delete(index);
+              },
+            });
           }
         }
       } else if (this.observedFelled.has(index)) {
@@ -1086,7 +1145,10 @@ class ForestScene extends Phaser.Scene {
         this.stumps.get(index)?.destroy();
         this.stumps.delete(index);
       }
-      if (!felled.has(index) || world.valley.saplings?.[String(index)] === undefined) {
+      if (
+        !felled.has(index) ||
+        world.valley.saplings?.[String(index)] === undefined
+      ) {
         this.saplingSprites.get(index)?.destroy();
         this.saplingSprites.delete(index);
       }
@@ -1163,11 +1225,16 @@ class ForestScene extends Phaser.Scene {
       this.cameras.main.shake(60, 0.0012);
     const visualTime = this.feedback.clock(time, reducedMotion.matches);
     for (const tree of this.vegetation) {
-      if (this.treeFallInProgress.size && [...this.treeFallInProgress].some((index) => {
-        let offset = 0;
-        for (let i = 0; i <= index; i++) if (obstacles[i]?.kind === 'tree') offset++;
-        return this.vegetation[offset - 1] === tree;
-      })) continue;
+      if (
+        this.treeFallInProgress.size &&
+        [...this.treeFallInProgress].some((index) => {
+          let offset = 0;
+          for (let i = 0; i <= index; i++)
+            if (obstacles[i]?.kind === 'tree') offset++;
+          return this.vegetation[offset - 1] === tree;
+        })
+      )
+        continue;
       // Stable canopy frame; the vendor loop noticeably stretches the crown.
       tree.setAngle(
         reducedMotion.matches
@@ -1202,7 +1269,7 @@ class ForestScene extends Phaser.Scene {
               : p.action;
       const frame = heroFrame(p.hero, state, dir, time);
       const sprite = this.entity(p.id, pos.x, pos.y, p.hero, frame, dt);
-      sprite.setScale(1.22);
+      sprite.setScale(1.4);
       this.shadows.get(p.id)?.setScale(1.2, 1.1);
       sprite.setAlpha(p.connected ? 1 : 0.35);
       const animation = weaponAnimation(
@@ -1220,8 +1287,8 @@ class ForestScene extends Phaser.Scene {
       // Shift only the texture origin: interpolation, collision and camera
       // continue to use the authoritative/predicted world position.
       sprite.setOrigin(
-        0.5 - pose.bodyDx / (64 * 1.22),
-        0.5 - pose.bodyDy / (64 * 1.22),
+        0.5 - pose.bodyDx / (64 * 1.4),
+        0.5 - pose.bodyDy / (64 * 1.4),
       );
       sprite.setAngle(pose.bodyAngle);
       sprite.setTint(p.invulnerable > 0 ? 0xffcfb0 : 0xffffff);
@@ -1510,6 +1577,9 @@ class ForestScene extends Phaser.Scene {
       const pos = mode === 'online' ? predicted : local;
       this.cameraTarget.x = mode === 'menu' ? 740 : pos.x;
       this.cameraTarget.y = mode === 'menu' ? 850 : pos.y;
+      // Applying on gameplay frames also respects saved zoom changes and resize.
+      if (mode !== 'menu' && Math.abs(this.cameras.main.zoom - Math.max(cameraZoom, this.scale.width / WORLD.width, this.scale.height / WORLD.height)) > 0.001)
+        applyCameraZoom();
     }
     if (mode !== 'menu' && time - this.hudTime > 100) {
       this.hudTime = time;

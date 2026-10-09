@@ -1237,3 +1237,67 @@ dialog .inventory-row small {
 #valley-hotbar button[aria-pressed='true'] { background: #718554; border: 2px solid #f4dc90; }
 #valley-status { position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%); max-width: 360px; text-align: center; }
 @media(max-width:700px) { #valley .valley-summary { top: 72px; left: 10px; } #valley-content { top: 140px; left: 10px; max-height: 55vh; } #valley-hotbar { bottom: 8px; gap: 2px; padding: 4px; } #valley-hotbar button { width: 38px; height: 42px; font-size: 18px; } }
+
+/* Wild Valley / cozy farming presentation: visual-only, no gameplay selectors. */
+#valley .valley-summary { gap: 7px; }
+#valley-toggle {
+  background: linear-gradient(180deg, #665039, #453927) !important;
+  border: 2px solid #cbb27b !important;
+  border-radius: 12px !important;
+  color: #fff1ce !important;
+  letter-spacing: .035em;
+  box-shadow: 0 4px 0 #2c281e, 0 9px 22px #17201870 !important;
+}
+#valley-clock {
+  background: #3b4d32ee;
+  border: 1px solid #bba475;
+  box-shadow: 0 3px 0 #253522;
+  color: #fff1ce;
+  font-weight: 700;
+  border-radius: 9px;
+}
+#valley-content {
+  background: linear-gradient(180deg, #43553bed, #293d32f5);
+  border: 2px solid #bba276;
+  border-radius: 14px;
+  box-shadow: 0 5px 0 #233128, 0 14px 34px #08191099;
+  scrollbar-color: #a38a62 #293d32;
+}
+#valley-content h3, #valley-content h4 {
+  color: #f5ddab;
+  font-family: Georgia, serif;
+  letter-spacing: .02em;
+}
+#valley-content p { color: #e0dfc6; }
+#valley button { transition: transform .12s ease, background .12s ease, border-color .12s ease; }
+#valley button:hover:not(:disabled) { transform: translateY(-1px); }
+#valley button:focus-visible { outline: 2px solid #f5d999; outline-offset: 2px; }
+#valley-hotbar {
+  background: linear-gradient(180deg, #6d573cfa, #413927fa);
+  border: 2px solid #d1b982;
+  border-radius: 15px;
+  box-shadow: 0 5px 0 #2c281e, 0 12px 30px #06160b99;
+  padding: 8px;
+}
+#valley-hotbar button {
+  background: linear-gradient(180deg, #777a53, #4d6745);
+  border: 2px solid #b1a77a;
+  border-radius: 10px;
+  box-shadow: inset 0 2px 0 #ffffff24, 0 3px 0 #292e25;
+}
+#valley-hotbar button[aria-pressed='true'] {
+  background: linear-gradient(180deg, #c7aa63, #947c3f);
+  border-color: #fff1bb;
+  box-shadow: inset 0 1px 0 #fff2c088, 0 0 0 2px #e4c87566;
+}
+.valley-item { background: #4b5840; border-color: #9b9168; border-radius: 8px; }
+.valley-tabs { border-bottom-color: #a7926c; }
+.valley-tabs button[aria-pressed='true'] { background: #9d8658 !important; color: #fff7d6 !important; }
+@media (max-width: 700px) {
+  #valley-hotbar { overflow-x: auto; max-width: calc(100vw - 12px); }
+  #valley-hotbar button { flex: 0 0 38px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #valley button { transition: none; }
+  #valley button:hover:not(:disabled) { transform: none; }
+}
