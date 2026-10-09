@@ -170,7 +170,7 @@ if (settings) {
       typeof saved.cameraZoom === 'number' &&
       Number.isFinite(saved.cameraZoom)
     )
-      cameraZoom = Math.max(1.1, Math.min(2.8, saved.cameraZoom));
+      cameraZoom = Math.max(2.2, Math.min(2.8, saved.cameraZoom));
   } catch {
     /* Use defaults. */
   }
