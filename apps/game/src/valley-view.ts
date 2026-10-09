@@ -37,12 +37,14 @@ export class ValleyView {
   private readonly clock: HTMLElement;
   private readonly objects = new Map<string, Phaser.GameObjects.Image>();
   private readonly caches: Phaser.GameObjects.Image[] = [];
+  private pendingGather: number | null = null;
   private readonly preview: Phaser.GameObjects.Graphics;
   constructor(
     private scene: Phaser.Scene,
     private world: () => World,
     private player: () => Player | undefined,
     private send: (a: ValleyAction) => void,
+    private navigate: (x: number, y: number) => void,
   ) {
     this.root = document.createElement('section');
     this.root.id = 'valley';
@@ -57,6 +59,7 @@ export class ValleyView {
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-quick-tool]')) {
       button.onclick = () => {
         this.tool = button.dataset.quickTool as Tool;
+        this.pendingGather = null;
         this.open = false;
         this.signature = '';
         this.preview.clear();
@@ -210,7 +213,15 @@ export class ValleyView {
         (resource.item === 'wood' && this.tool === 'axe') ||
         ((resource.item === 'stone' || resource.item === 'ore') && this.tool === 'pickaxe') ||
         false;
-      if (toolMatches) this.send({ kind: 'gather', node });
+      if (toolMatches) {
+        const actor = this.player();
+        if (actor && distance(actor, resource) <= 72) this.send({ kind: 'gather', node });
+        else {
+          this.pendingGather = node;
+          this.navigate(resource.x, resource.y);
+          this.feedback(`Walking to ${resource.name.toLowerCase()}…`);
+        }
+      }
       else this.feedback(resource.item === 'wood' ? 'Select the axe to chop wood.' : resource.item === 'fiber' ? 'Gather fibre from the nearby resource menu.' : 'Select the pickaxe to mine stone and ore.');
       return true;
     }
@@ -231,6 +242,14 @@ export class ValleyView {
     const w = this.world(),
       p = this.player();
     if (!p) return;
+    if (this.pendingGather !== null) {
+      const target = RESOURCE_NODES[this.pendingGather];
+      if (target && distance(p, target) <= 72) {
+        const node = this.pendingGather;
+        this.pendingGather = null;
+        this.send({ kind: 'gather', node });
+      }
+    }
     this.content.hidden = !this.open;
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-quick-tool]'))
       button.setAttribute('aria-pressed', String(button.dataset.quickTool === this.tool));
@@ -374,6 +393,7 @@ export class ValleyView {
           value === 'remove'
         ) {
           this.tool = value;
+          this.pendingGather = null;
           this.signature = '';
           this.preview.clear();
           this.ghost.setVisible(false);
