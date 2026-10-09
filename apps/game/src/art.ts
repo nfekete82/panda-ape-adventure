@@ -1,6 +1,5 @@
 import { CROP_IDS, RECIPE_IDS, RESOURCE_NODES } from '@panda/shared';
 import { paintPlot, paintCrop, paintBuilding, paintCache } from './valley-art';
-import { paintMiniFarmTree } from './mini-farm-tree';
 import sheets from '../../../assets/hero-sheets.json';
 import Phaser from 'phaser';
 import { MINI_FARM_ATLAS } from './minifarm-atlas';
@@ -11,6 +10,7 @@ import { paintBambooStand } from './bamboo-sprite';
 import { conceptHero, conceptNpc } from './hero-design';
 import {
   paintWoodlandEnemy,
+  paintWoodlandTree,
   TREE_FRAME,
   ENEMY_FRAME,
 } from './world-style';
@@ -184,7 +184,7 @@ export function makeAssets(scene: Phaser.Scene) {
   }
   for (const kind of ['broadleaf', 'conifer'] as const) {
     const tree = canvas(TREE_FRAME.width, TREE_FRAME.height);
-    paintMiniFarmTree(tree.ctx);
+    paintWoodlandTree(tree.ctx, kind);
     scene.textures.addCanvas(
       kind === 'broadleaf' ? 'tree' : 'tree-conifer',
       tree.c,
