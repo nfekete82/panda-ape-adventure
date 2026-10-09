@@ -8,13 +8,23 @@ export const CROP_COLORS: Record<Crop, string> = {
   strawberry: '#dc8a9c',
 };
 export function paintPlot(c: Canvas, wet: boolean) {
-  px(c, P.shadow, 0, 4, 32, 27);
-  px(c, wet ? '#5c5741' : '#92714e', 1, 3, 30, 26);
-  for (let row = 0; row < 4; row++) {
-    px(c, wet ? '#434b3d' : '#6f573f', 3, 6 + row * 6, 26, 2);
-    px(c, wet ? '#777d58' : '#b19765', 4, 5 + row * 6, 20, 1);
+  // Raised earth bed with chunky pixel shading; transparent corners soften the grid.
+  px(c, '#503e30', 1, 6, 30, 24);
+  px(c, wet ? '#463a32' : '#8e613e', 2, 4, 28, 24);
+  px(c, wet ? '#534436' : '#a9784b', 4, 3, 24, 22);
+  px(c, wet ? '#5c4939' : '#b48857', 5, 4, 22, 2);
+  px(c, wet ? '#352f2b' : '#6e4b36', 3, 27, 26, 2);
+  for (let row = 0; row < 3; row++) {
+    const y = 8 + row * 6;
+    px(c, wet ? '#3d3932' : '#855938', 5, y, 22, 2);
+    px(c, wet ? '#6d6050' : '#c09664', 7, y - 2, 17, 1);
   }
-  if (wet) px(c, '#91b4a0', 24, 7, 3, 2);
+  for (const [x, y] of [[8, 12], [24, 19], [13, 25]] as const)
+    px(c, wet ? '#807564' : '#d1a16c', x, y, 2, 1);
+  if (wet) {
+    px(c, '#89a5a0', 19, 13, 5, 2);
+    px(c, '#a5bdb3', 20, 13, 2, 1);
+  }
 }
 export function paintCrop(c: Canvas, crop: Crop, stage: number) {
   const height = stage === 0 ? 7 : stage === 1 ? 14 : 21;
