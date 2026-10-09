@@ -799,6 +799,7 @@ class ForestScene extends Phaser.Scene {
       () => world,
       () => world.players.find((p) => p.id === playerId),
       valleyAction,
+      (x, y) => { walkTarget = { x, y }; },
     );
     this.add.image(0, 0, 'forest').setOrigin(0);
     for (const o of obstacles) {
