@@ -64,6 +64,8 @@ export class WorldSoundTracker {
         else if (effect.kind === 'hit' && effect.text) add('hit', effect);
         else if (effect.kind === 'heal' && LOOT.test(effect.text ?? ''))
           add('pickup', effect);
+        else if (effect.kind === 'magic' && effect.text?.startsWith('SHRINE '))
+          add('arcane', effect);
       }
 
       for (const bolt of world.projectiles) {
