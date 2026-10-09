@@ -170,7 +170,9 @@ export function migrateWorld(
   const legacy = value.respawn === undefined;
   // Existing worlds predate the eastern guardian spirit. Add it at load time
   // so long-lived solo/co-op saves can still complete the new shrine quest.
-  const shrineSentinel = createWorld().enemies.find((enemy) => enemy.id === 'enemy11');
+  const shrineSentinel = createWorld().enemies.find(
+    (enemy) => enemy.id === 'enemy11',
+  );
   const hasShrineSentinel = value.enemies.some(
     (enemy: unknown) => record(enemy) && enemy.id === 'enemy11',
   );
