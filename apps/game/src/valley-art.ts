@@ -222,6 +222,23 @@ export function paintGarden(c: Canvas) {
       px(c, '#d1af7b', postX, y+6, 2, 4);
     }
   }
+  // Hand-laid timber planks and garden trellis break up the four dirt islands.
+  for (const gy of [0, 2]) for (const gx of [0, 4]) {
+    const x=ox+gx*32+3, y=oy+gy*32+3;
+    for (const dy of [2,48]) {
+      px(c, '#674832', x+5, y+dy+2, 109, 4);
+      px(c, '#c8a16c', x+5, y+dy, 109, 2);
+      for(let j=10;j<108;j+=21)
+        px(c, '#513b2d', x+j, y+dy+1, 2, 2);
+    }
+  }
+  // Herb corner and windmill-shaped trellis sit outside interactive tiles.
+  for(const [x,y] of [[12,71],[332,86],[20,137],[332,151]] as const) {
+    px(c, '#3d673e',x-4,y+3,12,6);
+    px(c, '#7c9b54',x-5,y,10,7);
+    px(c, '#b3cb6d',x,y-4,4,7);
+    px(c, '#e8c99c',x+1,y-5,2,2);
+  }
   // Garden entry, seed markers and garden-edge flora.
   for (const [x,y] of [[153,179],[168,188],[183,179]] as const) {
     oval(c, '#b7ac88', x, y, 9, 4);
