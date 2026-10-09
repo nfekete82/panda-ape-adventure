@@ -62,6 +62,9 @@ export function conceptHero(
   px(c, '#a68a63', 34 - stride, 55, 10, 3);
   px(c, '#302d2a', 18 + stride, 58, 12, 3);
   px(c, '#302d2a', 34 - stride, 58, 12, 3);
+  // Bright stitching makes the sturdy farm boots easier to read at gameplay scale.
+  px(c, '#cbb27b', 19 + stride, 57, 4, 1);
+  px(c, '#cbb27b', 35 - stride, 57, 4, 1);
   // The ape's curled tail is crucial for recognising it at gameplay scale.
   if (!panda) {
     px(c, '#603e2d', 13, 43, 7, 5);
@@ -83,6 +86,12 @@ export function conceptHero(
   px(c, '#7c5435', 40, 44, 13, 12);
   px(c, '#c99653', 42, 46, 9, 5);
   px(c, '#e4c582', 44, 47, 5, 2);
+  // Cozy woodland utility satchel: embroidered leaf emblem and brass fasteners.
+  px(c, '#e8c37e', 43, 46, 2, 2);
+  px(c, '#d6a866', 47, 46, 2, 2);
+  px(c, '#526e45', 45, 49, 4, 3);
+  px(c, '#9dbb68', 46, 48, 2, 4);
+  px(c, '#c69d63', 42, 53, 10, 2);
   // Adventurer gauntlets, moving opposite to their boots.
   px(c, rim, 10, 31 - stride / 3, 12, 20);
   px(c, fur, 12, 33 - stride / 3, 10, 15);
