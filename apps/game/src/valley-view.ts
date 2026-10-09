@@ -337,6 +337,7 @@ export class ValleyView {
       w.valley.buildings,
       w.valley.nodes,
       w.valley.nodeHits,
+      w.valley.toolLevels,
       w.valley.day,
       nearby,
       this.tool,
@@ -404,6 +405,7 @@ export class ValleyView {
       )
         .map((key) => `${RECIPES[this.recipe].cost[key]} ${ITEMS[key].name}`)
         .join(', ')}. Ape saves 1 wood. Removing furniture gives no refund.</p>
+      <h4>Workbench · Tool upgrades</h4><p>Visit a placed workbench to improve tools. Each level reduces the number of hits needed to fell trees or mine resources.</p><div class="valley-tools">${(['axe', 'pickaxe'] as const).map((tool) => { const level = w.valley.toolLevels?.[tool] ?? 1; const cost = level === 1 ? '4 wood · 4 stone · 1 ore · 8 gold' : '8 wood · 8 stone · 4 ore · 18 gold'; return `<button data-upgrade="${tool}" ${level >= 3 || !w.valley.buildings.some((b) => b.recipe === 'workbench' && distance(p, cellPoint(b.cell)) <= 95) ? 'disabled' : ''}>${tool === 'axe' ? '🪓 Axe' : '⛏ Pickaxe'} Lv ${level} ${level >= 3 ? '· Max' : '→ ' + (level + 1) + ' · ' + cost}</button>`; }).join('')}</div>
       <h4>Gather nearby</h4><p>Choose 🪓 for branches, ⛏️ for stones and ore, and gather fibre from the nearby resource menu. Walk up and click a wood or stone deposit. Collected resources replenish the next day.</p><div class="valley-tools">${RESOURCE_NODES.map((node, i) => `<button data-node="${i}" ${!nearby[i + 1] || w.valley.nodes[i] === w.valley.day ? 'disabled' : ''}>${node.name} +4</button>`).join('')}</div>
       </section><section ${this.tab === 'supplies' ? '' : 'hidden'}><h4>Shared supplies</h4><div class="valley-grid">${ITEM_IDS.filter(
         (key) => w.valley.bag[key] > 0,
@@ -484,6 +486,11 @@ export class ValleyView {
         this.update();
       }
     };
+    for (const button of this.content.querySelectorAll<HTMLButtonElement>('[data-upgrade]'))
+      button.onclick = () => {
+        const tool = button.dataset.upgrade;
+        if (tool === 'axe' || tool === 'pickaxe') this.send({ kind: 'upgradeTool', tool });
+      };
     for (const button of this.content.querySelectorAll<HTMLButtonElement>(
       '[data-node]',
     ))
