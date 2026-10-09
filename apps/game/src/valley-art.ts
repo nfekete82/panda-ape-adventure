@@ -222,6 +222,31 @@ export function paintGarden(c: Canvas) {
         px(c, '#e1c48a', x + dx, y + 1, 2, 3);
       }
     }
+  // Soft soil ridges and tiny seed traces provide depth without changing plot hitboxes.
+  for (const gy of [0, 2])
+    for (const gx of [0, 4])
+      for (let row = 0; row < 2; row++)
+        for (let col = 0; col < 4; col++) {
+          const x = ox + (gx + col) * 32 + 5;
+          const y = oy + (gy + row) * 32 + 5;
+          for (const dy of [5, 12, 19]) {
+            px(c, '#76573c', x + 2, y + dy + 2, 23, 2);
+            px(c, '#d3a976', x + 3, y + dy, 21, 2);
+          }
+          px(c, '#e6be86', x + 11, y + 11, 2, 2);
+          px(c, '#83623e', x + 20, y + 18, 2, 2);
+        }
+  // Flower-border clusters emphasize the entrance and reduce the spreadsheet feel.
+  for (const [x, y, flower] of [
+    [31, 37, '#e4a1a4'], [321, 42, '#e3c27c'],
+    [26, 151, '#f0c589'], [323, 150, '#d6a5cb'],
+    [158, 25, '#e6a3a8'], [193, 178, '#e8ca87'],
+  ] as const) {
+    px(c, '#466b3f', x - 4, y + 3, 9, 4);
+    px(c, '#739653', x, y - 4, 2, 9);
+    px(c, flower, x - 3, y - 6, 8, 5);
+    px(c, '#f6e6bb', x, y - 4, 2, 2);
+  }
   // Open south entrance: stepping stones and two short sections of picket fence.
   for (const x of [ox + 113, ox + 124, ox + 115]) {
     const y = oy + 140 + (x === ox + 124 ? 13 : x === ox + 115 ? 26 : 0);
