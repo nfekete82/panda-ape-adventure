@@ -1,5 +1,7 @@
 import { applyValleyAction, type ValleyAction } from '@panda/shared';
 import { ValleyView } from './valley-view';
+import { weatherForDay } from '@panda/shared';
+import { findClickPath, type Waypoint } from './click-path';
 import Phaser from 'phaser';
 import {
   ATTRIBUTES,
@@ -700,14 +702,18 @@ window.addEventListener('keyup', (e) => keys.delete(e.code));
 window.addEventListener('blur', () => {
   keys.clear();
   pulses.clear();
+  walkTarget = null;
 });
-let mouseDown = false;
-window.addEventListener('mouseup', () => {
-  mouseDown = false;
-});
-window.addEventListener('blur', () => {
-  mouseDown = false;
-});
+// Click-to-move target is client intent only; the server still validates movement.
+let walkTarget: { x: number; y: number } | null = null;
+let walkPath: Waypoint[] = [];
+function navigateTo(x: number, y: number) {
+  const actor = world.players.find((p) => p.id === playerId);
+  if (!actor) return;
+  walkTarget = { x, y };
+  walkPath = findClickPath(mode === 'online' ? predicted : actor, walkTarget, world);
+  if (!walkPath.length && Math.hypot(actor.x - x, actor.y - y) >= 10) walkTarget = null;
+}
 function readInput(): Input {
   const i = neutralInput();
   if (
@@ -722,6 +728,28 @@ function readInput(): Input {
   i.y =
     Number(keys.has('KeyS') || keys.has('ArrowDown')) -
     Number(keys.has('KeyW') || keys.has('ArrowUp'));
+  if (i.x || i.y) { walkTarget = null; walkPath = []; }
+  if (!i.x && !i.y && walkTarget && walkPath.length) {
+    const actor = world.players.find((p) => p.id === playerId);
+    const origin = mode === 'online' ? predicted : actor;
+    if (origin) {
+      let next = walkPath[0]!;
+      let remaining = Math.hypot(next.x - origin.x, next.y - origin.y);
+      if (remaining < 12) {
+        walkPath.shift();
+        next = walkPath[0] ?? next;
+        remaining = Math.hypot(next.x - origin.x, next.y - origin.y);
+      }
+      const dx = next.x - origin.x;
+      const dy = next.y - origin.y;
+      // Stop ahead of the cursor to avoid sub-pixel oscillations.
+      if (!walkPath.length || (walkPath.length === 1 && remaining < 12)) { walkTarget = null; walkPath = []; }
+      else {
+        i.x = dx / remaining;
+        i.y = dy / remaining;
+      }
+    }
+  }
   if (i.x || i.y)
     lastFacing = {
       x: i.x / Math.max(1, Math.hypot(i.x, i.y)),
@@ -744,16 +772,23 @@ function readInput(): Input {
   }
   i.aimX = lastFacing.x;
   i.aimY = lastFacing.y;
-  i.attack ||= keys.has('Space') || pulses.has('Space') || mouseDown;
-  i.special ||= keys.has('KeyQ') || pulses.has('KeyQ');
-  i.heal ||= keys.has('KeyR') || pulses.has('KeyR');
-  i.guard ||= keys.has('ShiftLeft') || keys.has('ShiftRight');
+  // Farming interaction clicks must never trigger an RPG attack.
+  i.attack = false;
+  i.special = false;
+  i.heal = false;
+  i.guard = false;
+  // Combat keybinds deliberately disabled in farming mode.
   i.interact ||= keys.has('KeyE');
   pulses.clear();
   return i;
 }
 class ForestScene extends Phaser.Scene {
   vegetation: Phaser.GameObjects.Sprite[] = [];
+  private observedFelled = new Set<number>();
+  private stumps = new Map<number, Phaser.GameObjects.Graphics>();
+  private saplingSprites = new Map<number, Phaser.GameObjects.Graphics>();
+  private treeFallInProgress = new Set<number>();
+  private initialTreeState = true;
   sprites = new Map<string, Phaser.GameObjects.Sprite>();
   weapons = new Map<string, Phaser.GameObjects.Image>();
   weaponTiming = new Map<string, WeaponTiming>();
@@ -764,6 +799,7 @@ class ForestScene extends Phaser.Scene {
   shadows = new Map<string, Phaser.GameObjects.Ellipse>();
   graphics!: Phaser.GameObjects.Graphics;
   atmosphere!: WorldAtmosphere;
+  private weatherGraphics!: Phaser.GameObjects.Graphics;
   cameraTarget = { x: WORLD.spawn.x, y: WORLD.spawn.y };
   accumulator = 0;
   hudTime = 0;
@@ -783,6 +819,7 @@ class ForestScene extends Phaser.Scene {
       () => world,
       () => world.players.find((p) => p.id === playerId),
       valleyAction,
+      navigateTo,
     );
     this.add.image(0, 0, 'forest').setOrigin(0);
     for (const o of obstacles) {
@@ -858,6 +895,7 @@ class ForestScene extends Phaser.Scene {
       .setOrigin(0.5);
     this.graphics = this.add.graphics().setDepth(3000);
     this.atmosphere = new WorldAtmosphere(this);
+    this.weatherGraphics = this.add.graphics().setScrollFactor(0).setDepth(2900);
     this.cameras.main.setBounds(0, 0, WORLD.width, WORLD.height);
     this.cameras.main.startFollow(this.cameraTarget, true, 0.08, 0.08);
     this.cameras.main.setZoom(0.85);
@@ -867,7 +905,7 @@ class ForestScene extends Phaser.Scene {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (mode !== 'menu' && !paused) {
         if (valleyView?.pointer(pointer.worldX, pointer.worldY)) return;
-        mouseDown = true;
+        navigateTo(pointer.worldX, pointer.worldY);
         const p = world.players.find((p) => p.id === playerId);
         if (p) {
           const dx = pointer.worldX - p.x,
@@ -972,7 +1010,88 @@ class ForestScene extends Phaser.Scene {
       );
     }
   }
+  private drawValleyWeather(time: number) {
+    const g = this.weatherGraphics;
+    g.clear();
+    if (mode === 'menu') return;
+    const weather = world.valley.weather ?? weatherForDay(world.valley.day);
+    if (weather === 'sunny') return;
+    const width = this.scale.width, height = this.scale.height;
+    g.fillStyle(0x172d37, weather === 'rain' ? 0.16 : 0.07);
+    g.fillRect(0, 0, width, height);
+    if (weather !== 'rain') return;
+    // Screen-space deterministic streaks: no per-particle timers or network traffic.
+    g.lineStyle(1, 0xb5d5e4, 0.4);
+    const count = reducedMotion.matches ? 0 : Math.min(180, Math.ceil(width * height / 6800));
+    for (let i = 0; i < count; i++) {
+      const x = ((i * 131 + Math.floor(time * 0.18)) % (width + 40)) - 20;
+      const y = ((i * 229 + Math.floor(time * 0.43)) % (height + 30)) - 15;
+      g.lineBetween(x, y, x - 4, y + 12);
+    }
+    // Small ground-level ripples provide visual rain feedback without obscuring tools.
+    g.lineStyle(1, 0xb3cbd4, 0.18);
+    for (let i = 0; i < 8; i++) {
+      const x = (i * 317 + 73) % Math.max(1, width);
+      const y = (i * 197 + 127) % Math.max(1, height);
+      g.strokeEllipse(x, y, 10 + ((Math.floor(time / 180) + i) % 7), 4);
+    }
+  }
   update(time: number, delta: number) {
+    let treeSprite = 0;
+    const felled = new Set(world.valley.felledTrees ?? []);
+    obstacles.forEach((obstacle, index) => {
+      if (obstacle.kind !== 'tree') return;
+      const sprite = this.vegetation[treeSprite++];
+      if (!sprite) return;
+      if (felled.has(index)) {
+        if (!world.valley.clearedStumps?.includes(index) && !this.stumps.has(index)) {
+          const x = obstacle.x + obstacle.w / 2;
+          const y = obstacle.y + obstacle.h;
+          const stump = this.add.graphics().setDepth(y - 1);
+          stump.fillStyle(0x55371e, 1).fillEllipse(x, y - 2, 22, 10);
+          stump.fillStyle(0xb68a57, 1).fillEllipse(x, y - 5, 21, 8);
+          stump.lineStyle(1, 0x684426, 0.9).strokeEllipse(x, y - 5, 14, 5);
+          this.stumps.set(index, stump);
+        }
+        if (world.valley.clearedStumps?.includes(index)) {
+          this.stumps.get(index)?.destroy();
+          this.stumps.delete(index);
+        }
+        if (world.valley.saplings?.[String(index)] !== undefined && !this.saplingSprites.has(index)) {
+          const x = obstacle.x + obstacle.w / 2, y = obstacle.y + obstacle.h;
+          const sprout = this.add.graphics().setDepth(y);
+          sprout.lineStyle(3, 0x519345).lineBetween(x, y, x, y - 19);
+          sprout.fillStyle(0x78bc59).fillEllipse(x - 6, y - 15, 13, 6);
+          sprout.fillEllipse(x + 6, y - 19, 13, 6);
+          this.saplingSprites.set(index, sprout);
+        }
+        if (!this.observedFelled.has(index)) {
+          this.observedFelled.add(index);
+          if (this.initialTreeState || reducedMotion.matches) sprite.setVisible(false);
+          else {
+            this.treeFallInProgress.add(index);
+            this.tweens.add({ targets: sprite, angle: index % 2 ? -82 : 82, alpha: 0, duration: 420, ease: 'Cubic.easeIn', onComplete: () => {
+              sprite.setVisible(false);
+              sprite.setAngle(0);
+              sprite.setAlpha(1);
+              this.treeFallInProgress.delete(index);
+            } });
+          }
+        }
+      } else if (this.observedFelled.has(index)) {
+        this.observedFelled.delete(index);
+        this.treeFallInProgress.delete(index);
+        this.tweens.killTweensOf(sprite);
+        sprite.setVisible(true).setAngle(0).setAlpha(1);
+        this.stumps.get(index)?.destroy();
+        this.stumps.delete(index);
+      }
+      if (!felled.has(index) || world.valley.saplings?.[String(index)] === undefined) {
+        this.saplingSprites.get(index)?.destroy();
+        this.saplingSprites.delete(index);
+      }
+    });
+    this.initialTreeState = false;
     const dt = Math.min(delta / 1000, 0.05);
     if (paused && mode === 'solo')
       for (const timing of this.weaponTiming.values())
@@ -1044,6 +1163,11 @@ class ForestScene extends Phaser.Scene {
       this.cameras.main.shake(60, 0.0012);
     const visualTime = this.feedback.clock(time, reducedMotion.matches);
     for (const tree of this.vegetation) {
+      if (this.treeFallInProgress.size && [...this.treeFallInProgress].some((index) => {
+        let offset = 0;
+        for (let i = 0; i <= index; i++) if (obstacles[i]?.kind === 'tree') offset++;
+        return this.vegetation[offset - 1] === tree;
+      })) continue;
       // Stable canopy frame; the vendor loop noticeably stretches the crown.
       tree.setAngle(
         reducedMotion.matches
@@ -1052,6 +1176,7 @@ class ForestScene extends Phaser.Scene {
       );
     }
     this.atmosphere.draw(time, reducedMotion.matches);
+    this.drawValleyWeather(time);
     this.graphics.clear();
     const alive = new Set<string>();
     for (const p of world.players) {

@@ -215,7 +215,8 @@ export function collides(
     x > WORLD.width - radius ||
     y > WORLD.height - radius ||
     obstacles.some(
-      (o) =>
+      (o, index) =>
+        !(o.kind === 'tree' && world?.valley.felledTrees?.includes(index)) &&
         x + radius > o.x &&
         x - radius < o.x + o.w &&
         y + radius > o.y &&

@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import {
   FARM,
   DAY_SECONDS,
+  weatherForDay,
   CROP_IDS,
   CROPS,
   ITEMS,
@@ -9,6 +10,7 @@ import {
   RECIPE_IDS,
   RECIPES,
   RESOURCE_NODES,
+  obstacles,
   cellPoint,
   plotStage,
   placementError,
@@ -20,7 +22,7 @@ import {
   type Player,
   type ValleyAction,
 } from '@panda/shared';
-type Tool = 'none' | 'hoe' | 'plant' | 'water' | 'harvest' | 'build' | 'remove';
+type Tool = 'none' | 'axe' | 'sapling' | 'pickaxe' | 'hoe' | 'plant' | 'water' | 'harvest' | 'build' | 'remove';
 export class ValleyView {
   private tool: Tool = 'none';
   private crop: Crop = 'carrot';
@@ -36,34 +38,57 @@ export class ValleyView {
   private readonly status: HTMLElement;
   private readonly clock: HTMLElement;
   private readonly objects = new Map<string, Phaser.GameObjects.Image>();
+  private readonly caches: Phaser.GameObjects.Image[] = [];
+  private previousNodes: number[] | null = null;
+  private previousHits: number[] | null = null;
+  private pendingGather: number | null = null;
+  private pendingPickup: number | null = null;
+  private readonly dropSprites = new Map<number, Phaser.GameObjects.Image>();
+  private pendingTree: number | null = null;
+  private pendingTreeAction: 'chopTree' | 'clearStump' | 'plantSapling' = 'chopTree';
   private readonly preview: Phaser.GameObjects.Graphics;
   constructor(
     private scene: Phaser.Scene,
     private world: () => World,
     private player: () => Player | undefined,
     private send: (a: ValleyAction) => void,
+    private navigate: (x: number, y: number) => void,
   ) {
     this.root = document.createElement('section');
     this.root.id = 'valley';
     this.root.innerHTML =
-      '<button id="valley-toggle">F · Wild Valley ↓</button><span id="valley-clock"></span><div id="valley-content" hidden></div><p id="valley-status" role="status" hidden></p>';
+      '<div class="valley-summary"><button id="valley-toggle" aria-label="Open farm management">☰ Farm · F</button><span id="valley-clock"></span></div><div id="valley-content" hidden></div><div id="valley-hotbar" role="toolbar" aria-label="Farming tools"><button data-quick-tool="none" title="Explore">✋</button><button data-quick-tool="axe" title="Axe · Chop trees and clear stumps">🪓</button><button data-quick-tool="sapling" title="Plant sapling · 2 fibre">🌳</button><button data-quick-tool="pickaxe" title="Pickaxe · Mine stone and ore">⛏️</button><button data-quick-tool="hoe" title="Hoe">▦</button><button data-quick-tool="plant" title="Plant">🌱</button><button data-quick-tool="water" title="Water">💧</button><button data-quick-tool="harvest" title="Harvest">🌾</button><button data-quick-tool="build" title="Build">🔨</button><button data-quick-tool="remove" title="Remove furniture">✕</button></div><p id="valley-status" role="status" hidden></p>';
     document.getElementById('hud')!.append(this.root);
     this.content = this.root.querySelector('#valley-content')!;
     this.status = this.root.querySelector('#valley-status')!;
     this.clock = this.root.querySelector('#valley-clock')!;
     this.root.querySelector<HTMLButtonElement>('#valley-toggle')!.onclick =
       () => this.toggle();
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-quick-tool]')) {
+      button.onclick = () => {
+        this.tool = button.dataset.quickTool as Tool;
+        this.pendingGather = null;
+        this.pendingTree = null;
+        this.open = false;
+        this.signature = '';
+        this.preview.clear();
+        this.ghost.setVisible(false);
+        this.update();
+      };
+    }
     const ground = scene.add.graphics().setDepth(0.5);
-    ground.fillStyle(0x536b46, 0.7);
+    ground.fillStyle(0x785c3c, 0.92);
     ground.fillRect(
       FARM.x - 12,
       FARM.y - 8,
       FARM.columns * 32 + 24,
       FARM.rows * 32 + 16,
     );
-    ground.lineStyle(1, 0xa5ab73, 0.26);
-    for (let cell = 0; cell < 32; cell++) {
+    ground.lineStyle(2, 0xbda177, 0.8);
+    for (let cell = 0; cell < FARM.columns * FARM.rows; cell++) {
       const p = cellPoint(cell);
+      ground.fillStyle((Math.floor(cell / FARM.columns) + cell % FARM.columns) % 2 ? 0x765435 : 0x866341, 0.95);
+      ground.fillRect(p.x - 15, p.y - 15, 30, 30);
       ground.strokeRect(p.x - 15, p.y - 15, 30, 30);
     }
     scene.add
@@ -77,9 +102,9 @@ export class ValleyView {
       .setOrigin(0.5)
       .setDepth(1190);
     for (const node of RESOURCE_NODES)
-      scene.add
-        .image(node.x, node.y, `valley-cache-${node.item}`)
-        .setDepth(node.y);
+      this.caches.push(
+        scene.add.image(node.x, node.y, `valley-cache-${node.item}`).setDepth(node.y),
+      );
     for (const id of ITEM_IDS) {
       const crop = CROP_IDS.find(
         (crop) => id === crop || id === CROPS[crop].seed,
@@ -101,12 +126,11 @@ export class ValleyView {
     );
   }
   get working() {
-    return this.open && this.tool !== 'none';
+    return this.tool !== 'none';
   }
   toggle(force?: boolean) {
     this.open = force ?? !this.open;
     if (!this.open) {
-      this.tool = 'none';
       this.preview.clear();
       this.ghost.setVisible(false);
       this.status.hidden = true;
@@ -188,12 +212,51 @@ export class ValleyView {
     this.preview.strokeRect(point.x - 16, point.y - 16, 32, 32);
   }
   pointer(x: number, y: number): boolean {
+    const drop = this.world().valley.drops?.find((item) => Math.hypot(item.x - x, item.y - y) < 26);
+    if (drop) {
+      const actor = this.player();
+      if (actor && distance(actor, drop) <= 75) this.send({ kind: 'pickup', id: drop.id });
+      else { this.pendingPickup = drop.id; this.navigate(drop.x + 32, drop.y); this.feedback('Walking to the dropped item…'); }
+      return true;
+    }
     if (!this.working) return false;
+    if (this.tool === 'axe' || this.tool === 'sapling') {
+      const valley = this.world().valley;
+      const tree = obstacles.findIndex((o, i) => o.kind === 'tree' && (valley.felledTrees?.includes(i) ? (this.tool === 'sapling' ? valley.clearedStumps?.includes(i) && valley.saplings?.[String(i)] === undefined : !valley.clearedStumps?.includes(i)) : this.tool === 'axe') && x >= o.x - 25 && x <= o.x + o.w + 25 && y >= (valley.felledTrees?.includes(i) ? o.y - 20 : o.y - 90) && y <= o.y + o.h + 15);
+      if (tree >= 0) {
+        const trunk = obstacles[tree]!;
+        const at = { x: trunk.x + trunk.w / 2, y: trunk.y + trunk.h / 2 };
+        const actor = this.player();
+        const kind = valley.felledTrees?.includes(tree) ? (this.tool === 'sapling' ? 'plantSapling' : 'clearStump') : 'chopTree';
+        if (actor && distance(actor, at) <= 85) this.send({ kind, tree });
+        else {
+          this.pendingTree = tree;
+          this.pendingTreeAction = kind;
+          this.navigate(at.x + trunk.w / 2 + 40, at.y);
+          this.feedback('Walking to the tree…');
+        }
+        return true;
+      }
+    }
     const node = RESOURCE_NODES.findIndex(
-      (node) => Math.hypot(node.x - x, node.y - y) < 22,
+      (resource) => Math.hypot(resource.x - x, resource.y - y) < 24,
     );
     if (node >= 0) {
-      this.send({ kind: 'gather', node });
+      const resource = RESOURCE_NODES[node]!;
+      const toolMatches =
+        (resource.item === 'wood' && this.tool === 'axe') ||
+        ((resource.item === 'stone' || resource.item === 'ore') && this.tool === 'pickaxe') ||
+        false;
+      if (toolMatches) {
+        const actor = this.player();
+        if (actor && distance(actor, resource) <= 72) this.send({ kind: 'strike', node });
+        else {
+          this.pendingGather = node;
+          this.navigate(resource.x, resource.y);
+          this.feedback(`Walking to ${resource.name.toLowerCase()}…`);
+        }
+      }
+      else this.feedback(resource.item === 'wood' ? 'Select the axe to chop wood.' : resource.item === 'fiber' ? 'Gather fibre from the nearby resource menu.' : 'Select the pickaxe to mine stone and ore.');
       return true;
     }
     const cell = this.cell(x, y);
@@ -209,12 +272,72 @@ export class ValleyView {
     this.previewAt(x, y);
     return true;
   }
+  private strikeEffect(index: number, finished: boolean) {
+    const node = RESOURCE_NODES[index];
+    const cache = this.caches[index];
+    if (!node || !cache) return;
+    this.scene.tweens.killTweensOf(cache);
+    cache.setAngle(0).setScale(1);
+    if (finished && node.item === 'wood') {
+      this.scene.tweens.add({ targets: cache, angle: 72, y: node.y + 9, alpha: 0.1, duration: 420, ease: 'Cubic.easeIn', onComplete: () => { cache.setAngle(0).setPosition(node.x, node.y).setScale(1); } });
+    } else if (finished) {
+      this.scene.tweens.add({ targets: cache, scaleX: 1.25, scaleY: 0.25, alpha: 0.1, duration: 220, ease: 'Cubic.easeIn', onComplete: () => cache.setScale(1) });
+    } else {
+      this.scene.tweens.add({ targets: cache, x: node.x + 4, duration: 55, yoyo: true, repeat: 2, onComplete: () => cache.setX(node.x) });
+    }
+    const spark = this.scene.add.text(node.x, node.y - 25, finished ? '+4' : '✦', { fontSize: '14px', color: finished ? '#eac779' : '#ffffff', stroke: '#20352f', strokeThickness: 3 }).setDepth(node.y + 50).setOrigin(0.5);
+    this.scene.tweens.add({ targets: spark, y: node.y - 52, alpha: 0, duration: 650, onComplete: () => spark.destroy() });
+  }
   update() {
     const w = this.world(),
       p = this.player();
     if (!p) return;
+    if (this.pendingPickup !== null) {
+      const drop = w.valley.drops?.find((item) => item.id === this.pendingPickup);
+      if (!drop) this.pendingPickup = null;
+      else if (distance(p, drop) <= 75) {
+        this.pendingPickup = null;
+        this.send({ kind: 'pickup', id: drop.id });
+      }
+    }
+    const activeDrops = new Set<number>();
+    for (const drop of w.valley.drops ?? []) {
+      activeDrops.add(drop.id);
+      let sprite = this.dropSprites.get(drop.id);
+      if (!sprite) {
+        sprite = this.scene.add.image(drop.x, drop.y, 'valley-cache-wood').setScale(0.75).setDepth(drop.y + 2);
+        this.dropSprites.set(drop.id, sprite);
+      }
+      sprite.setPosition(drop.x, drop.y);
+    }
+    for (const [id, sprite] of this.dropSprites) if (!activeDrops.has(id)) {
+      sprite.destroy();
+      this.dropSprites.delete(id);
+    }
+    if (this.pendingTree !== null) {
+      const tree = obstacles[this.pendingTree];
+      if (!tree || (this.pendingTreeAction === 'chopTree' ? w.valley.felledTrees?.includes(this.pendingTree) : this.pendingTreeAction === 'clearStump' ? !w.valley.felledTrees?.includes(this.pendingTree) || w.valley.clearedStumps?.includes(this.pendingTree) : !w.valley.clearedStumps?.includes(this.pendingTree) || w.valley.saplings?.[String(this.pendingTree)] !== undefined)) this.pendingTree = null;
+      else if (distance(p, { x: tree.x + tree.w / 2, y: tree.y + tree.h / 2 }) <= 85) {
+        const selected = this.pendingTree;
+        this.pendingTree = null;
+        this.send({ kind: this.pendingTreeAction, tree: selected });
+      }
+    }
+    if (this.pendingGather !== null) {
+      const target = RESOURCE_NODES[this.pendingGather];
+      if (target && distance(p, target) <= 72) {
+        const node = this.pendingGather;
+        this.pendingGather = null;
+        this.send({ kind: 'strike', node });
+      }
+    }
     this.content.hidden = !this.open;
-    this.clock.textContent = `Day ${w.valley.day} · ${Math.ceil(DAY_SECONDS - w.valley.elapsed)}s · ${w.valley.gold} gold`;
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-quick-tool]'))
+      button.setAttribute('aria-pressed', String(button.dataset.quickTool === this.tool));
+    const weather = w.valley.weather ?? weatherForDay(w.valley.day);
+    const weatherLabel = weather === 'rain' ? '🌧 Rain' : weather === 'cloudy' ? '☁ Cloudy' : '☀ Sunny';
+    this.clock.textContent = `Day ${w.valley.day} · ${weatherLabel} · ${Math.ceil(DAY_SECONDS - w.valley.elapsed)}s · ${w.valley.gold} gold`;
+    this.root.dataset.weather = weather;
     this.root.dataset.gold = String(w.valley.gold);
     this.root.dataset.day = String(w.valley.day);
     this.root.dataset.ripe = String(
@@ -222,6 +345,22 @@ export class ValleyView {
     );
     this.root.dataset.plots = String(w.valley.plots.length);
     this.root.dataset.buildings = String(w.valley.buildings.length);
+    const nodes = w.valley.nodes;
+    const hits = w.valley.nodeHits ?? [0, 0, 0, 0];
+    if (this.previousNodes && this.previousHits) {
+      this.caches.forEach((_, index) => {
+        if (nodes[index] !== this.previousNodes![index] && nodes[index] === w.valley.day) this.strikeEffect(index, true);
+        else if (hits[index] !== this.previousHits![index] && hits[index]! > this.previousHits![index]!) this.strikeEffect(index, false);
+      });
+    }
+    this.previousNodes = [...nodes];
+    this.previousHits = [...hits];
+    this.caches.forEach((cache, index) => {
+      const depleted = (w.valley.nodes[index] ?? 0) >= w.valley.day;
+      if (!this.scene.tweens.isTweening(cache)) cache.setAlpha(depleted ? 0.28 : 1);
+      const hits = w.valley.nodeHits?.[index] ?? 0;
+      cache.setTint(depleted ? 0x748077 : hits > 0 ? 0xf5c989 : 0xffffff);
+    });
     const nearby = [
       distance(p, WORLD.npc) <= 90,
       ...RESOURCE_NODES.map((n) => distance(p, n) <= 85),
@@ -229,9 +368,13 @@ export class ValleyView {
     const signature = JSON.stringify([
       w.instanceId,
       w.valley.bag,
+      w.valley.drops,
       w.valley.plots,
       w.valley.buildings,
       w.valley.nodes,
+      w.valley.nodeHits,
+      w.valley.toolLevels,
+      w.valley.weather,
       w.valley.day,
       nearby,
       this.tool,
@@ -290,8 +433,8 @@ export class ValleyView {
       }
     }
     if (!this.open) return;
-    this.content.innerHTML = `<h3>Our woodland home</h3><nav class="valley-tabs" aria-label="Wild Valley menus">${(['garden', 'supplies', 'market'] as const).map((tab) => `<button data-tab="${tab}" aria-pressed="${tab === this.tab}">${tab === 'garden' ? 'Garden' : tab === 'supplies' ? 'Supplies' : 'Market'}</button>`).join('')}</nav><section ${this.tab === 'garden' ? '' : 'hidden'}><p>Select a tool, then click a nearby garden tile. Dry crops wait safely; days last 45 seconds.</p>
-      <div class="valley-tools">${(['none', 'hoe', 'plant', 'water', 'harvest', 'build', 'remove'] as const).map((tool) => `<button data-tool="${tool}" aria-pressed="${tool === this.tool}">${tool === 'none' ? 'Combat' : tool === 'remove' ? 'Remove furniture' : tool}</button>`).join('')}</div>
+    this.content.innerHTML = `<h3>Our woodland home</h3><nav class="valley-tabs" aria-label="Wild Valley menus">${(['garden', 'supplies', 'market'] as const).map((tab) => `<button data-tab="${tab}" aria-pressed="${tab === this.tab}">${tab === 'garden' ? 'Garden' : tab === 'supplies' ? 'Supplies' : 'Market'}</button>`).join('')}</nav><section ${this.tab === 'garden' ? '' : 'hidden'}><p>Select a tool, then click a nearby garden tile. Rain automatically waters growing crops. Dry crops wait safely; days last 45 seconds.</p>
+      <div class="valley-tools">${(['none', 'axe', 'sapling', 'pickaxe', 'hoe', 'plant', 'water', 'harvest', 'build', 'remove'] as const).map((tool) => `<button data-tool="${tool}" aria-pressed="${tool === this.tool}">${tool === 'none' ? 'Explore' : tool === 'axe' ? 'Axe · wood' : tool === 'sapling' ? 'Sapling · 2 fibre' : tool === 'pickaxe' ? 'Pickaxe · stone/ore' : tool === 'remove' ? 'Remove furniture' : tool}</button>`).join('')}</div>
       <label>Seed <select id="valley-seed">${CROP_IDS.map((crop) => `<option value="${crop}" ${this.crop === crop ? 'selected' : ''}>${CROPS[crop].name} · ${CROPS[crop].days} day(s) · ${w.valley.bag[CROPS[crop].seed]} seeds</option>`).join('')}</select></label>
       <label>Build <select id="valley-recipe">${RECIPE_IDS.map((recipe) => `<option value="${recipe}" ${recipe === this.recipe ? 'selected' : ''}>${RECIPES[recipe].name}</option>`).join('')}</select></label>
       <p>${RECIPES[this.recipe].gold} gold · ${ITEM_IDS.filter(
@@ -299,7 +442,8 @@ export class ValleyView {
       )
         .map((key) => `${RECIPES[this.recipe].cost[key]} ${ITEMS[key].name}`)
         .join(', ')}. Ape saves 1 wood. Removing furniture gives no refund.</p>
-      <h4>Gather nearby</h4><div class="valley-tools">${RESOURCE_NODES.map((node, i) => `<button data-node="${i}" ${!nearby[i + 1] || w.valley.nodes[i] === w.valley.day ? 'disabled' : ''}>${node.name} +4</button>`).join('')}</div>
+      <h4>Workbench · Tool upgrades</h4><p>Visit a placed workbench to improve tools. Each level reduces the number of hits needed to fell trees or mine resources.</p><div class="valley-tools">${(['axe', 'pickaxe'] as const).map((tool) => { const level = w.valley.toolLevels?.[tool] ?? 1; const cost = level === 1 ? '4 wood · 4 stone · 1 ore · 8 gold' : '8 wood · 8 stone · 4 ore · 18 gold'; return `<button data-upgrade="${tool}" ${level >= 3 || !w.valley.buildings.some((b) => b.recipe === 'workbench' && distance(p, cellPoint(b.cell)) <= 95) ? 'disabled' : ''}>${tool === 'axe' ? '🪓 Axe' : '⛏ Pickaxe'} Lv ${level} ${level >= 3 ? '· Max' : '→ ' + (level + 1) + ' · ' + cost}</button>`; }).join('')}</div>
+      <h4>Gather nearby</h4><p>Choose 🪓 for branches, ⛏️ for stones and ore, and gather fibre from the nearby resource menu. Walk up and click a wood or stone deposit. Collected resources replenish the next day.</p><div class="valley-tools">${RESOURCE_NODES.map((node, i) => `<button data-node="${i}" ${!nearby[i + 1] || w.valley.nodes[i] === w.valley.day ? 'disabled' : ''}>${node.name} +4</button>`).join('')}</div>
       </section><section ${this.tab === 'supplies' ? '' : 'hidden'}><h4>Shared supplies</h4><div class="valley-grid">${ITEM_IDS.filter(
         (key) => w.valley.bag[key] > 0,
       )
@@ -339,6 +483,9 @@ export class ValleyView {
         const value = button.dataset.tool;
         if (
           value === 'none' ||
+          value === 'axe' ||
+          value === 'sapling' ||
+          value === 'pickaxe' ||
           value === 'hoe' ||
           value === 'plant' ||
           value === 'water' ||
@@ -347,6 +494,7 @@ export class ValleyView {
           value === 'remove'
         ) {
           this.tool = value;
+          this.pendingGather = null;
           this.signature = '';
           this.preview.clear();
           this.ghost.setVisible(false);
@@ -375,6 +523,11 @@ export class ValleyView {
         this.update();
       }
     };
+    for (const button of this.content.querySelectorAll<HTMLButtonElement>('[data-upgrade]'))
+      button.onclick = () => {
+        const tool = button.dataset.upgrade;
+        if (tool === 'axe' || tool === 'pickaxe') this.send({ kind: 'upgradeTool', tool });
+      };
     for (const button of this.content.querySelectorAll<HTMLButtonElement>(
       '[data-node]',
     ))
