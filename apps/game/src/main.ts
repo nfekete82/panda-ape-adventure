@@ -1265,6 +1265,26 @@ class ForestScene extends Phaser.Scene {
       this.graphics.fillRect(x, y, 2, 2);
     }
     const local = world.players.find((p) => p.id === playerId);
+    if (local && mode !== 'menu' && Math.hypot(local.x - BAMBOO_SHRINE.x, local.y - BAMBOO_SHRINE.y) < 660) {
+      const t = reducedMotion.matches ? 0 : time * 0.001;
+      const glow = 0.55 + Math.sin(t * 2.1) * 0.18;
+      this.graphics.lineStyle(3, 0x87e2c9, glow);
+      this.graphics.strokeEllipse(BAMBOO_SHRINE.x, BAMBOO_SHRINE.y - 17, 43, 30);
+      this.graphics.lineStyle(1, 0xa8f4d2, glow * 0.7);
+      this.graphics.strokeCircle(BAMBOO_SHRINE.x, BAMBOO_SHRINE.y - 18, 22 + Math.sin(t * 2) * 3);
+      for (let n = 0; n < 7; n++) {
+        const a = t * (n % 2 ? 0.28 : -0.22) + n * Math.PI * 2 / 7;
+        const x = BAMBOO_SHRINE.x + Math.cos(a) * (17 + n % 3 * 6);
+        const y = BAMBOO_SHRINE.y - 19 + Math.sin(a) * (17 + n % 3 * 4);
+        this.graphics.fillStyle(0xd3f8cf, 0.25 + glow * 0.4);
+        this.graphics.fillCircle(x, y, n % 3 === 0 ? 3 : 2);
+      }
+      const activated = local.receipts.includes(`${world.instanceId}:shrine:awakened`);
+      if (activated) {
+        this.graphics.lineStyle(2, 0xa0eec6, glow * 0.55);
+        this.graphics.strokeEllipse(BAMBOO_SHRINE.x, BAMBOO_SHRINE.y + 15, 91, 29);
+      }
+    }
     if (local && mode !== 'menu') {
       // Nearby NPCs get a subtle animated ground ring, not permanent UI clutter.
       for (const [x, y, color] of [
@@ -1366,10 +1386,25 @@ function updateHud() {
           : 'Find the guardian in the northeast ruins.';
   const nearRowan = distance(p, WORLD.npc) <= 90;
   const nearSmith = distance(p, WORLD.smith) <= 90;
-  $('interact-hint').hidden = !(nearRowan || nearSmith);
-  $('interact-hint').textContent =
-    nearSmith &&
-    (!nearRowan || distance(p, WORLD.smith) < distance(p, WORLD.npc))
+  const nearShrine = distance(p, BAMBOO_SHRINE) <= 106;
+  const activated = p.receipts.includes(`${world.instanceId}:shrine:awakened`);
+  const sentinel = p.receipts.includes(`${world.instanceId}:shrine:sentinel`);
+  const restored = p.receipts.includes(`${world.instanceId}:shrine:rewarded`);
+  if (worldRegion(p.x) === 'bamboo') {
+    $('quest-title').textContent = restored ? 'The shrine restored' : 'The mossbound secret';
+    $('quest-body').textContent = restored
+      ? 'The emerald altar is at peace. Your ancient relic is yours.'
+      : !activated
+        ? 'Find the Mossbound Shrine and press E to awaken its crystal.'
+        : !sentinel
+          ? 'Defeat the guardian spirit in the southern bamboo grove.'
+          : 'Return to the crystal altar to claim the ancient relic.';
+  }
+  $('interact-hint').hidden = !(nearRowan || nearSmith || nearShrine);
+  $('interact-hint').textContent = nearShrine
+    ? restored ? 'E · Listen to the restored shrine' : 'E · Examine the crystal altar'
+    : nearSmith &&
+        (!nearRowan || distance(p, WORLD.smith) < distance(p, WORLD.npc))
       ? 'E · Talk to Bramble / Improve weapon'
       : 'E · Talk to Rowan';
   if (
