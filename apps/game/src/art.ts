@@ -3,6 +3,7 @@ import { paintPlot, paintCrop, paintBuilding, paintCache } from './valley-art';
 import { paintMiniFarmTree } from './mini-farm-tree';
 import sheets from '../../../assets/hero-sheets.json';
 import Phaser from 'phaser';
+import { MINI_FARM_ATLAS } from './minifarm-atlas';
 import { WORLD } from '@panda/shared';
 import { paintForestWorld } from './environment-art';
 import { paintBambooCrossing } from './bamboo-art';
@@ -28,6 +29,7 @@ const activeStates: Record<'panda' | 'ape', string[]> = {
   ape: ['walk'],
 };
 export function preloadHeroSheets(scene: Phaser.Scene) {
+  scene.load.image('minifarm-cc0-atlas', MINI_FARM_ATLAS);
   for (const hero of ['panda', 'ape'] as const) {
     const source = sheets[hero].source;
     if (typeof source === 'string') scene.load.image(`${hero}-source`, source);
@@ -52,6 +54,14 @@ export function heroFrame(
   );
 }
 export function makeAssets(scene: Phaser.Scene) {
+  const mini = scene.textures.exists('minifarm-cc0-atlas')
+    ? scene.textures.get('minifarm-cc0-atlas').getSourceImage() as HTMLImageElement
+    : null;
+  const sample = (ctx: CanvasRenderingContext2D, cell: number, width: number, height: number) => {
+    if (!mini) return;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(mini, (cell % 4) * 32, Math.floor(cell / 4) * 32, 32, 32, 0, 0, width, height);
+  };
   const can = canvas(32, 32);
   can.ctx.fillStyle = '#304c46';
   can.ctx.fillRect(8, 10, 16, 18);
@@ -65,7 +75,10 @@ export function makeAssets(scene: Phaser.Scene) {
   scene.textures.addCanvas('valley-watering-can', can.c);
   for (const wet of [false, true]) {
     const a = canvas(32, 32);
-    paintPlot(a.ctx, wet);
+    if (mini) {
+      sample(a.ctx, 1, 32, 32);
+      if (wet) { a.ctx.fillStyle = 'rgba(42,56,69,0.38)'; a.ctx.fillRect(0, 0, 32, 32); }
+    } else paintPlot(a.ctx, wet);
     scene.textures.addCanvas(wet ? 'valley-soil-wet' : 'valley-soil', a.c);
   }
   for (const crop of CROP_IDS) {
@@ -84,7 +97,9 @@ export function makeAssets(scene: Phaser.Scene) {
   }
   for (const recipe of RECIPE_IDS) {
     const a = canvas(32, 48);
-    paintBuilding(a.ctx, recipe);
+    if (mini && recipe === 'fence') sample(a.ctx, 6, 32, 48);
+    else if (mini && recipe === 'shelter') sample(a.ctx, 9, 32, 48);
+    else paintBuilding(a.ctx, recipe);
     scene.textures.addCanvas(`valley-building-${recipe}`, a.c);
   }
   for (const node of RESOURCE_NODES) {
@@ -135,7 +150,7 @@ export function makeAssets(scene: Phaser.Scene) {
     scene.textures.addCanvas(key, c);
   }
   const { c, ctx } = canvas(WORLD.width, WORLD.height);
-  paintForestWorld(ctx);
+  paintForestWorld(ctx, mini);
   paintBambooCrossing(ctx);
   scene.textures.addCanvas('forest', c);
   for (const [key, variant] of [
