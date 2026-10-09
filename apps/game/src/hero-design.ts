@@ -88,10 +88,22 @@ export function conceptHero(
   px(c, cloth, 19, 17, 2, 7);
   px(c, '#e4c58b', 12, 20, 1, 1);
   px(c, '#e4c58b', 20, 20, 1, 1);
+  // Warm farm-work apron and embroidered leaf patch; identical across all frames.
+  px(c, '#a48256', 13, 23, 9, 5);
+  px(c, '#d2b17a', 13, 23, 9, 1);
+  px(c, '#6c8150', 17, 24, 3, 3);
+  px(c, '#c9db87', 18, 24, 1, 2);
+  px(c, '#6b5036', 14, 27, 2, 2);
+  px(c, '#6b5036', 20, 27, 2, 2);
   if (!back) {
     px(c, clothDark, 14, 22, 5, 3);
     px(c, '#abb391', 14, 22, 5, 1);
   }
+  // Pixel-defined satchel matches the cottage and garden timber palette.
+  px(c, '#624e38', 22, 21, 5, 8);
+  px(c, '#b48a5d', 23, 22, 4, 5);
+  px(c, '#e9c28e', 23, 22, 4, 1);
+  px(c, '#644a35', 24, 25, 2, 1);
   // Bare furry hands, small rolled cuffs and opposite arm swing.
   for (const [x, swing] of [
     [6, -step],
