@@ -5,6 +5,7 @@ import {
   createWorld,
   damageEnemy,
   neutralInput,
+  migrateWorld,
   quantity,
   step,
 } from '@panda/shared';
@@ -64,6 +65,18 @@ describe('Mossbound Shrine adventure', () => {
     interact(world, ape);
     expect(quantity(panda, 'ancient')).toBe(1);
     expect(quantity(ape, 'ancient')).toBe(1);
+  });
+
+  it('migrates a saved world created before the shrine guardian was introduced', () => {
+    const previous = createWorld();
+    previous.enemies = previous.enemies.filter((enemy) => enemy.id !== 'enemy11');
+    previous.respawn.wisp.maximum = 3;
+    const saved = structuredClone(previous);
+    const loaded = migrateWorld(saved);
+    expect(loaded).not.toBeNull();
+    expect(loaded?.enemies.filter((enemy) => enemy.id === 'enemy11')).toHaveLength(1);
+    expect(loaded?.respawn.wisp.maximum).toBe(4);
+    expect(migrateWorld(loaded)?.enemies.filter((enemy) => enemy.id === 'enemy11')).toHaveLength(1);
   });
 
   it('retains quest progress in existing player receipts without introducing save fields', () => {
