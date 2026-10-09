@@ -124,6 +124,9 @@ export class ValleyView {
   get working() {
     return this.tool !== 'none';
   }
+  get heldTool(): 'axe' | 'pickaxe' | 'water' | null {
+    return this.tool === 'axe' || this.tool === 'pickaxe' || this.tool === 'water' ? this.tool : null;
+  }
   toggle(force?: boolean) {
     this.open = force ?? !this.open;
     if (!this.open) {
